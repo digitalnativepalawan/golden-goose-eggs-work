@@ -1,10 +1,33 @@
-<!-- LOVABLE:BEGIN -->
-> [!IMPORTANT]
-> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
-> published git history — force pushing, or rebasing/amending/squashing commits
-> that are already pushed — as it rewrites history on Lovable's side and the
-> user will likely lose their project history.
->
-> Commits you push to the connected branch sync back to Lovable and show up in
-> the editor, so keep the branch in a working state.
-<!-- LOVABLE:END -->
+# SANVIC
+
+San Vicente, Palawan travel hub.
+
+## Stack
+- React 19 + TanStack Start (file-based routing in `src/routes`)
+- Vite 8, TypeScript, Tailwind CSS
+- Supabase (Postgres + Auth + Storage)
+- Leaflet + OpenStreetMap for the map, Recharts for charts
+
+## Local development
+```bash
+npm install
+cp .env.example .env   # already points at the current Supabase project
+npm run dev
+```
+
+## Configuration
+`.env` is git-ignored. `.env.example` is committed and contains only
+public values (project id, URL, publishable key) — these are safe to publish
+and are embedded in the client bundle at build time.
+
+Never commit a secret key or the database password.
+
+## Database
+The source of truth for the current schema is the PostgreSQL dump, not the
+files in `supabase/migrations`. Those migrations are historical and are not
+guaranteed to replay cleanly against a fresh project.
+
+## Storage
+Image and video binaries live in Supabase Storage buckets and are **not**
+included in a database dump. A dump restores only the rows that point at
+them, so media must be re-uploaded after a migration.
