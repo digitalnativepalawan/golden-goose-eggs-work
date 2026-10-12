@@ -1,0 +1,1 @@
+ALTER TABLE public.destinations ADD COLUMN IF NOT EXISTS google_business_url text;

@@ -1,0 +1,30 @@
+ALTER TABLE public.destination_categories ADD COLUMN IF NOT EXISTS icon TEXT NOT NULL DEFAULT 'map-pin';
+
+UPDATE public.destination_categories SET icon = CASE key
+  WHEN 'beach' THEN 'waves'
+  WHEN 'island' THEN 'palmtree'
+  WHEN 'food' THEN 'utensils'
+  WHEN 'stay' THEN 'bed-double'
+  WHEN 'lodging' THEN 'bed-double'
+  WHEN 'hotel' THEN 'bed-double'
+  WHEN 'adventure' THEN 'compass'
+  WHEN 'activity' THEN 'compass'
+  WHEN 'nature' THEN 'trees'
+  WHEN 'waterfall' THEN 'droplets'
+  WHEN 'viewpoint' THEN 'mountain'
+  WHEN 'mountain' THEN 'mountain'
+  WHEN 'culture' THEN 'landmark'
+  WHEN 'heritage' THEN 'landmark'
+  WHEN 'market' THEN 'shopping-bag'
+  WHEN 'shopping' THEN 'shopping-bag'
+  WHEN 'transport' THEN 'plane'
+  WHEN 'port' THEN 'ship'
+  WHEN 'diving' THEN 'anchor'
+  WHEN 'snorkel' THEN 'fish'
+  WHEN 'cafe' THEN 'coffee'
+  WHEN 'bar' THEN 'wine'
+  WHEN 'wellness' THEN 'flower2'
+  WHEN 'spa' THEN 'flower2'
+  ELSE 'map-pin'
+END
+WHERE icon = 'map-pin';
