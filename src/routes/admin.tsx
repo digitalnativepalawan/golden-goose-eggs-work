@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { KmzPanel } from "@/components/admin/kmz-panel";
+import { call, type Token } from "@/lib/admin-helpers";
 
 /**
  * SANVIC admin.
@@ -9,24 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
  * shipped to the browser.
  */
 
-type Token = string | null;
-
 const BUCKETS = ["destination-images", "destination-videos", "media", "traveler-experiences"] as const;
-
-async function call(token: Token, action: string, params: Record<string, string> = {}, init?: RequestInit) {
-  const qs = new URLSearchParams({ action, ...params }).toString();
-  const res = await fetch(`/api/admin?${qs}`, {
-    ...init,
-    headers: {
-      "content-type": "application/json",
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
-      ...(init?.headers ?? {}),
-    },
-  });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
-  return body;
-}
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -39,7 +24,8 @@ function Admin() {
   const [token, setToken] = useState<Token>(null);
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<"data" | "media">("data");
+  const [tab, setTab] = useState<"data" | "media" | "kmz">("data");
+  const [refreshKey, setRefreshKey] = useState(0);
 
   async function unlock(e: React.FormEvent) {
     e.preventDefault();
@@ -100,13 +86,17 @@ function Admin() {
         <div className="flex items-center gap-4">
           <span className="text-sm font-semibold text-white">SANVIC Admin</span>
           <nav className="flex gap-1 text-xs">
-            {(["data", "media"] as const).map((t) => (
+            {([
+              ["data", "Data"],
+              ["media", "Media"],
+              ["kmz", "KMZ Import"],
+            ] as const).map(([id, label]) => (
               <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`rounded px-3 py-1.5 ${tab === t ? "bg-white/15 text-white" : "text-white/60 hover:text-white"}`}
+                key={id}
+                onClick={() => setTab(id)}
+                className={`rounded px-3 py-1.5 ${tab === id ? "bg-white/15 text-white" : "text-white/60 hover:text-white"}`}
               >
-                {t === "data" ? "Data" : "Media"}
+                {label}
               </button>
             ))}
           </nav>
@@ -119,7 +109,11 @@ function Admin() {
         </div>
       </header>
 
-      {tab === "data" ? <DataPanel token={token} /> : <MediaPanel token={token} />}
+      {tab === "data" && <DataPanel key={`data-${refreshKey}`} token={token} />}
+      {tab === "media" && <MediaPanel token={token} />}
+      {tab === "kmz" && (
+        <KmzPanel token={token} onDone={() => setRefreshKey((k) => k + 1)} />
+      )}
     </div>
   );
 }
