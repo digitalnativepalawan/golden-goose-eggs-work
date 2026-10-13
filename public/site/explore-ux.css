@@ -74,3 +74,9 @@ body[data-active-tab=discover] #talaOrbWrap{display:none}
 }
 @media (min-width:900px) and (max-width:1099px) and (orientation:landscape){:root{--explore-width:400px}.es-peek{padding-top:18px}.es-heading{margin-bottom:12px}}
 @media (prefers-reduced-motion:reduce){.explore-sheet,.dest-sheet,.leaflet-bottom{transition:none!important}}
+
+/* --- STAFF ADMIN ENTRY --- */
+.admin-entry{position:fixed;top:16px;right:16px;z-index:66;display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:10px;background:#102130;border:1px solid #5c707e;color:#7d9aa0;text-decoration:none;box-shadow:0 3px 14px #0002;transition:color .15s,border-color .15s}
+.admin-entry:hover,.admin-entry:focus-visible{color:#b9ebdd;border-color:#71d9c1;outline:none}
+.admin-entry svg{width:17px;height:17px}
+@media (max-width:520px){.admin-entry{top:10px;right:10px;width:38px;height:38px}}

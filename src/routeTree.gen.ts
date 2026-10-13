@@ -10,11 +10,23 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as ApiAdminRouteImport } from './routes/api/admin'
 import { Route as ApiTalaChatRouteImport } from './routes/api/tala-chat'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminRoute = ApiAdminRouteImport.update({
+  id: '/api/admin',
+  path: '/api/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiTalaChatRoute = ApiTalaChatRouteImport.update({
@@ -25,27 +37,35 @@ const ApiTalaChatRoute = ApiTalaChatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/api/admin': typeof ApiAdminRoute
   '/api/tala-chat': typeof ApiTalaChatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/api/admin': typeof ApiAdminRoute
   '/api/tala-chat': typeof ApiTalaChatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/api/admin': typeof ApiAdminRoute
   '/api/tala-chat': typeof ApiTalaChatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/tala-chat'
+  fullPaths: '/' | '/admin' | '/api/admin' | '/api/tala-chat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/tala-chat'
-  id: '__root__' | '/' | '/api/tala-chat'
+  to: '/' | '/admin' | '/api/admin' | '/api/tala-chat'
+  id: '__root__' | '/' | '/admin' | '/api/admin' | '/api/tala-chat'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  ApiAdminRoute: typeof ApiAdminRoute
   ApiTalaChatRoute: typeof ApiTalaChatRoute
 }
 
@@ -56,6 +76,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin': {
+      id: '/api/admin'
+      path: '/api/admin'
+      fullPath: '/api/admin'
+      preLoaderRoute: typeof ApiAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/tala-chat': {
@@ -70,6 +104,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  ApiAdminRoute: ApiAdminRoute,
   ApiTalaChatRoute: ApiTalaChatRoute,
 }
 export const routeTree = rootRouteImport
