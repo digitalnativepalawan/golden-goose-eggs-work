@@ -40,17 +40,22 @@ booking links.
 
 ## Screenshots
 
-> Live screenshots live in [`docs/screenshots/`](docs/screenshots). Drop image
-> files there and reference them below.
+![Explore San Vicente](docs/images/explore-map.png)
+
+*Explore — the layered map of San Vicente with category filters, barangay
+selection and 33 mapped places.*
+
+<details>
+<summary><strong>More screenshots</strong></summary>
 
 | | |
 | --- | --- |
-| **Explore** — layered map, filters and place list | **Tribes** — Pulse, live groups and happenings |
-| ![Explore](docs/screenshots/explore.png) | ![Tribes](docs/screenshots/tribes.png) |
-| **The Hunt** — daily hunt, nearby discoveries | **Place detail** — media, editorial and booking |
-| ![The Hunt](docs/screenshots/hunt.png) | ![Place](docs/screenshots/place.png) |
-| **Today** — Tala, the San Vicente concierge | |
-| ![Today](docs/screenshots/today.png) | |
+| **Tribes** — Pulse, live groups and happenings | **The Hunt** — daily hunt and nearby discoveries |
+| ![Tribes](docs/screenshots/tribes.png) | ![The Hunt](docs/screenshots/hunt.png) |
+| **Place detail** — media, editorial, booking | **Today** — Tala, the San Vicente concierge |
+| ![Place](docs/screenshots/place.png) | ![Today](docs/screenshots/today.png) |
+
+</details>
 
 ---
 
