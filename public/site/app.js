@@ -97,7 +97,6 @@ const DEFAULT_SPLASH_FOOTER = `PALAWAN`;
 // ─── TALA AI (OpenRouter) state ───
 let talaAiEnabled = false;
 let talaAiModel = '';
-let talaAiKey = '';
 
 // ─── LIVE DATA (populated from Supabase, falls back to defaults) ───
 let destinations = [];
@@ -134,6 +133,7 @@ async function initAuth(){
       await loadTravelerProfile();
       closeLoginModal();
       updateAuthUI();
+      if(typeof refreshAdminAccess === 'function') refreshAdminAccess();
       if(pendingProtectedAction){
         const fn = pendingProtectedAction;
         pendingProtectedAction = null;
@@ -143,6 +143,7 @@ async function initAuth(){
       currentUser = null;
       currentProfile = null;
       updateAuthUI();
+      if(typeof refreshAdminAccess === 'function') refreshAdminAccess();
     }
   });
 
@@ -522,7 +523,7 @@ async function loadDataFromSupabase(){
       sb.from('site_settings').select('*').in('key', ['hero_title', 'hero_subtitle', 'splash_subtext', 'splash_footer']),
       sb.from('destination_categories').select('*').order('sort_order', { ascending: true }),
       sb.from('nearby_places').select('*').order('sort_order', { ascending: true }),
-      sb.from('tala_settings').select('key,value').in('key', ['ai_enabled', 'ai_model', 'ai_key']),
+      sb.from('tala_settings').select('key,value').in('key', ['ai_enabled', 'ai_model']),
       sb.from('today_content').select('key,data'),
       sb.from('tribes').select('*').order('sort_order', { ascending: true }),
       sb.from('events').select('*').order('sort_order', { ascending: true }),
@@ -538,7 +539,6 @@ async function loadDataFromSupabase(){
       aiSettingsRes.data.forEach(r=>{
         if(r.key==='ai_enabled') talaAiEnabled = (r.value === 'true');
         if(r.key==='ai_model' && r.value) talaAiModel = r.value;
-        if(r.key==='ai_key' && r.value) talaAiKey = r.value;
       });
     }
 
@@ -656,7 +656,6 @@ async function loadDataFromSupabase(){
     talaSuggestions = DEFAULT_SUGGESTIONS;
     talaAiEnabled = false;
     talaAiModel = '';
-    talaAiKey = '';
     heroTitle = DEFAULT_HERO_TITLE;
     heroSubtitle = DEFAULT_HERO_SUBTITLE;
     splashSubtext = DEFAULT_SPLASH_SUBTEXT;
@@ -765,55 +764,38 @@ function getAI(input) {
   return { reply: best||defaultR, dest: null };
 }
 
-// Live AI answer calling OpenRouter directly from the browser, using the API
-// key + model stored in tala_settings via the admin. Falls back to curated
-// keyword answers on any failure (key not set, model error, offline).
-const TALA_BASE_PROMPT = 'You are TALA, the warm, local travel concierge of San Vicente, Palawan. You know the town, its beaches, waterfalls, islands, food and transport. Be friendly, concise and personal. If you don\'t know something, say so kindly and suggest asking at the tourism office. Keep answers under 120 words unless asked for details.';
-
-function talaKnowledgeBlock(){
-  const lines = [];
-  destinations.forEach(d=>{
-    lines.push(`[${d.category}] ${d.name}: ${d.description || ''} ${d.tip ? '— Tip: ' + d.tip : ''}`);
-  });
-  aiData.forEach(it=>{
-    it.kw.forEach(k=>{
-      if(!it.r) return;
-      lines.push(`"${k}" -> ${it.r}`);
-    });
-  });
-  const block = lines.slice(0, 140).join('\n');
-  return block ? ('\n\nLOCAL KNOWLEDGE BASE (use this first, it is vetted by the tourism office):\n' + block + '\n') : '';
-}
+// Live AI answer via our own server endpoint (/api/tala-chat). The server
+// holds the OpenRouter key (env OPENROUTER_API_KEY), builds the prompt from
+// the live destinations + Tala answers, and uses the model saved in
+// tala_settings. The browser never sees the key. Any failure (endpoint
+// missing, key not set, AI off, rate limit) falls back to curated answers.
+const TALA_API_URL = '/api/tala-chat';
+const TALA_HISTORY_MAX = 10;
+let talaHistory = []; // recent {role, content} turns, for follow-up questions
 
 async function getAILive(input){
   const destMatch = getAI(input).dest;
-  const key = (talaAiKey || '').trim();
-  const model = (talaAiModel || '').trim();
-  if(!key) throw new Error('OpenRouter API key not set — add it in Backoffice > TALA AI');
-  if(!model) throw new Error('No AI model selected');
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  const messages = talaHistory.concat([{ role:'user', content: input }]).slice(-TALA_HISTORY_MAX);
+  const res = await fetch(TALA_API_URL, {
     method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'Authorization':'Bearer ' + key
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 600,
-      temperature: 0.6,
-      messages: [
-        { role:'system', content: TALA_BASE_PROMPT + talaKnowledgeBlock() },
-        { role:'user', content: input }
-      ]
-    })
+    headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ messages })
   });
   const j = await res.json().catch(()=>({}));
-  if(!res.ok){
-    const e = (j && j.error) ? (j.error.message || JSON.stringify(j.error)) : ('HTTP ' + res.status);
-    throw new Error(String(e));
+  if(!res.ok || !j.ok || !j.reply){
+    throw new Error((j && j.error) || ('HTTP ' + res.status));
   }
-  const reply = ((j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '').trim();
-  return { reply: reply || getAI(input).reply, dest: destMatch };
+  const reply = String(j.reply).trim();
+  talaHistory = messages.concat([{ role:'assistant', content: reply }]).slice(-TALA_HISTORY_MAX);
+  return { reply: talaFormatAiReply(reply), dest: destMatch };
+}
+
+// Model output is untrusted text: escape it, then allow only **bold** and
+// line breaks, so a reply can never inject markup into the page.
+function talaFormatAiReply(text){
+  return escapeHtml(text)
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
 }
 
 function answerTala(t){
@@ -3107,9 +3089,11 @@ window.addEventListener('load',()=>{
 
 // ═══════════════════════════════════════════════════════
 // ADMIN PANEL — triple-click "SANVIC.PH" brand label, PIN 5309.
-// Edits write directly to Supabase (destinations, tala_responses,
-// tala_settings) so changes show up for every visitor, synced
-// through the same Lovable Cloud database the React app uses.
+// The PIN only opens this interface (it is visible in this file).
+// The real gate is Supabase Row Level Security: saves only succeed
+// when the signed-in user has the 'admin' role in public.user_roles
+// (see supabase/scripts/02_make_admin.sql). Everyone else gets a
+// read-only view.
 // ═══════════════════════════════════════════════════════
 const ADMIN_PIN = "5309";
 let brandClickCount = 0, brandClickTimer = null;
@@ -3118,19 +3102,48 @@ let adminTab = 'dest';
 let adminEditingDestId = null;   // null = not editing, 'new' = creating, else id
 let adminEditingTalaId = null;
 let adminCanWrite = false;
+let adminWriteWarned = false;
 
 async function refreshAdminAccess(){
   adminCanWrite = false;
-  if(!currentUser) return;
-  try{
-    const { data } = await sb.from('user_roles').select('role').eq('user_id', currentUser.id).eq('role','admin').maybeSingle();
-    adminCanWrite = !!data;
-  }catch(e){}
+  if(currentUser){
+    try{
+      const { data } = await sb.from('user_roles').select('role').eq('user_id', currentUser.id).eq('role','admin').maybeSingle();
+      adminCanWrite = !!data;
+    }catch(e){}
+  }
+  renderAdminAccessBanner();
 }
+
+// Read-only notice at the top of the Backoffice when the current visitor
+// isn't a signed-in admin. Saves would be rejected by the database anyway.
+function renderAdminAccessBanner(){
+  const head = document.querySelector('#adminPanelOverlay .admin-head');
+  if(!head) return;
+  let banner = document.getElementById('adminAccessBanner');
+  if(adminCanWrite){ if(banner) banner.remove(); return; }
+  if(!banner){
+    banner = document.createElement('div');
+    banner.id = 'adminAccessBanner';
+    banner.style.cssText = 'padding:9px 16px;font-size:.72rem;line-height:1.5;color:#fde68a;background:rgba(251,191,36,.1);border-bottom:1px solid rgba(251,191,36,.25);display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
+    head.insertAdjacentElement('afterend', banner);
+  }
+  banner.innerHTML = currentUser
+    ? `Read-only: <b>${escapeHtml(currentUser.email || 'this account')}</b> doesn't have the admin role, so changes won't save.`
+    : `Read-only: sign in with your admin account to save changes. <button type="button" onclick="openLoginModal()" style="background:none;border:1px solid rgba(253,230,138,.5);color:#fde68a;border-radius:999px;padding:3px 10px;font-size:.7rem;cursor:pointer">Sign in</button>`;
+}
+
 function adminRequireWrite(){
   if(adminCanWrite) return true;
-  alert('Sign in with a Supabase user that has the admin role before changing live content. The visible PIN only opens this interface; Supabase RLS is the real security gate.');
-  if(!currentUser) openLoginModal();
+  // Prompt once per panel visit; the banner stays visible afterwards so
+  // blur-triggered saves don't spam alerts.
+  if(!adminWriteWarned){
+    adminWriteWarned = true;
+    alert(currentUser
+      ? 'This account does not have the admin role, so changes cannot be saved.'
+      : 'Sign in with your admin account to save changes.');
+    if(!currentUser) openLoginModal();
+  }
   return false;
 }
 
@@ -3169,6 +3182,7 @@ function checkAdminPin(){
 
 async function openAdminPanel(){
   if(!dataReady) await loadDataFromSupabase();
+  adminWriteWarned = false;
   await refreshAdminAccess();
   document.getElementById('adminPanelOverlay').classList.add('active');
   refreshAdminAiBadge();
@@ -3669,6 +3683,7 @@ function adminPreviewImage(){
 }
 
 async function adminUploadImageNow(){
+  if(!adminRequireWrite()) return;
   const fileInput = document.getElementById('adfImageFile');
   const file = fileInput.files[0];
   const status = document.getElementById('adfImageUploadStatus');
@@ -4152,6 +4167,7 @@ function adminNewSuggestion(){ editingSuggestionId='new'; renderAdminTala(); }
 function adminEditSuggestion(id){ editingSuggestionId=id; renderAdminTala(); }
 
 async function adminSaveSuggestion(){
+  if(!adminRequireWrite()) return;
   const text = document.getElementById('asfText').value.trim();
   if(!text){ alert('Suggestion text is required.'); return; }
 
@@ -4186,6 +4202,7 @@ async function adminSaveSuggestion(){
 }
 
 async function adminDeleteSuggestion(id){
+  if(!adminRequireWrite()) return;
   if(!confirm('Delete this suggestion?')) return;
   try {
     const { error } = await sb.from('tala_suggestions').delete().eq('id', id);
@@ -4243,12 +4260,12 @@ async function renderAdminTalaAi(){
   const body = document.getElementById('adminBody');
   body.innerHTML = `
     <div class="admin-field" style="font-size:.72rem;color:var(--white-dim);margin-bottom:12px;line-height:1.6;">
-      Route Tala's answers to a live AI model through OpenRouter — called directly from the browser, no server needed. Paste your OpenRouter API key below, pick a model, then hit <strong style="color:var(--white-soft)">Save</strong> and the light goes green when the model replies. If the key or model fail, Tala silently falls back to the keyword answers you manage in the <strong style="color:var(--white-soft)">Tala Answers</strong> tab.
+      Route Tala's answers to a live AI model through OpenRouter. The OpenRouter API key is kept <strong style="color:var(--white-soft)">on the server only</strong> (Vercel → Settings → Environment Variables → <code>OPENROUTER_API_KEY</code>), so it never reaches visitors' browsers. Pick a model, turn live answers on and hit <strong style="color:var(--white-soft)">Save</strong>. If the AI fails, Tala falls back to the keyword answers in the <strong style="color:var(--white-soft)">Tala Answers</strong> tab.
     </div>
     <div class="admin-edit-box">
       <div class="admin-field">
-        <label>OpenRouter API key <span style="text-transform:none;letter-spacing:0;color:var(--white-dim)">(sk-or-v1-…, from openrouter.ai/keys)</span></label>
-        <input type="password" id="aiKeyInput" placeholder="sk-or-v1-••••" autocomplete="off">
+        <label>Server key</label>
+        <div id="aiServerStatus" style="font-size:.72rem;color:var(--white-dim);min-height:14px;">Checking…</div>
       </div>
       <div class="admin-toggle-row">
         <label>Live AI answers enabled</label>
@@ -4270,12 +4287,13 @@ async function renderAdminTalaAi(){
     </div>
     <div class="admin-empty" style="padding:14px 0">Free &amp; paid models load here from openrouter.ai…</div>`;
 
-  document.getElementById('aiKeyInput').value = talaAiKey || '';
   document.getElementById('aiEnabledCb').checked = !!talaAiEnabled;
   document.getElementById('aiModelCustom').value = talaAiModel || '';
+  refreshAiServerStatus();
 
   const models = await fetchOpenRouterModels();
   const sel = document.getElementById('aiModelSel');
+  if(!sel) return;
   const cur = talaAiModel;
   let html = '';
   if(models.free.length){
@@ -4289,72 +4307,55 @@ async function renderAdminTalaAi(){
     html += `</optgroup>`;
   }
   sel.innerHTML = html || '<option value="' + escapeHtml(TALA_AI_DEFAULT_MODEL) + '">' + escapeHtml(TALA_AI_DEFAULT_MODEL) + '</option>';
-
-  refreshAiServerStatus();
 }
 
-// Green-light checker: actually calls OpenRouter with the currently entered
-// key + model. Colors the status line. No server involved.
+// Asks our server whether OPENROUTER_API_KEY is set. Never exposes the key.
 async function refreshAiServerStatus(){
-  const key = (document.getElementById('aiKeyInput') ? document.getElementById('aiKeyInput').value : talaAiKey || '').trim();
-  const sel = document.getElementById('aiModelSel');
-  const custom = document.getElementById('aiModelCustom');
-  const model = (custom && custom.value.trim()) || (sel && sel.value) || talaAiModel || TALA_AI_DEFAULT_MODEL;
-  const out = document.getElementById('aiTestOut');
+  const out = document.getElementById('aiServerStatus');
   if(!out) return;
-
-  if(!key){
-    out.innerHTML = `<span style="color:#fbbf24">${lucideSvg('x',12)} No OpenRouter API key yet — paste one above and save.</span>`;
-    return;
-  }
-  out.innerHTML = `<span style="color:#fbbf24">${lucideSvg('refresh-cw',12)} Checking <b>${escapeHtml(model)}</b> with your key…</span>`;
   try {
-    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer ' + key},
-      body: JSON.stringify({ model, max_tokens: 8, messages:[{ role:'user', content:'Say "ok".' }] })
-    });
-    const j = await r.json().catch(()=>({}));
-    if(r.ok){
-      const reply = ((j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '').trim();
-      out.innerHTML = `<span style="color:#5eead4">${lucideSvg('check',12)} Connected — ${escapeHtml(model)} replied: “${escapeHtml(reply.slice(0,60))}”</span>`;
+    const r = await fetch(TALA_API_URL, { headers:{ 'Accept':'application/json' } });
+    const j = await r.json().catch(()=>null);
+    if(!r.ok || !j){
+      out.innerHTML = `<span style="color:#f87171">${lucideSvg('x',12)} The Tala server endpoint isn't reachable here (HTTP ${r.status}). Live AI only works once <code>/api/tala-chat</code> is deployed.</span>`;
+    } else if(j.configured){
+      out.innerHTML = `<span style="color:#5eead4">${lucideSvg('check',12)} OpenRouter key is set on the server.</span>`;
     } else {
-      const e = (j && j.error) ? (j.error.message || j.error.type || '') : ('HTTP ' + r.status);
-      out.innerHTML = `<span style="color:#f87171">${lucideSvg('x',12)} ${escapeHtml(model)} failed — ${escapeHtml(String(e).slice(0,200))}. Try another model.</span>`;
+      out.innerHTML = `<span style="color:#fbbf24">${lucideSvg('x',12)} No key on the server yet. Add <code>OPENROUTER_API_KEY</code> in Vercel → Settings → Environment Variables, then redeploy.</span>`;
     }
   } catch(e){
-    out.innerHTML = `<span style="color:#f87171">${lucideSvg('x',12)} Can't reach OpenRouter — ${escapeHtml(String(e && e.message || e).slice(0,200))}</span>`;
+    out.innerHTML = `<span style="color:#f87171">${lucideSvg('x',12)} Can't reach the Tala server: ${escapeHtml(String(e && e.message || e).slice(0,200))}</span>`;
   }
 }
 
 async function adminSaveAiConfig(){
+  if(!adminRequireWrite()) return;
   const sel = document.getElementById('aiModelSel');
   const custom = document.getElementById('aiModelCustom').value.trim();
   const model = custom || (sel && sel.value) || TALA_AI_DEFAULT_MODEL;
   const enabled = document.getElementById('aiEnabledCb').checked;
-  const key = (document.getElementById('aiKeyInput').value || '').trim();
   const out = document.getElementById('aiTestOut');
   out.textContent = 'Saving…';
+  out.style.color = 'var(--white-dim)';
   try {
-    const rows = [
+    const { error } = await sb.from('tala_settings').upsert([
       { key:'ai_enabled', value: enabled ? 'true' : 'false' },
       { key:'ai_model', value: model }
-    ];
-    if(key) rows.push({ key:'ai_key', value: key });
-    const { error } = await sb.from('tala_settings').upsert(rows);
+    ]);
     if(error) throw error;
     talaAiEnabled = enabled;
     talaAiModel = model;
-    if(key) talaAiKey = key;
     refreshAdminAiBadge();
     out.innerHTML = `<span style="color:#5eead4">${lucideSvg('check',12)} Saved.</span> Live AI ${enabled?'on':'off'} · ${escapeHtml(model)}`;
-    refreshAiServerStatus();
   } catch(err){
     out.textContent = 'Save failed: ' + (err.message || err);
     out.style.color = '#f87171';
   }
 }
 
+// Sends one real question through the server with the chosen (possibly
+// unsaved) model. The server only honours a model override for admins, so
+// we pass the signed-in session token.
 async function adminTestAi(){
   const sel = document.getElementById('aiModelSel');
   const custom = document.getElementById('aiModelCustom').value.trim();
@@ -4363,23 +4364,22 @@ async function adminTestAi(){
   out.textContent = 'Asking ' + model + '…';
   out.style.color = 'var(--white-dim)';
   try {
-    const key = (document.getElementById('aiKeyInput').value || '').trim();
-    if(!key){ out.textContent = 'Paste your OpenRouter API key first.'; out.style.color = '#fbbf24'; return; }
-    const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const headers = { 'Content-Type':'application/json' };
+    try {
+      const { data } = await sb.auth.getSession();
+      if(data && data.session && data.session.access_token) headers.Authorization = 'Bearer ' + data.session.access_token;
+    } catch(_){}
+    const r = await fetch(TALA_API_URL, {
       method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer ' + key},
-      body: JSON.stringify({
-        model, max_tokens: 80, temperature: 0.6,
-        messages:[{ role:'system', content: TALA_BASE_PROMPT }, { role:'user', content:'Say hello as tala, the warm San Vicente travel concierge. Under 10 words.' }]
-      })
+      headers,
+      body: JSON.stringify({ model, messages:[{ role:'user', content:'Say hello as tala, the warm San Vicente travel concierge. Under 10 words.' }] })
     });
     const j = await r.json().catch(()=>({}));
-    if(r.ok){
-      const reply = ((j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '').trim();
-      out.innerHTML = `<span style="color:#5eead4">${lucideSvg('check',12)} Reply:</span> ${escapeHtml(reply.slice(0,300))}`;
+    if(r.ok && j.ok){
+      const used = j.model && j.model !== model ? ` <span style="color:#fbbf24">(answered by saved model ${escapeHtml(j.model)}; sign in as admin to test other models)</span>` : '';
+      out.innerHTML = `<span style="color:#5eead4">${lucideSvg('check',12)} Reply:</span> ${escapeHtml(String(j.reply).slice(0,300))}${used}`;
     } else {
-      const e = (j && j.error) ? (j.error.message || j.error.type || '') : ('HTTP ' + r.status);
-      out.innerHTML = `<span style="color:#f87171">${lucideSvg('x',12)} ${escapeHtml(String(e).slice(0,200))}</span>`;
+      out.innerHTML = `<span style="color:#f87171">${lucideSvg('x',12)} ${escapeHtml(String((j && j.error) || ('HTTP ' + r.status)).slice(0,240))}</span>`;
     }
   } catch(err){
     out.textContent = 'Request failed: ' + (err.message || err);
@@ -4412,6 +4412,7 @@ function renderAdminSite(){
 }
 
 async function adminSaveHeroTitle(){
+  if(!adminRequireWrite()) return;
   const val = document.getElementById('adsHeroTitle').value.trim();
   if(val === heroTitle) return;
   const finalVal = val || DEFAULT_HERO_TITLE;
@@ -4426,6 +4427,7 @@ async function adminSaveHeroTitle(){
 }
 
 async function adminSaveHeroSubtitle(){
+  if(!adminRequireWrite()) return;
   const val = document.getElementById('adsHeroSubtitle').value.trim();
   if(val === heroSubtitle) return;
   try {
@@ -4439,6 +4441,7 @@ async function adminSaveHeroSubtitle(){
 }
 
 async function adminSaveSplashSubtext(){
+  if(!adminRequireWrite()) return;
   const val = document.getElementById('adsSplashSubtext').value.trim();
   if(val === splashSubtext) return;
   const finalVal = val || DEFAULT_SPLASH_SUBTEXT;
@@ -4453,6 +4456,7 @@ async function adminSaveSplashSubtext(){
 }
 
 async function adminSaveSplashFooter(){
+  if(!adminRequireWrite()) return;
   const val = document.getElementById('adsSplashFooter').value.trim();
   if(val === splashFooter) return;
   const finalVal = val || DEFAULT_SPLASH_FOOTER;
@@ -4505,6 +4509,7 @@ function mediaAddUrl(containerId){
 }
 
 async function mediaUploadFile(input, containerId){
+  if(!adminRequireWrite()){ if(input) input.value = ''; return; }
   const file = input.files[0];
   if(!file) return;
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
@@ -4642,6 +4647,7 @@ function todayAddItemImageUrl(itemId, prefix){
 }
 
 async function todayUploadItemImage(input, itemId, prefix){
+  if(!adminRequireWrite()){ if(input) input.value = ''; return; }
   const file = input.files[0];
   if(!file) return;
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
@@ -4876,6 +4882,7 @@ function collectTodayLocalItems(){
 }
 
 async function adminSaveToday(){
+  if(!adminRequireWrite()) return;
   const status = document.getElementById('atStatus');
   status.textContent = 'Saving…';
   try {
@@ -4990,6 +4997,7 @@ async function adminEditTribe(id){
 }
 
 async function adminSaveTribe(id){
+  if(!adminRequireWrite()) return;
   const isNew = id === 'new';
   try {
     const video = await mediaUploadVideoIfNeeded('atbf');
@@ -5025,6 +5033,7 @@ async function adminSaveTribe(id){
 }
 
 async function adminDeleteTribe(id){
+  if(!adminRequireWrite()) return;
   if(!confirm('Delete this tribe?')) return;
   try { await sb.from('tribes').delete().eq('id', id); renderAdminTribes(); }
   catch(e){ alert('Delete failed: '+e.message); }
@@ -5101,6 +5110,7 @@ async function adminEditEvent(id){
 }
 
 async function adminSaveEvent(id){
+  if(!adminRequireWrite()) return;
   const isNew = id === 'new';
   try {
     const video = await mediaUploadVideoIfNeeded('aevf');
@@ -5129,6 +5139,7 @@ async function adminSaveEvent(id){
 }
 
 async function adminDeleteEvent(id){
+  if(!adminRequireWrite()) return;
   if(!confirm('Delete this event?')) return;
   try { await sb.from('events').delete().eq('id', id); renderAdminEvents(); }
   catch(e){ alert('Delete failed: '+e.message); }
@@ -5225,6 +5236,7 @@ async function adminEditUpcoming(id){
 }
 
 async function adminSaveUpcoming(id){
+  if(!adminRequireWrite()) return;
   const isNew = id === 'new';
   try {
     const video = await mediaUploadVideoIfNeeded('amu');
@@ -5254,6 +5266,7 @@ async function adminSaveUpcoming(id){
 }
 
 async function adminDeleteUpcoming(id){
+  if(!adminRequireWrite()) return;
   if(!confirm('Delete this upcoming item?')) return;
   try { await sb.from('my_sanvic_upcoming').delete().eq('id', id); renderAdminMySanvic(); }
   catch(e){ alert('Delete failed: '+e.message); }
@@ -5320,6 +5333,7 @@ async function renderAdminHunt(){
 }
 
 async function adminSaveHuntSettings(){
+  if(!adminRequireWrite()) return;
   try {
     const rows = [
       { key:'featured_dest_id', value: document.getElementById('ahSettingsFeat').value.trim() },
@@ -5363,6 +5377,7 @@ async function adminEditReward(id){
 }
 
 async function adminSaveReward(id){
+  if(!adminRequireWrite()) return;
   const isNew = id === 'new';
   try {
     const video = await mediaUploadVideoIfNeeded('ahr');
@@ -5390,6 +5405,7 @@ async function adminSaveReward(id){
 }
 
 async function adminDeleteReward(id){
+  if(!adminRequireWrite()) return;
   if(!confirm('Delete this reward?')) return;
   try { await sb.from('hunt_rewards').delete().eq('id', id); renderAdminHunt(); }
   catch(e){ alert('Delete failed: '+e.message); }
@@ -5597,6 +5613,7 @@ function renderBulkQueue(){
 }
 
 async function adminSaveBulkQueue(){
+  if(!adminRequireWrite()) return;
   const saveBtn = document.getElementById('adfBulkSaveBtn');
   const invalid = bulkQueue.filter(item=>!item.keywords.trim());
   if(invalid.length){
@@ -5628,6 +5645,7 @@ async function adminSaveBulkQueue(){
 function adminEditTala(id){ adminEditingTalaId=id; renderAdminTala(); }
 
 async function adminSaveTala(){
+  if(!adminRequireWrite()) return;
   const kw = document.getElementById('atfKw').value.split(',').map(s=>s.trim()).filter(Boolean);
   const r = document.getElementById('atfResp').value.trim();
   const cat = document.getElementById('atfCat').value;
@@ -5652,6 +5670,7 @@ async function adminSaveTala(){
 }
 
 async function adminDeleteTala(id){
+  if(!adminRequireWrite()) return;
   if(!confirm('Delete this response?')) return;
   try {
     const { error } = await sb.from('tala_responses').delete().eq('id', id);
@@ -5664,6 +5683,7 @@ async function adminDeleteTala(id){
 }
 
 async function adminSaveDefaultResponse(){
+  if(!adminRequireWrite()) return;
   const val = document.getElementById('adfDefaultR').value.trim();
   if(!val || val === defaultR) return;
   try {
@@ -5678,6 +5698,7 @@ async function adminSaveDefaultResponse(){
 // ───────────── RESET TO DEFAULTS ─────────────
 
 async function adminResetDefaults(){
+  if(!adminRequireWrite()) return;
   if(!confirm('This will erase ALL destinations, categories, and tala responses in Supabase and replace them with the original built-in defaults. Continue?')) return;
   try {
     await sb.from('destinations').delete().neq('id', -1);
@@ -5709,9 +5730,8 @@ async function adminResetDefaults(){
 // ═══════════════════════════════════════════════════════
 // PULSE ADMIN — moderate posts/comments, mute/ban users,
 // manage category chips. Uses security-definer RPC functions
-// (admin_delete_pulse_post etc.) to bypass per-user RLS, since
-// this admin panel is PIN-gated, not Supabase-Auth-gated — same
-// trust model as the rest of this admin panel.
+// (admin_delete_pulse_post etc.) which check has_role(auth.uid(),
+// 'admin') inside, so only a signed-in admin can moderate.
 // ═══════════════════════════════════════════════════════
 let pulseAdminSubTab = 'posts';
 let pulseAdminEditingPostId = null;
@@ -5797,6 +5817,7 @@ async function renderAdminPulsePosts(){
 }
 
 async function adminPulseSavePost(postId){
+  if(!adminRequireWrite()) return;
   const text = document.getElementById(`adminPulsePostText-${postId}`).value.trim();
   const cat = document.getElementById(`adminPulsePostCat-${postId}`).value.trim();
   try {
@@ -5810,6 +5831,7 @@ async function adminPulseSavePost(postId){
 }
 
 async function adminPulseDeletePost(postId){
+  if(!adminRequireWrite()) return;
   if(!confirm('Delete this post and all its comments/likes? This cannot be undone.')) return;
   try {
     const { error } = await sb.rpc('admin_delete_pulse_post', { post_id: postId });
@@ -5868,6 +5890,7 @@ async function renderAdminPulseCategories(){
 }
 
 async function adminPulseSaveCategory(id){
+  if(!adminRequireWrite()) return;
   const key = document.getElementById('catfKey').value.trim().toLowerCase().replace(/[^a-z0-9_]/g,'');
   const label = document.getElementById('catfLabel').value.trim();
   if(!key || !label){ alert('Key and label are both required.'); return; }
@@ -5888,6 +5911,7 @@ async function adminPulseSaveCategory(id){
 }
 
 async function adminPulseDeleteCategory(id){
+  if(!adminRequireWrite()) return;
   if(!confirm('Delete this category? Existing posts tagged with it will keep their tag, but it will no longer appear as a filter chip.')) return;
   try {
     const { error } = await sb.from('pulse_categories').delete().eq('id', id);
@@ -5960,6 +5984,7 @@ async function doAdminPulseSearchUsers(q){
 }
 
 async function adminPulseToggleMute(userId, muted){
+  if(!adminRequireWrite()) return;
   try {
     const { error } = await sb.rpc('admin_set_user_moderation', { target_user_id: userId, muted, banned: false, note: null });
     if(error) throw error;
@@ -5970,6 +5995,7 @@ async function adminPulseToggleMute(userId, muted){
 }
 
 async function adminPulseToggleBan(userId, banned){
+  if(!adminRequireWrite()) return;
   if(banned && !confirm('Ban this traveler? They will be unable to post or comment in Pulse.')) return;
   try {
     const { error } = await sb.rpc('admin_set_user_moderation', { target_user_id: userId, muted: false, banned, note: null });
