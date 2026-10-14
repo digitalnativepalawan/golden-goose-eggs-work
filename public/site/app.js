@@ -127,27 +127,36 @@ async function initAuth(){
     await loadTravelerProfile();
   }
 
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if(event === 'SIGNED_IN' && session){
-      currentUser = session.user;
-      await loadTravelerProfile();
-      closeLoginModal();
-      updateAuthUI();
-      if(typeof refreshAdminAccess === 'function') refreshAdminAccess();
-      if(pendingProtectedAction){
-        const fn = pendingProtectedAction;
-        pendingProtectedAction = null;
-        fn();
-      }
-    } else if(event === 'SIGNED_OUT'){
-      currentUser = null;
-      currentProfile = null;
-      updateAuthUI();
-      if(typeof refreshAdminAccess === 'function') refreshAdminAccess();
-    }
+  // IMPORTANT: keep this callback synchronous. Supabase runs it while holding
+  // its auth lock; awaiting any Supabase call in here (like loading the
+  // profile) waits for that same lock and freezes the whole site right after
+  // login. setTimeout lets sign-in finish first, then does the work.
+  sb.auth.onAuthStateChange((event, session) => {
+    setTimeout(() => handleAuthChange(event, session), 0);
   });
 
   updateAuthUI();
+}
+
+async function handleAuthChange(event, session){
+  if(event === 'SIGNED_IN' && session){
+    const alreadyIn = currentUser && currentUser.id === session.user.id;
+    currentUser = session.user;
+    if(!alreadyIn || !currentProfile) await loadTravelerProfile();
+    closeLoginModal();
+    updateAuthUI();
+    if(typeof refreshAdminAccess === 'function') refreshAdminAccess();
+    if(pendingProtectedAction){
+      const fn = pendingProtectedAction;
+      pendingProtectedAction = null;
+      fn();
+    }
+  } else if(event === 'SIGNED_OUT'){
+    currentUser = null;
+    currentProfile = null;
+    updateAuthUI();
+    if(typeof refreshAdminAccess === 'function') refreshAdminAccess();
+  }
 }
 
 async function loadTravelerProfile(){
@@ -157,7 +166,8 @@ async function loadTravelerProfile(){
     if(error) throw error;
     currentProfile = data;
     // Touch last_seen, best-effort, don't block on it
-    sb.from('traveler_profiles').update({ last_seen: new Date().toISOString() }).eq('id', currentUser.id);
+    // Query builders only run when awaited/then'd; fire-and-forget properly.
+    sb.from('traveler_profiles').update({ last_seen: new Date().toISOString() }).eq('id', currentUser.id).then(()=>{}, ()=>{});
   } catch(err){
     console.warn('[SANVIC] Failed to load traveler profile:', err);
   }
