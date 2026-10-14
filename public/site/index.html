@@ -548,6 +548,9 @@ body.explore-open .map-util-btn,body.explore-open .map-layer-toggle{opacity:1;po
 .login-overlay{position:fixed;inset:0;z-index:120;background:rgba(2,14,38,.65);backdrop-filter:blur(4px);opacity:0;visibility:hidden;transition:all .3s}
 .login-overlay.active{opacity:1;visibility:visible}
 .login-sheet{position:fixed;bottom:0;left:0;right:0;z-index:121;max-height:88vh;background:var(--charcoal-surface);border-radius:var(--radius-xl) var(--radius-xl) 0 0;overflow-y:auto;transform:translateY(100%);transition:transform .45s var(--ease-out-expo);box-shadow:0 -10px 60px rgba(0,0,0,.4)}
+/* Signing in from the Backoffice: lift the login sheet above the admin overlay (z-index 200). */
+body:has(#adminPanelOverlay.active) .login-overlay{z-index:210}
+body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
 .login-sheet.open{transform:translateY(0)}
 .login-close{position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.06);color:var(--white-muted);display:flex;align-items:center;justify-content:center;cursor:pointer}
 .login-close svg{width:15px;height:15px}
@@ -1946,7 +1949,7 @@ body.explore-open .map-util-btn,body.explore-open .map-layer-toggle{opacity:1;po
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-09-06-round-markers';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-14-security-lockdown';
 </script>
 <script src="barangays.geojson.js"></script>
 <script>
