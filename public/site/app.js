@@ -3769,8 +3769,14 @@ async function adminQuickPhotoUpload(file){
   const id = adminQuickPhotoTargetId;
   adminQuickPhotoTargetId = null;
   if(!file || !id) return;
-  const d = destinations.find(x=>String(x.id)===String(id));
-  if(!d) return;
+  let d = destinations.find(x=>String(x.id)===String(id));
+  if(!d){
+    // Rare: the row is not in the in-memory list. Read it so the photo still
+    // lands on the right record instead of the click doing nothing.
+    const { data } = await sb.from('destinations').select('id,name,image,images').eq('id', id).maybeSingle();
+    if(!data){ alert('Could not find that place to add a photo to. Reload and try again.'); return; }
+    d = data;
+  }
   const body = document.getElementById('adminBody');
   if(body) body.innerHTML = `<div class="admin-empty">Uploading photo for ${escapeHtml(d.name||'this place')}…</div>`;
   try {
