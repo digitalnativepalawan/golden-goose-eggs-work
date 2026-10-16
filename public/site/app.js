@@ -3725,7 +3725,7 @@ function adminDestRowHtml(d){
   return `
       <div class="admin-list-item admin-dest-row">
         <button type="button" class="admin-row-thumb" data-dest-id="${d.id}" onclick="adminQuickPhoto(${d.id})" title="${photoLabel}" aria-label="${photoLabel}">
-          ${cover ? `<img src="${escapeHtml(cover)}" alt="" loading="lazy" onerror="adminThumbBroken(this)">` : lucideSvg('camera',18)}
+          ${cover ? `<img src="${escapeHtml(cover)}" alt="" onerror="adminThumbBroken(this)">` : lucideSvg('camera',18)}
           ${cover ? `<span class="admin-thumb-badge">${lucideSvg('camera',10)}</span>` : ''}
         </button>
         <div class="admin-dest-main">
