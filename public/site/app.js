@@ -1453,8 +1453,13 @@ function escT(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&a
 
 function renderTodayContent(){
   const host = document.getElementById('todayScroll');
-  if(!host || host.dataset.rendered === '1') return;
+  if(!host) return;
   const d = TODAY_DATA;
+  // Counts must come from the live data: the hardcoded TODAY_DATA.snapshot
+  // numbers went stale the moment tribes/events moved into the database
+  // ("3 Tribes forming" while seven were live).
+  const tribeCount   = (typeof PULSE_TRIBES !== 'undefined' && PULSE_TRIBES.length) ? PULSE_TRIBES.length : d.snapshot.tribes;
+  const happenCount  = (Array.isArray(d.happening) && d.happening.length) ? d.happening.length : d.snapshot.happenings;
   const snap = `
     <article class="today-card">
       <div class="today-kicker">Daily snapshot</div>
@@ -1464,8 +1469,8 @@ function renderTodayContent(){
         <div class="today-snap"><span class="tsn-glyph">🌊</span><span class="tsn-val">${escT(d.snapshot.sea)}</span><span class="tsn-lbl">Sea</span></div>
         <div class="today-snap"><span class="tsn-glyph">🌇</span><span class="tsn-val">${escT(d.snapshot.sunset)}</span><span class="tsn-lbl">Sunset</span></div>
         <div class="today-snap"><span class="tsn-glyph">${d.snapshot.moon.glyph}</span><span class="tsn-val">${escT(d.snapshot.moon.label)}</span><span class="tsn-lbl">Moon</span></div>
-        <div class="today-snap"><span class="tsn-glyph">👥</span><span class="tsn-val">${d.snapshot.tribes}</span><span class="tsn-lbl">Tribes forming</span></div>
-        <div class="today-snap"><span class="tsn-glyph">✨</span><span class="tsn-val">${d.snapshot.happenings}</span><span class="tsn-lbl">Happening today</span></div>
+        <div class="today-snap"><span class="tsn-glyph">👥</span><span class="tsn-val">${tribeCount}</span><span class="tsn-lbl">Tribes forming</span></div>
+        <div class="today-snap"><span class="tsn-glyph">✨</span><span class="tsn-val">${happenCount}</span><span class="tsn-lbl">Happening today</span></div>
       </div>
     </article>`;
   const pick = `
@@ -1557,7 +1562,6 @@ function renderTodayContent(){
       </ul>
     </article>`;
   host.innerHTML = snap + pick + happening + joinable + weather + locals + notices;
-  host.dataset.rendered = '1';
 }
 
 // ─── DESTINATION SHEET ───
