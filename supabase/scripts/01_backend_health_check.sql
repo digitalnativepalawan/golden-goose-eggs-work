@@ -181,11 +181,11 @@ checks AS (
       ELSE 'all links point at this project (or elsewhere)' END
   FROM (
     SELECT mt.t,
-      -- khbtdhvoghdlicgicidgkc = this (new) project. Any other *.supabase.co
+      -- khbtdhvoghdlicgidgkc = this (new) project. Any other *.supabase.co
       -- host in a row is a link into the old Lovable-era project.
       (xpath('/row/c/text()', query_to_xml(format(
         $q$SELECT count(*) AS c FROM public.%I x
-           WHERE x::text ~ 'https://(?!khbtdhvoghdlicgicidgkc\.)[a-z0-9]{15,30}\.supabase\.co'$q$,
+           WHERE x::text ~ 'https://(?!khbtdhvoghdlicgidgkc\.)[a-z0-9]{15,30}\.supabase\.co'$q$,
         mt.t), false, true, '')))[1]::text::int AS n
     FROM media_tables mt
     WHERE to_regclass(format('public.%I', mt.t)) IS NOT NULL

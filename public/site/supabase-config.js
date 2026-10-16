@@ -4,7 +4,7 @@
 // access is governed by Row Level Security policies on the
 // destinations / tala_responses / tala_settings tables.
 // ═══════════════════════════════════════════════════════
-const SUPABASE_URL = "https://khbtdhvoghdlicgicidgkc.supabase.co";
+const SUPABASE_URL = "https://khbtdhvoghdlicgidgkc.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_jpdZ1_YxYDRsaGpvlcSbrg_tcJ8tAVX";
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {

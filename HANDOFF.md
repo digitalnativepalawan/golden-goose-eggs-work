@@ -59,7 +59,7 @@ means remapping it onto `destinations` and friends.
 
 ## 3. What is done
 
-- ✅ Data migrated to the new Supabase project `khbtdhvoghdlicgicidgkc`
+- ✅ Data migrated to the new Supabase project `khbtdhvoghdlicgidgkc`
   (22 tables, 134 rows, 50 RLS policies, 1 auth user) and verified row by row
 - ✅ Security pass: DB password rotated, **all access tokens revoked**,
   original repo made private, RLS intact

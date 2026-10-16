@@ -28,7 +28,7 @@
 // ═══════════════════════════════════════════════════════════════════════
 
 // Public values (already shipped in public/site/supabase-config.js).
-const DEFAULT_SUPABASE_URL = "https://khbtdhvoghdlicgicidgkc.supabase.co";
+const DEFAULT_SUPABASE_URL = "https://khbtdhvoghdlicgidgkc.supabase.co";
 const DEFAULT_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_jpdZ1_YxYDRsaGpvlcSbrg_tcJ8tAVX";
 const FALLBACK_MODEL = "google/gemini-2.5-flash";
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
