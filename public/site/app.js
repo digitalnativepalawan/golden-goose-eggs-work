@@ -3557,6 +3557,14 @@ function renderAdminDest(){
     <div id="adfNearbyPanel" style="display:${nearbyPanelOpen?'':'none'}">
       ${adminNearbyPanelHtml()}
     </div>
+    ${typeof adminKmzPanelHtml === 'function' ? `
+    <div class="admin-section-toggle" onclick="adminKmzTogglePanel()" style="margin-top:8px;">
+      <span>${lucideSvg('upload',13)} Import places from KMZ / KML ${kmzPanelOpen?'▾':'▸'}</span>
+      <span class="admin-section-count">${kmzRows.length||''}</span>
+    </div>
+    <div id="adfKmzPanel" style="display:${kmzPanelOpen?'':'none'}">
+      ${adminKmzPanelHtml()}
+    </div>` : ''}
     <button class="admin-add-btn" style="margin-top:14px;" onclick="adminNewDest()">+ Add business or tourist place</button>
     <input class="admin-directory-search" id="adminDestSearch" value="${escapeHtml(adminDestSearchQuery)}" placeholder="Search name, barangay or category" oninput="adminFilterDestinations(this.value)">`;
 

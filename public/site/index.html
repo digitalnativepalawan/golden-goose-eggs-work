@@ -1957,7 +1957,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
     var v = encodeURIComponent(window.SANVIC_DEPLOY_VERSION);
     // async=false keeps execution order: supabase-config.js first (defines
     // sb + loads experience modules), then app.js which depends on it.
-    ['supabase-config.js', 'explore-model.js', 'app.js'].forEach(function (file) {
+    ['supabase-config.js', 'explore-model.js', 'app.js', 'kmz-import.js'].forEach(function (file) {
       var s = document.createElement('script');
       s.src = file + '?v=' + v;
       s.async = false;
