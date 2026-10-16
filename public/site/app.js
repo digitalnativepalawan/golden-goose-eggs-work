@@ -3157,6 +3157,17 @@ function adminBrandClick(){
   }
 }
 
+// The visible "Staff admin" button (top-right gear) opens the in-client
+// Backoffice. It previously linked to /admin, a separate passkey-gated React
+// page that has neither the map editor nor the KMZ importer. The in-client
+// panel is otherwise only reachable by tapping the logo, and the logo hides
+// itself whenever a sheet is open (body.panel-open), which is the default
+// state on load — so that route was effectively unreachable.
+function openAdminFromButton(){
+  if(adminUnlocked){ openAdminPanel(); } else { openAdminPin(); }
+  return false;
+}
+
 function openAdminPin(){
   document.getElementById('adminPinInput').value = '';
   document.getElementById('adminPinErr').textContent = '';
