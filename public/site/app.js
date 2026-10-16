@@ -2773,12 +2773,11 @@ function openDest(d,recordHistory=true){
   const placeholder=document.createElement('div');placeholder.className='detail-image-placeholder';
   placeholder.innerHTML=lucideSvg(category.icon||'map-pin',36)+'<span>San Vicente</span>';media.appendChild(placeholder);
   const video=SanvicExplore.safeUrl(d.videoUrl);
-  if(video && d.videoType==='youtube' && getYoutubeId(video)){
-    const frame=document.createElement('iframe');frame.src='https://www.youtube.com/embed/'+encodeURIComponent(getYoutubeId(video))+'?playsinline=1&rel=0';
-    frame.title=d.name+' video';frame.allow='encrypted-media; picture-in-picture';frame.allowFullscreen=true;media.appendChild(frame);
-  }else if(video && d.videoType==='upload'){
-    const el=document.createElement('video');el.src=video;el.controls=true;el.playsInline=true;el.preload='metadata';if(images[0])el.poster=images[0];media.appendChild(el);
-  }else if(images[0]){
+  // The photo is the fallback whenever the video slot is empty OR fails to
+  // load. Every uploaded video currently 404s in Storage, and without this the
+  // detail sheet showed a broken player and hid the place's photo entirely.
+  const showHeroImage=()=>{
+    if(!images[0]||media.querySelector('img')) return;
     const img=document.createElement('img');img.src=images[0];img.alt=d.name;
     img.onerror=()=>{img.hidden=true;photo.classList.remove('has-carousel');};media.appendChild(img);
     if(images.length>1){
@@ -2786,6 +2785,16 @@ function openDest(d,recordHistory=true){
       photo.onclick=()=>openCarousel(images,0);
       photo.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openCarousel(images,0);}};
     }
+  };
+  if(video && d.videoType==='youtube' && getYoutubeId(video)){
+    const frame=document.createElement('iframe');frame.src='https://www.youtube.com/embed/'+encodeURIComponent(getYoutubeId(video))+'?playsinline=1&rel=0';
+    frame.title=d.name+' video';frame.allow='encrypted-media; picture-in-picture';frame.allowFullscreen=true;media.appendChild(frame);
+  }else if(video && d.videoType==='upload'){
+    const el=document.createElement('video');el.src=video;el.controls=true;el.playsInline=true;el.preload='metadata';if(images[0])el.poster=images[0];
+    el.onerror=()=>{el.remove();showHeroImage();};
+    media.appendChild(el);
+  }else{
+    showHeroImage();
   }
   document.getElementById('deTitle').textContent=d.name;
   document.getElementById('dcName').textContent=d.name;
