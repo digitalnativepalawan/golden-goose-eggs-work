@@ -1005,9 +1005,9 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
       <span>The sea is calm today.</span>
     </div>
     <div class="today-metrics" id="todayMetrics">
-      <span class="today-metric"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><span>Sunset <strong>6:14 PM</strong></span></span>
-      <span class="today-metric"><svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3"/><circle cx="16" cy="10" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><path d="M14 20c0-2 2-3.5 4-3.5"/></svg><span><strong>4</strong> tribes forming</span></span>
-      <span class="today-metric"><svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg><span><strong>7</strong> things happening</span></span>
+      <span class="today-metric"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><span>Sunset <strong id="tmSunset">6:14 PM</strong></span></span>
+      <span class="today-metric"><svg viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="8" r="3"/><circle cx="16" cy="10" r="2.5"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><path d="M14 20c0-2 2-3.5 4-3.5"/></svg><span><strong id="tmTribes">4</strong> tribes forming</span></span>
+      <span class="today-metric"><svg viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/></svg><span><strong id="tmHappening">7</strong> things happening</span></span>
     </div>
   </div>
   <div class="today-scroll" id="todayScroll"></div>
@@ -1412,7 +1412,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
       <span class="pv2-live-dot"></span>
       <div>
         <span class="pv2-live-t">Live now</span>
-        <span class="pv2-live-s">8 things happening</span>
+        <span class="pv2-live-s" id="pv2LiveCount">8 things happening</span>
       </div>
     </div>
   </div>
@@ -1989,7 +1989,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-17-today-db';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-17-today-db-r2';
 </script>
 <script src="barangays.geojson.js"></script>
 <script>

@@ -1125,6 +1125,18 @@ function todayNickname(){
     return (p && p.nickname ? String(p.nickname).trim() : '');
   }catch(e){ return ''; }
 }
+// The Today header strip and the Pulse "Live now" line carried hardcoded
+// counts that drifted from the real data ("4 tribes forming" while seven were
+// live). Derive them from the loaded rows instead.
+function updateLiveCounts(){
+  const tribes = (typeof PULSE_TRIBES !== 'undefined' && PULSE_TRIBES.length) ? PULSE_TRIBES.length : 0;
+  const events = (typeof PULSE_EVENTS !== 'undefined' && PULSE_EVENTS.length) ? PULSE_EVENTS.length : 0;
+  const setText = (id, s) => { const el = document.getElementById(id); if(el) el.textContent = s; };
+  setText('tmTribes', String(tribes));
+  setText('tmHappening', String(events));
+  setText('tmSunset', (TODAY_DATA.snapshot && TODAY_DATA.snapshot.sunset) || '');
+  setText('pv2LiveCount', (tribes + events) + ' things happening');
+}
 function updateTodayGreeting(){
   const kicker = document.getElementById('todayGreetingKicker');
   const nameEl = document.getElementById('todayGreetingName');
@@ -1132,6 +1144,7 @@ function updateTodayGreeting(){
   kicker.textContent = timeOfDayGreeting();
   const name = todayNickname();
   nameEl.textContent = name || 'Traveler';
+  updateLiveCounts();
 }
 function openTodaySheet(){
   const s = document.getElementById('todaySheet');
@@ -1777,6 +1790,7 @@ function openPulsePanel(){
   document.getElementById('pulsePanel').classList.add('open');
   renderPulseCatRibbon();
   selectPulseView(pulseView || 'tribes');
+  updateLiveCounts();
 }
 function closePulsePanel(){
   const panel = document.getElementById('pulsePanel');
