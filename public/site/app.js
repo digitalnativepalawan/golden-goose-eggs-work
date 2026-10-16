@@ -2229,7 +2229,13 @@ async function renderPulseFeed(){
   });
 }
 
-let pulseComposeImageDataUrl = null;
+// Pulse photos were previously kept as base64 data URLs and written straight into
+// pulse_posts.image_url. Nine posts reached 27 MB, which blew the Postgres statement
+// timeout and broke both the Pulse feed and the Pulse admin tab. Now the browser
+// downscales and re-encodes the photo, uploads it to the pulse-media bucket, and
+// only the public URL is stored.
+let pulseComposeImageBlob = null;        // compressed, ready to upload
+let pulseComposeImagePreviewUrl = null;  // object URL, for the preview only
 let pulseNextPostId = 1000; // mock IDs for session-local posts, won't collide with seeded 1-12
 
 let pulseComposeLocation = null;
@@ -2339,25 +2345,70 @@ function useCurrentLocation(){
   }, { enableHighAccuracy:true, timeout:8000, maximumAge:60000 });
 }
 
+// ───────────── Pulse photo handling ─────────────
+
+const PULSE_IMAGE_MAX_DIM = 1600;
+const PULSE_IMAGE_QUALITY = 0.82;
+const PULSE_IMAGE_MAX_INPUT_BYTES = 15 * 1024 * 1024;
+
+// Downscale + re-encode before upload, so a 5 MB phone photo becomes roughly 250 KB.
+async function compressImageForUpload(file, opts){
+  const maxDim = (opts && opts.maxDim) || PULSE_IMAGE_MAX_DIM;
+  const quality = (opts && opts.quality) || PULSE_IMAGE_QUALITY;
+  if(typeof createImageBitmap !== 'function') return file; // bucket limits still guard the upload
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+  const w = Math.max(1, Math.round(bitmap.width * scale));
+  const h = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+  if(bitmap.close) bitmap.close();
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+  if(!blob) throw new Error('Could not compress that image.');
+  return blob;
+}
+
+function setPulseComposeImage(blob){
+  if(pulseComposeImagePreviewUrl) URL.revokeObjectURL(pulseComposeImagePreviewUrl);
+  pulseComposeImageBlob = blob;
+  pulseComposeImagePreviewUrl = URL.createObjectURL(blob);
+  document.getElementById('pulseComposeImagePreview').src = pulseComposeImagePreviewUrl;
+  document.getElementById('pulseComposeImagePreviewWrap').style.display = '';
+  updatePulseComposeState();
+}
+
 function handlePulseComposeImage(event){
-  const file = event.target.files[0];
+  const input = event.target;
+  const file = input.files[0];
   if(!file) return;
   if(!file.type.startsWith('image/')){
     alert('Please choose an image file.');
+    input.value = '';
     return;
   }
-  const reader = new FileReader();
-  reader.onload = (e)=>{
-    pulseComposeImageDataUrl = e.target.result;
-    document.getElementById('pulseComposeImagePreview').src = pulseComposeImageDataUrl;
-    document.getElementById('pulseComposeImagePreviewWrap').style.display = '';
-    updatePulseComposeState();
-  };
-  reader.readAsDataURL(file);
+  if(file.size > PULSE_IMAGE_MAX_INPUT_BYTES){
+    alert('That image is larger than 15 MB. Please choose a smaller one.');
+    input.value = '';
+    return;
+  }
+  const postBtn = document.getElementById('pulseComposePostBtn');
+  postBtn.disabled = true;
+  compressImageForUpload(file)
+    .catch(err=>{
+      console.warn('Pulse image compression failed; uploading the original file', err);
+      return file;
+    })
+    .then(blob=>setPulseComposeImage(blob))
+    .catch(err=>alert('Could not read that image: ' + (err.message || err)))
+    .finally(()=>{ input.value = ''; postBtn.disabled = false; updatePulseComposeState(); });
 }
 
 function removePulseComposeImage(){
-  pulseComposeImageDataUrl = null;
+  if(pulseComposeImagePreviewUrl) URL.revokeObjectURL(pulseComposeImagePreviewUrl);
+  pulseComposeImagePreviewUrl = null;
+  pulseComposeImageBlob = null;
   document.getElementById('pulseComposeImagePreview').src = '';
   document.getElementById('pulseComposeImagePreviewWrap').style.display = 'none';
   document.getElementById('pulseComposeFileInput').value = '';
@@ -2367,13 +2418,27 @@ function removePulseComposeImage(){
 function updatePulseComposeState(){
   const text = document.getElementById('pulseComposeText').value.trim();
   const postBtn = document.getElementById('pulseComposePostBtn');
-  postBtn.disabled = !text && !pulseComposeImageDataUrl;
+  postBtn.disabled = !text && !pulseComposeImageBlob;
+}
+
+let pulseImageUploadSeq = 0;
+
+// Upload a compressed Pulse photo and return its public URL. Random path so
+// anonymous uploads are not enumerable; the bucket caps size at 2 MB and images only.
+async function uploadPulseImage(blob){
+  const path = `posts/${Date.now().toString(36)}-${(++pulseImageUploadSeq).toString(36)}-${Math.random().toString(36).slice(2,10)}.jpg`;
+  const { error } = await sb.storage.from('pulse-media').upload(path, blob, {
+    cacheControl: '31536000', upsert: false, contentType: 'image/jpeg'
+  });
+  if(error) throw error;
+  const { data } = sb.storage.from('pulse-media').getPublicUrl(path);
+  return data.publicUrl;
 }
 
 let pulseLastPostAt = 0;
 async function submitPulsePost(){
   const text = document.getElementById('pulseComposeText').value.trim();
-  if(!text && !pulseComposeImageDataUrl) return;
+  if(!text && !pulseComposeImageBlob) return;
 
   // Light client-side rate limit: 1 post per 30s per device.
   const now = Date.now();
@@ -2389,12 +2454,23 @@ async function submitPulsePost(){
   const postBtn = document.getElementById('pulseComposePostBtn');
   postBtn.disabled = true;
 
+  let imageUrl = null;
+  if(pulseComposeImageBlob){
+    try {
+      imageUrl = await uploadPulseImage(pulseComposeImageBlob);
+    } catch(err){
+      postBtn.disabled = false;
+      alert('Could not upload the photo: ' + (err.message || err));
+      return;
+    }
+  }
+
   const { error } = await sb.from('pulse_posts').insert({
     user_id: currentUser ? currentUser.id : null,
     display_name: displayName,
     category: cat || 'all',
     text_content: text ? text.slice(0, 500) : null,
-    image_url: pulseComposeImageDataUrl || null,
+    image_url: imageUrl,
     location_text: pulseComposeLocation || null,
     is_anonymous: !currentUser,
   });
@@ -5820,7 +5896,7 @@ async function renderAdminPulsePosts(){
                 <button class="admin-cancel-btn" onclick="pulseAdminEditingPostId=null;renderAdminPulsePosts();">Cancel</button>
               </div>
             ` : `<div style="margin-top:6px;font-size:.82rem;color:var(--white-soft);">${escapeHtml(p.text_content||'(no text)')}</div>`}
-            ${p.image_url ? `<img src="${p.image_url}" style="max-width:120px;border-radius:8px;margin-top:8px;display:block;" onerror="this.style.display='none'">` : ''}
+            ${p.image_url ? `<img src="${p.image_url}" loading="lazy" decoding="async" style="max-width:120px;border-radius:8px;margin-top:8px;display:block;" onerror="this.style.display='none'">` : ''}
           </div>
           ${!isEditing ? `
           <div class="admin-row-actions">
