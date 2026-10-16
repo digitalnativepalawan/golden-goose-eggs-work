@@ -570,6 +570,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
    TO RESTORE: delete the rule below once the provider is switched on in
    Supabase (Authentication > Providers) and its OAuth client is configured. */
 .login-provider-btn,.login-divider{display:none!important}
+.login-link-btn{display:block;width:100%;margin:10px 0 2px;padding:8px;background:none;border:none;color:var(--white-dim);font-family:var(--font-body);font-size:.74rem;text-decoration:underline;cursor:pointer}
 .login-field{display:flex;flex-direction:column;gap:10px}
 .login-field input{width:100%;padding:13px 16px;border-radius:var(--radius-pill);border:1px solid var(--glass-border);background:rgba(255,255,255,.04);color:var(--white-soft);font-family:var(--font-body);font-size:.84rem;outline:none}
 .login-field input:focus{border-color:rgba(20,184,166,.3)}
@@ -1537,10 +1538,12 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
     </button>
     <div class="login-divider"><span>or</span></div>
     <div class="login-field">
-      <input type="email" id="loginEmailInput" placeholder="you@email.com" onkeydown="if(event.key==='Enter')sendMagicLink()">
-      <button class="login-email-btn" onclick="sendMagicLink()">Continue with Email</button>
+      <input type="email" id="loginEmailInput" placeholder="you@email.com" autocomplete="email" onkeydown="if(event.key==='Enter')signInWithPassword()">
+      <input type="password" id="loginPasswordInput" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')signInWithPassword()">
+      <button class="login-email-btn" onclick="signInWithPassword()">Sign in</button>
     </div>
     <div class="login-email-status" id="loginEmailStatus"></div>
+    <button class="login-link-btn" onclick="sendMagicLink()">Email me a one-time link instead</button>
     <div class="login-fine-print">By continuing you agree to act respectfully toward other travelers and locals in the SANVIC community.</div>
   </div>
 </div>
@@ -1957,7 +1960,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-17-hide-dead-login-buttons';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-17-password-signin';
 </script>
 <script src="barangays.geojson.js"></script>
 <script>

@@ -216,6 +216,34 @@ async function sendMagicLink(){
   }
 }
 
+// Email + password sign-in, so the owner never has to wait for an email. The
+// one-time link below still works as a fallback. The existing onAuthStateChange
+// handler (SIGNED_IN) closes this modal and refreshes the admin write access.
+async function signInWithPassword(){
+  const statusEl = document.getElementById('loginEmailStatus');
+  const email = document.getElementById('loginEmailInput').value.trim();
+  const passwordEl = document.getElementById('loginPasswordInput');
+  const password = passwordEl ? passwordEl.value : '';
+  if(!email || !password){
+    statusEl.textContent = 'Enter your email and password.';
+    statusEl.style.color = '#ef4444';
+    return;
+  }
+  statusEl.textContent = 'Signing in...';
+  statusEl.style.color = 'var(--white-dim)';
+  try {
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if(error) throw error;
+    if(passwordEl) passwordEl.value = '';
+    statusEl.textContent = 'Signed in.';
+    statusEl.style.color = '#5eead4';
+    setTimeout(()=>closeLoginModal(), 500);
+  } catch(err){
+    statusEl.textContent = 'Could not sign in: ' + (err.message || err);
+    statusEl.style.color = '#ef4444';
+  }
+}
+
 async function signInWithProvider(provider){
   const statusEl = document.getElementById('loginEmailStatus');
   statusEl.textContent = `Opening ${provider} sign-in...`;
@@ -3229,18 +3257,21 @@ function adminBrandClick(){
   brandClickTimer = setTimeout(()=>{ brandClickCount = 0; }, 700);
   if(brandClickCount >= 3){
     brandClickCount = 0;
-    openAdminPin();
+    openAdminPanel();
   }
 }
 
-// The visible "Staff admin" button (top-right gear) opens the in-client
-// Backoffice. It previously linked to /admin, a separate passkey-gated React
-// page that has neither the map editor nor the KMZ importer. The in-client
-// panel is otherwise only reachable by tapping the logo, and the logo hides
-// itself whenever a sheet is open (body.panel-open), which is the default
-// state on load — so that route was effectively unreachable.
+// The visible "Staff admin" button (top-right gear) opens the in-client Backoffice.
+//
+// ONE gate only. There used to be a 4-digit PIN here AND the Supabase admin
+// sign-in, which meant signing in twice just to edit a listing. The PIN was
+// always cosmetic - it only hid the panel, and the database refused any save
+// without a real admin session. So the gear now opens the panel straight away;
+// the panel reads as read-only for everyone else, and the single real credential
+// (the admin sign-in, which now takes a password so no email is needed) is only
+// required to WRITE. Once signed in, the session is remembered.
 function openAdminFromButton(){
-  if(adminUnlocked){ openAdminPanel(); } else { openAdminPin(); }
+  openAdminPanel();
   return false;
 }
 
