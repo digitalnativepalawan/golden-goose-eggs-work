@@ -3216,6 +3216,7 @@ let adminWriteWarned = false;
 let adminCollapsedCats = {};     // { [categoryKey]: true } when that group is collapsed
 let adminNeedsWorkOnly = false;  // show only listings that are missing details
 let adminQuickPhotoTargetId = null;
+let adminDeadCovers = new Set(); // listings whose saved photo link 404s (id, as string)
 
 async function refreshAdminAccess(){
   adminCanWrite = false;
@@ -3373,7 +3374,7 @@ function adminPlaceIssues(d){
   if(!String(d.category||'').trim()) issues.push('category');
   if(!String(d.barangay||'').trim()) issues.push('barangay');
   if(!String(d.description||'').trim()) issues.push('description');
-  if(!String(d.image||'').trim()) issues.push('cover photo');
+  if(!String(d.image||'').trim() || adminDeadCovers.has(String(d.id))) issues.push('cover photo');
   return issues;
 }
 function adminFilterDestinations(value){
@@ -3723,14 +3724,14 @@ function adminDestRowHtml(d){
   const photoLabel = cover ? 'Add another photo' : 'Add a cover photo';
   return `
       <div class="admin-list-item admin-dest-row">
-        <button type="button" class="admin-row-thumb" onclick="adminQuickPhoto(${d.id})" title="${photoLabel}" aria-label="${photoLabel}">
-          ${cover ? `<img src="${escapeHtml(cover)}" alt="" loading="lazy" onerror="this.style.display='none'">` : lucideSvg('camera',18)}
+        <button type="button" class="admin-row-thumb" data-dest-id="${d.id}" onclick="adminQuickPhoto(${d.id})" title="${photoLabel}" aria-label="${photoLabel}">
+          ${cover ? `<img src="${escapeHtml(cover)}" alt="" loading="lazy" onerror="adminThumbBroken(this)">` : lucideSvg('camera',18)}
           ${cover ? `<span class="admin-thumb-badge">${lucideSvg('camera',10)}</span>` : ''}
         </button>
         <div class="admin-dest-main">
           <div class="admin-list-item-head">
             <div onclick="adminEditDest(${d.id})" class="admin-dest-open">
-              <strong>${escapeHtml(d.name || 'Untitled place')}</strong><span class="admin-feat-toggle ${d.featured?'on':''}" onclick="event.stopPropagation();adminToggleFeatured(${d.id})" title="${d.featured?'Featured in Explore — click to remove':'Click to feature in Explore'}">${lucideSvg('star',12)}</span>${d.videoUrl ? ` <span class="admin-feat-icon" title="Has video">${lucideSvg('film',12)}</span>` : ''}
+              <strong>${escapeHtml(d.name || 'Untitled place')}</strong><span class="admin-feat-toggle ${d.featured?'on':''}" onclick="event.stopPropagation();adminToggleFeatured(${d.id})" title="${d.featured?'Featured in Explore — click to remove':'Click to feature in Explore'}">${lucideSvg('star',12)}</span>${SanvicExplore.safeUrl(d.videoUrl) ? ` <span class="admin-feat-icon" title="Has video">${lucideSvg('film',12)}</span>` : ''}
               <span class="admin-row-meta">${bits.join(' &middot; ') || 'no details yet'}</span>
               <div class="admin-quality ${issues.length?'needs-work':'ready'}">${issues.length?'Needs: '+escapeHtml(issues.join(', ')):'Ready for Explore'}</div>
             </div>
@@ -3743,6 +3744,26 @@ function adminDestRowHtml(d){
           </div>
         </div>
       </div>`;
+}
+
+// A saved photo can still be a dead link (the object was removed from Storage).
+// The row thumbnail is already loading that URL, so the browser tells us for
+// free - no extra requests - and the row stops claiming it is complete.
+function adminThumbBroken(img){
+  const thumb = img.closest('.admin-row-thumb');
+  if(!thumb) return;
+  const id = thumb.getAttribute('data-dest-id');
+  if(id) adminDeadCovers.add(String(id));
+  img.remove();
+  const badge = thumb.querySelector('.admin-thumb-badge');
+  if(badge) badge.remove();
+  thumb.classList.add('is-broken');
+  if(!thumb.querySelector('.admin-thumb-fallback')) thumb.insertAdjacentHTML('afterbegin', `<span class="admin-thumb-fallback">${lucideSvg('camera',18)}</span>`);
+  const chip = thumb.parentElement && thumb.parentElement.querySelector('.admin-quality');
+  if(chip){
+    chip.className = 'admin-quality needs-work';
+    chip.textContent = 'Needs: cover photo (the saved link is dead)';
+  }
 }
 
 // Add or replace a photo without opening the editor. An existing cover is kept
@@ -3790,11 +3811,14 @@ async function adminQuickPhotoUpload(file){
     if(error) throw error;
     const { data } = sb.storage.from('destination-images').getPublicUrl(path);
     const url = data.publicUrl;
-    const patch = String(d.image||'').trim()
-      ? { images: [...(Array.isArray(d.images)?d.images:[]), url] }
-      : { image: url };
+    // A row whose saved cover 404s must have that dead link replaced, not kept.
+    const replaceCover = !String(d.image||'').trim() || adminDeadCovers.has(String(d.id));
+    const patch = replaceCover
+      ? { image: url }
+      : { images: [...(Array.isArray(d.images)?d.images:[]), url] };
     const { error: saveErr } = await sb.from('destinations').update(patch).eq('id', d.id);
     if(saveErr) throw saveErr;
+    adminDeadCovers.delete(String(d.id));
   } catch(err){
     alert('Could not add that photo: ' + (err.message || err));
   }
@@ -3895,7 +3919,9 @@ function adminDestFormHtml(){
   if(!d) return '';
   // Initialize media gallery with existing images
   __mediaGallery = [];
-  if(d.image) __mediaGallery.push(d.image);
+  // Do not carry a cover link that is known to 404 into the gallery, otherwise
+  // saving the form would write the dead URL straight back.
+  if(d.image && !adminDeadCovers.has(String(d.id))) __mediaGallery.push(d.image);
   if(d.images && Array.isArray(d.images)) __mediaGallery.push(...d.images);
   return `
     <div class="admin-edit-box">
