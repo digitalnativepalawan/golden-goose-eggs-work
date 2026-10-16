@@ -770,6 +770,11 @@ Object.keys(DEFAULT_CAT_STYLE).forEach(k=>{
   catStyle[k] = { label: d.label, color: d.color, bg: hexToBg(d.color), icon: d.icon || 'map-pin' };
 });
 
+// Display order for categories, mirroring destination_categories.sort_order.
+// The admin directory groups by this so Beaches/Islands/Nature lead, the same
+// order visitors see in Explore, instead of whatever order rows came back in.
+let catOrder = Object.keys(DEFAULT_CAT_STYLE);
+
 function applyCategoriesFromRows(rows){
   if(!rows || !rows.length) return; // keep defaults if the table is empty/unreachable
   const next = {};
@@ -777,6 +782,7 @@ function applyCategoriesFromRows(rows){
     next[r.key] = { label: r.label, color: r.color || '#0ea5e9', bg: hexToBg(r.color), icon: r.icon || 'map-pin' };
   });
   catStyle = next;
+  catOrder = rows.map(r=>r.key);
 }
 
 // ─── AI ───
@@ -3207,6 +3213,9 @@ let adminEditingDestId = null;   // null = not editing, 'new' = creating, else i
 let adminEditingTalaId = null;
 let adminCanWrite = false;
 let adminWriteWarned = false;
+let adminCollapsedCats = {};     // { [categoryKey]: true } when that group is collapsed
+let adminNeedsWorkOnly = false;  // show only listings that are missing details
+let adminQuickPhotoTargetId = null;
 
 async function refreshAdminAccess(){
   adminCanWrite = false;
@@ -3650,17 +3659,204 @@ async function adminDeleteNearby(id){
   }
 }
 
+// ─── Directory: category groups + fast per-row actions ───────────────
+// The directory used to be one flat list in database order, which stops being
+// usable once there are 30+ places. It is now grouped by category (same order
+// visitors see in Explore) and alphabetical inside each group.
+//
+// The single outstanding job in this data is photos: 25 of 33 listings have
+// every field except a cover photo, which is the whole "needs details" count.
+// So adding a photo is now one click on the row instead of Edit -> scroll ->
+// upload -> Save.
+
+function adminDestGroups(list){
+  const groups = new Map();
+  (catOrder || []).forEach(k=>groups.set(k, []));
+  list.forEach(d=>{
+    const k = d.category || '__none';
+    if(!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(d);
+  });
+  const cmp = (a,b)=>String(a.name||'').localeCompare(String(b.name||''), 'en', {sensitivity:'base', numeric:true});
+  const out = [];
+  groups.forEach((items, k)=>{
+    if(!items.length) return;
+    if(k === '__none' && groups.size > 1) return; // only show a "no category" bucket when it is the only one
+    out.push({
+      key: k,
+      label: k === '__none' ? 'No category' : ((catStyle[k] && catStyle[k].label) || k),
+      color: (catStyle[k] && catStyle[k].color) || '#64748b',
+      items: items.slice().sort(cmp)
+    });
+  });
+  return out;
+}
+
+function adminToggleCat(key){
+  adminCollapsedCats[key] = !adminCollapsedCats[key];
+  renderAdminDest();
+}
+
+function adminSetAllCats(collapsed){
+  adminDestGroups(destinations).forEach(g=>{ adminCollapsedCats[g.key] = !!collapsed; });
+  renderAdminDest();
+}
+
+function adminToggleNeedsWork(){
+  adminNeedsWorkOnly = !adminNeedsWorkOnly;
+  renderAdminDest();
+}
+
+// One row: a thumbnail you can click to add a photo, the facts worth seeing at
+// a glance, and the four actions that actually get used.
+function adminDestRowHtml(d){
+  const issues = adminPlaceIssues(d);
+  const extras = Array.isArray(d.images) ? d.images.length : 0;
+  const cover = String(d.image||'').trim() || (extras ? d.images[0] : '');
+  const stats = d.stats || {};
+  const bits = [];
+  if(d.barangay) bits.push(escapeHtml(d.barangay));
+  if(stats.rating) bits.push('&#9733; ' + escapeHtml(String(stats.rating)));
+  if(stats.travel) bits.push(escapeHtml(String(stats.travel)));
+  if(stats.season) bits.push(escapeHtml(String(stats.season)));
+  if(extras) bits.push('+' + extras + ' photo' + (extras===1?'':'s'));
+  const photoLabel = cover ? 'Add another photo' : 'Add a cover photo';
+  return `
+      <div class="admin-list-item admin-dest-row">
+        <button type="button" class="admin-row-thumb" onclick="adminQuickPhoto(${d.id})" title="${photoLabel}" aria-label="${photoLabel}">
+          ${cover ? `<img src="${escapeHtml(cover)}" alt="" loading="lazy" onerror="this.style.display='none'">` : lucideSvg('camera',18)}
+          ${cover ? `<span class="admin-thumb-badge">${lucideSvg('camera',10)}</span>` : ''}
+        </button>
+        <div class="admin-dest-main">
+          <div class="admin-list-item-head">
+            <div onclick="adminEditDest(${d.id})" class="admin-dest-open">
+              <strong>${escapeHtml(d.name || 'Untitled place')}</strong><span class="admin-feat-toggle ${d.featured?'on':''}" onclick="event.stopPropagation();adminToggleFeatured(${d.id})" title="${d.featured?'Featured in Explore — click to remove':'Click to feature in Explore'}">${lucideSvg('star',12)}</span>${d.videoUrl ? ` <span class="admin-feat-icon" title="Has video">${lucideSvg('film',12)}</span>` : ''}
+              <span class="admin-row-meta">${bits.join(' &middot; ') || 'no details yet'}</span>
+              <div class="admin-quality ${issues.length?'needs-work':'ready'}">${issues.length?'Needs: '+escapeHtml(issues.join(', ')):'Ready for Explore'}</div>
+            </div>
+            <div class="admin-row-actions">
+              <button class="admin-mini-btn${cover?'':' accent'}" onclick="adminQuickPhoto(${d.id})">+ Photo</button>
+              <button class="admin-mini-btn" onclick="adminEditDest(${d.id})">Edit</button>
+              <button class="admin-mini-btn" onclick="adminPreviewDest(${d.id})">View</button>
+              <button class="admin-mini-btn danger" onclick="adminDeleteDest(${d.id})">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>`;
+}
+
+// Add or replace a photo without opening the editor. An existing cover is kept
+// and the new photo joins the gallery behind it, matching how the editor treats
+// the first gallery image as the cover.
+function adminQuickPhoto(id){
+  if(!adminRequireWrite()) return;
+  adminQuickPhotoTargetId = id;
+  let input = document.getElementById('adminQuickPhotoInput');
+  if(!input){
+    input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.id = 'adminQuickPhotoInput';
+    input.style.display = 'none';
+    input.addEventListener('change', ()=>adminQuickPhotoUpload(input.files && input.files[0]));
+    document.body.appendChild(input);
+  }
+  input.value = '';
+  input.click();
+}
+
+async function adminQuickPhotoUpload(file){
+  const id = adminQuickPhotoTargetId;
+  adminQuickPhotoTargetId = null;
+  if(!file || !id) return;
+  const d = destinations.find(x=>String(x.id)===String(id));
+  if(!d) return;
+  const body = document.getElementById('adminBody');
+  if(body) body.innerHTML = `<div class="admin-empty">Uploading photo for ${escapeHtml(d.name||'this place')}…</div>`;
+  try {
+    if(!file.type || !file.type.startsWith('image/')) throw new Error('that file is not an image');
+    if(file.size > PULSE_IMAGE_MAX_INPUT_BYTES) throw new Error('that image is larger than 15 MB');
+    const blob = await compressImageForUpload(file).catch(()=>file);
+    const path = `dest_${id}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}.jpg`;
+    const { error } = await sb.storage.from('destination-images').upload(path, blob, {
+      cacheControl: '31536000', upsert: false, contentType: blob.type || 'image/jpeg'
+    });
+    if(error) throw error;
+    const { data } = sb.storage.from('destination-images').getPublicUrl(path);
+    const url = data.publicUrl;
+    const patch = String(d.image||'').trim()
+      ? { images: [...(Array.isArray(d.images)?d.images:[]), url] }
+      : { image: url };
+    const { error: saveErr } = await sb.from('destinations').update(patch).eq('id', d.id);
+    if(saveErr) throw saveErr;
+  } catch(err){
+    alert('Could not add that photo: ' + (err.message || err));
+  }
+  await loadDataFromSupabase();
+  renderAdminDest();
+  rebuildMarkers();
+}
+
+async function adminToggleFeatured(id){
+  if(!adminRequireWrite()) return;
+  const d = destinations.find(x=>String(x.id)===String(id));
+  if(!d) return;
+  const next = !d.featured;
+  const { error } = await sb.from('destinations').update({ featured: next }).eq('id', d.id);
+  if(error){ alert('Could not update Featured: ' + error.message); return; }
+  d.featured = next;
+  renderAdminDest();
+  rebuildMarkers();
+}
+
 function renderAdminDest(){
   const body = document.getElementById('adminBody');
   const incomplete = destinations.filter(d=>adminPlaceIssues(d).length).length;
   const q = adminDestSearchQuery;
-  const visibleDestinations = destinations.filter(d=>!q || [d.name,d.barangay,d.category,d.description].some(v=>String(v||'').toLowerCase().includes(q)));
+  let visibleDestinations = destinations.filter(d=>!q || [d.name,d.barangay,d.category,d.description].some(v=>String(v||'').toLowerCase().includes(q)));
+  if(adminNeedsWorkOnly) visibleDestinations = visibleDestinations.filter(d=>adminPlaceIssues(d).length);
+  const groups = adminDestGroups(visibleDestinations);
+
   let html = `
     <div class="admin-data-banner ${destinationsSource==='fallback'||!adminCanWrite?'warning':''}">
       <strong>${destinationsSource==='supabase'?'Live Supabase directory':'Offline fallback data'}</strong>
       <span>${destinations.length} listing${destinations.length===1?'':'s'} · ${incomplete} need${incomplete===1?'s':''} details · ${adminCanWrite?'Admin writes enabled':'Sign in as an assigned admin to save'}</span>
     </div>
     ${destinationsSource==='fallback'?'<div class="admin-data-note">The database could not be reached, so these are built-in demo records. Reconnect before editing; saving fallback entries can create duplicates.</div>':''}
+    <button class="admin-add-btn" style="margin-top:2px;" onclick="adminNewDest()">+ Add business or tourist place</button>
+    <input class="admin-directory-search" id="adminDestSearch" value="${escapeHtml(adminDestSearchQuery)}" placeholder="Search name, barangay or category" oninput="adminFilterDestinations(this.value)">
+    <div class="admin-dir-toolbar">
+      <button type="button" onclick="adminSetAllCats(false)">Expand all</button>
+      <button type="button" onclick="adminSetAllCats(true)">Collapse all</button>
+      <button type="button" class="${adminNeedsWorkOnly?'on':''}" onclick="adminToggleNeedsWork()">${adminNeedsWorkOnly?'Showing incomplete only':'Only show incomplete'} · ${incomplete}</button>
+    </div>`;
+
+  if(adminEditingDestId !== null){
+    html += adminDestFormHtml();
+  }
+
+  if(!visibleDestinations.length){
+    html += `<div class="admin-empty">${destinations.length?(adminNeedsWorkOnly?'Everything is complete — nothing needs details right now.':'No listings match that search.'):'No live listings yet. Add your first business or tourist place above.'}</div>`;
+  } else {
+    html += groups.map(g=>{
+      const collapsed = !!adminCollapsedCats[g.key];
+      const needs = g.items.filter(d=>adminPlaceIssues(d).length).length;
+      return `
+    <div class="admin-cat-group">
+      <div class="admin-cat-head" onclick="adminToggleCat(${JSON.stringify(g.key).replace(/"/g,'&quot;')})">
+        <span class="admin-cat-dot" style="background:${escapeHtml(g.color)}"></span>
+        <span class="admin-cat-name">${escapeHtml(g.label)}</span>
+        <span class="admin-cat-note">${needs?needs+' need details':'all complete'}</span>
+        <span class="admin-cat-count">${g.items.length}</span>
+        <span class="admin-cat-chev">${collapsed?'&#9656;':'&#9662;'}</span>
+      </div>
+      ${collapsed?'':`<div class="admin-cat-body">${g.items.map(adminDestRowHtml).join('')}</div>`}
+    </div>`;
+    }).join('');
+  }
+
+  html += `
+    <div class="admin-dir-tools-label">Directory tools</div>
     <div class="admin-section-toggle" onclick="adminToggleDestCatPanel()">
       <span>${lucideSvg('tag',13)} Manage categories ${destCatPanelOpen?'▾':'▸'}</span>
       <span class="admin-section-count">${Object.keys(catStyle).length}</span>
@@ -3682,36 +3878,8 @@ function renderAdminDest(){
     </div>
     <div id="adfKmzPanel" style="display:${kmzPanelOpen?'':'none'}">
       ${adminKmzPanelHtml()}
-    </div>` : ''}
-    <button class="admin-add-btn" style="margin-top:14px;" onclick="adminNewDest()">+ Add business or tourist place</button>
-    <input class="admin-directory-search" id="adminDestSearch" value="${escapeHtml(adminDestSearchQuery)}" placeholder="Search name, barangay or category" oninput="adminFilterDestinations(this.value)">`;
+    </div>` : ''}`;
 
-  if(adminEditingDestId !== null){
-    html += adminDestFormHtml();
-  }
-
-  if(!visibleDestinations.length){
-    html += `<div class="admin-empty">${destinations.length?'No listings match that search.':'No live listings yet. Add your first business or tourist place above.'}</div>`;
-  } else {
-    html += visibleDestinations.map(d=>{
-      const issues = adminPlaceIssues(d);
-      return `
-      <div class="admin-list-item">
-        <div class="admin-list-item-head">
-          <div onclick="adminEditDest(${d.id})" style="flex:1;cursor:pointer;">
-            <strong>${escapeHtml(d.name)}</strong>${d.featured ? ` <span class="admin-feat-icon" title="Featured">${lucideSvg('star',12)}</span>` : ''}${d.videoUrl ? ` <span class="admin-feat-icon" title="Has video">${lucideSvg('film',12)}</span>` : ''}<br>
-            <span>${escapeHtml(catStyle[d.category]?.label||d.category)} · ${escapeHtml(d.barangay||'Barangay missing')}</span>
-            <div class="admin-quality ${issues.length?'needs-work':'ready'}">${issues.length?'Needs: '+escapeHtml(issues.join(', ')):'Ready for Explore'}</div>
-          </div>
-          <div class="admin-row-actions">
-            <button class="admin-mini-btn" onclick="adminPreviewDest(${d.id})">View</button>
-            <button class="admin-mini-btn" onclick="adminEditDest(${d.id})">Edit</button>
-            <button class="admin-mini-btn danger" onclick="adminDeleteDest(${d.id})">Delete</button>
-          </div>
-        </div>
-      </div>`;
-    }).join('');
-  }
   body.innerHTML = html;
 }
 

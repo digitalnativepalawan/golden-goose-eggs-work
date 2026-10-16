@@ -725,10 +725,37 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
 .admin-quality{margin-top:5px;font-size:.62rem!important;line-height:1.35}
 .admin-quality.ready{color:#5eead4!important}
 .admin-quality.needs-work{color:#fbbf24!important}
+/* Directory: category groups, row thumbnails, quick per-row actions */
+.admin-dir-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+.admin-dir-toolbar button{padding:6px 12px;border-radius:var(--radius-pill);border:1px solid var(--glass-border);background:rgba(255,255,255,.04);color:var(--white-muted);font-size:.68rem;cursor:pointer}
+.admin-dir-toolbar button:hover{border-color:rgba(20,184,166,.35);color:var(--white-soft)}
+.admin-dir-toolbar button.on{background:rgba(245,158,11,.14);border-color:rgba(245,158,11,.35);color:#fbbf24}
+.admin-dir-tools-label{margin:22px 0 8px;font-size:.62rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--white-dim)}
+.admin-cat-group{margin-bottom:6px}
+.admin-cat-head{display:flex;align-items:center;gap:9px;padding:11px 14px;background:rgba(255,255,255,.05);border:1px solid var(--glass-border);border-radius:var(--radius-sm);cursor:pointer;user-select:none}
+.admin-cat-head:hover{border-color:rgba(20,184,166,.32)}
+.admin-cat-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.admin-cat-name{flex:1;font-size:.8rem;font-weight:600;color:var(--white-soft)}
+.admin-cat-note{font-size:.63rem;color:var(--white-dim)}
+.admin-cat-count{font-size:.65rem;color:var(--white-dim);background:rgba(255,255,255,.07);border-radius:8px;padding:2px 8px}
+.admin-cat-chev{font-size:.68rem;color:var(--white-dim);width:12px;text-align:center}
+.admin-cat-body{padding:10px 0 4px 10px}
+.admin-dest-row{display:flex;gap:12px;align-items:flex-start;padding:10px 12px}
+.admin-row-thumb{position:relative;flex:0 0 auto;width:54px;height:54px;padding:0;border-radius:10px;overflow:hidden;border:1px solid var(--glass-border);background:rgba(255,255,255,.05);color:var(--white-dim);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.admin-row-thumb:hover{border-color:var(--ocean-teal-light);color:var(--ocean-teal-light)}
+.admin-row-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.admin-thumb-badge{position:absolute;right:2px;bottom:2px;width:19px;height:19px;border-radius:50%;background:rgba(0,0,0,.68);display:flex;align-items:center;justify-content:center;color:#fff}
+.admin-dest-main{flex:1;min-width:0}
+.admin-dest-open{flex:1;min-width:0;cursor:pointer}
+.admin-row-meta{display:block;margin-top:3px}
+.admin-feat-toggle{display:inline-flex;vertical-align:middle;margin-left:3px;cursor:pointer;color:rgba(255,255,255,.22)}
+.admin-feat-toggle.on{color:var(--ocean-teal-light)}
+.admin-feat-toggle:hover{color:#5eead4}
+.admin-mini-btn.accent{color:#5eead4;border-color:rgba(20,184,166,.4);background:rgba(20,184,166,.12)}
 .admin-form-heading{font-family:var(--font-display);font-size:1.25rem;color:var(--white-soft);margin-bottom:4px}
 .admin-form-help{font-size:.7rem;color:var(--white-dim);line-height:1.5;margin-bottom:16px}
 .admin-form-section{font-size:.64rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ocean-teal-light);padding:12px 0 8px;border-top:1px solid var(--glass-border);margin-top:4px}
-@media(max-width:560px){.admin-data-banner{align-items:flex-start;flex-direction:column}.admin-data-banner span{text-align:left}.admin-row-actions{flex-wrap:wrap;justify-content:flex-end}.admin-grid-2{grid-template-columns:1fr}}
+@media(max-width:560px){.admin-data-banner{align-items:flex-start;flex-direction:column}.admin-data-banner span{text-align:left}.admin-row-actions{flex-wrap:wrap;justify-content:flex-end}.admin-grid-2{grid-template-columns:1fr}.admin-cat-body{padding-left:0}.admin-cat-note{display:none}.admin-dest-row{gap:9px}.admin-row-thumb{width:46px;height:46px}}
 
 .admin-tala-filters{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .admin-cat-tab{border:1px solid var(--glass-border);border-radius:var(--radius-pill);padding:6px 12px;background:rgba(255,255,255,.04);color:var(--white-muted);font-size:.7rem;cursor:pointer;display:flex;align-items:center;gap:5px}
@@ -1960,7 +1987,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-17-password-signin';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-17-directory-groups';
 </script>
 <script src="barangays.geojson.js"></script>
 <script>
