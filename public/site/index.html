@@ -562,6 +562,14 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
 .login-divider{display:flex;align-items:center;text-align:center;margin:16px 0;color:var(--white-dim);font-size:.7rem}
 .login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--glass-border)}
 .login-divider span{padding:0 12px}
+/* Google and Apple sign-in are NOT enabled in Supabase. Verified against the live
+   endpoint: GET /auth/v1/authorize?provider=google (and apple) returns HTTP 400
+   {"error_code":"validation_failed","msg":"Unsupported provider: provider is not enabled"},
+   so both buttons could only ever fail. Hidden rather than deleted, and the "or"
+   divider goes with them since email is the only working method.
+   TO RESTORE: delete the rule below once the provider is switched on in
+   Supabase (Authentication > Providers) and its OAuth client is configured. */
+.login-provider-btn,.login-divider{display:none!important}
 .login-field{display:flex;flex-direction:column;gap:10px}
 .login-field input{width:100%;padding:13px 16px;border-radius:var(--radius-pill);border:1px solid var(--glass-border);background:rgba(255,255,255,.04);color:var(--white-soft);font-family:var(--font-body);font-size:.84rem;outline:none}
 .login-field input:focus{border-color:rgba(20,184,166,.3)}
@@ -1949,7 +1957,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-16-pulse-images';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-17-hide-dead-login-buttons';
 </script>
 <script src="barangays.geojson.js"></script>
 <script>
