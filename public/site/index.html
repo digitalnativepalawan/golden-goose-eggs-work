@@ -98,6 +98,26 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--charcoal-deep)
 .sv-icon-opt.is-selected{background:rgba(20,184,166,.22);border-color:rgba(20,184,166,.7);box-shadow:0 0 0 1px rgba(20,184,166,.5) inset}
 .sv-icon-opt svg{width:18px;height:18px}
 
+/* Far-zoom area label — one "San Vicente" card replaces the whole pin cloud
+   when the map is zoomed out past PIN_VISIBLE_ZOOM. Zero-size wrapper so the
+   card centres on the municipality anchor; Leaflet positions it with a transform. */
+.area-label-marker{position:absolute;width:0;height:0;background:none!important;border:none!important;overflow:visible!important}
+.sv-area-label{position:absolute;left:0;top:0;transform:translate(-50%,-50%);display:flex;align-items:center;gap:11px;padding:9px 12px 9px 11px;border-radius:15px;background:var(--glass-bg-heavy);backdrop-filter:blur(26px) saturate(150%);-webkit-backdrop-filter:blur(26px) saturate(150%);border:1px solid var(--glass-border);box-shadow:0 12px 34px rgba(0,0,0,.45),0 0 0 1px rgba(20,184,166,.08) inset;cursor:pointer;white-space:nowrap;animation:svAreaIn .42s var(--ease-out-expo) both;transition:border-color .3s var(--ease-smooth),box-shadow .3s var(--ease-smooth)}
+.sv-area-label:hover{border-color:rgba(20,184,166,.42);box-shadow:0 14px 40px rgba(0,0,0,.52),0 0 26px rgba(20,184,166,.18)}
+.sv-area-dot{position:relative;width:9px;height:9px;border-radius:50%;background:var(--ocean-teal-light);box-shadow:0 0 0 4px rgba(20,184,166,.15),0 0 14px rgba(20,184,166,.6);flex-shrink:0}
+.sv-area-dot::after{content:'';position:absolute;inset:-5px;border-radius:50%;border:1px solid rgba(20,184,166,.55);animation:svAreaPulse 2.8s ease-out infinite}
+.sv-area-text{display:flex;flex-direction:column;gap:2px;min-width:0;text-align:left}
+.sv-area-kicker{font-family:var(--font-body);font-size:.48rem;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:var(--white-dim);line-height:1}
+.sv-area-name{font-family:var(--font-display);font-size:1.06rem;font-weight:500;letter-spacing:-.005em;color:var(--white-soft);line-height:1.1}
+.sv-area-sub{font-family:var(--font-body);font-size:.6rem;font-weight:400;letter-spacing:.03em;color:var(--ocean-teal-light);line-height:1.1}
+.sv-area-cta{display:flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(20,184,166,.14);border:1px solid rgba(20,184,166,.3);color:var(--ocean-teal-light);flex-shrink:0;transition:background .3s var(--ease-smooth),transform .3s var(--ease-smooth)}
+.sv-area-label:hover .sv-area-cta{background:rgba(20,184,166,.26);transform:translateX(1px)}
+.sv-area-cta svg{width:13px;height:13px}
+@keyframes svAreaIn{from{opacity:0;transform:translate(-50%,-50%) scale(.9)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@keyframes svAreaPulse{0%{transform:scale(.55);opacity:.7}100%{transform:scale(1.5);opacity:0}}
+.map-light .sv-area-label{box-shadow:0 12px 34px rgba(0,0,0,.5),0 0 0 1px rgba(20,184,166,.1) inset}
+@media (prefers-reduced-motion: reduce){.sv-area-label{animation:none}.sv-area-dot::after{animation:none}}
+
 /* ═══════════════════════════════════
    FOREGROUND UI LAYER + TOP HEADER
    Map (#map, z:1) owns pan/zoom. All UI chrome lives inside
@@ -1991,7 +2011,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-17-lucide-icons-r2';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-17-far-zoom-area-label';
 </script>
 <script src="barangays.geojson.js"></script>
 <script>

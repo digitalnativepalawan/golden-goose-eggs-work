@@ -944,10 +944,14 @@ function markTalaIdle(){
 let map, mapReady=false;
 const markersByCat={};
 let allMarkers=[];
-const PIN_VISIBLE_ZOOM = 12; // pins hidden below this zoom on the default/idle map view
+// Below this zoom a cloud of individual pins reads as noise, so the map swaps
+// them for a single "San Vicente" area label instead.
+const PIN_VISIBLE_ZOOM = 10;
+const SANVICENTE_CENTER = [10.50,119.22]; // municipality anchor + default view target
 let pinsCurrentlyVisible = true;
 let activeMarkerSet = []; // tracks whichever markers are "supposed" to be on the map right now (all, or a filtered category)
-let pinVisibilityOverride = false; // true once the user explicitly picks a category — keeps pins on regardless of zoom until they go back to 'All'/Map tab
+let pinVisibilityOverride = false; // true once the user explicitly narrows to a category/area — keeps those pins on at any zoom
+let areaLabelMarker = null; // far-zoom "San Vicente" card that stands in for the pin cloud
 
 // Signature neon-dot palette. Reserved functional categories always
 // map to a fixed colour so the map reads at a glance; any other
@@ -996,17 +1000,19 @@ function rebuildMarkers(){
   if(document.body.classList.contains('explore-open')) syncExploreMap();
 }
 
-// Adds/removes activeMarkerSet from the map based on current zoom,
-// without touching which markers are "selected" by a category filter.
-// Skipped while pinVisibilityOverride is set (explicit category pick).
+// Adds/removes activeMarkerSet from the map based on current zoom, without
+// touching which markers are "selected" by a category filter. Zoomed out past
+// PIN_VISIBLE_ZOOM — and not narrowed to a specific category — the pin cloud
+// gives way to a single "San Vicente" area label.
 function applyPinVisibility(){
   if(!map) return;
   const z = map.getZoom();
-  const shouldShow = pinVisibilityOverride || document.body.classList.contains('explore-open') || z >= PIN_VISIBLE_ZOOM;
+  const shouldShow = pinVisibilityOverride || z >= PIN_VISIBLE_ZOOM;
   // Zoom-based label suppression: at zoom <= 11, hide barangay text tooltips
   // so the canvas reads as clean neon-dot nodes only.
   const cont = map.getContainer();
   if(cont) cont.classList.toggle('zoom-far', z <= 11);
+  setAreaLabel(!shouldShow);
   if(shouldShow === pinsCurrentlyVisible) {
     if(shouldShow) activeMarkerSet.forEach(m=>{ if(!map.hasLayer(m)) m.addTo(map); });
     return;
@@ -1016,6 +1022,52 @@ function applyPinVisibility(){
     activeMarkerSet.forEach(m=>m.addTo(map));
   } else {
     allMarkers.forEach(m=>{ if(map.hasLayer(m)) map.removeLayer(m); });
+  }
+}
+
+// ─── FAR-ZOOM AREA LABEL ───
+// Stands in for the pin cloud at regional zoom: one tappable card naming the
+// municipality. Tapping it flies in far enough for the individual pins to return.
+function areaLabelIcon(){
+  return L.divIcon({className:'area-label-marker',html:areaLabelHtml(),iconSize:[0,0],iconAnchor:[0,0]});
+}
+function areaLabelHtml(){
+  const n = allMarkers.length;
+  return '<span class="sv-area-label">'
+    + '<span class="sv-area-dot" aria-hidden="true"></span>'
+    + '<span class="sv-area-text">'
+    + '<span class="sv-area-kicker">Palawan</span>'
+    + '<span class="sv-area-name">San Vicente</span>'
+    + '<span class="sv-area-sub">' + n + ' place' + (n===1?'':'s') + ' to explore</span>'
+    + '</span>'
+    + '<span class="sv-area-cta" aria-hidden="true">' + lucideSvg('compass',13) + '</span>'
+    + '</span>';
+}
+function setAreaLabel(show){
+  if(!map) return;
+  if(!show){
+    if(areaLabelMarker && map.hasLayer(areaLabelMarker)) map.removeLayer(areaLabelMarker);
+    return;
+  }
+  if(!areaLabelMarker){
+    areaLabelMarker = L.marker(SANVICENTE_CENTER,{icon:areaLabelIcon()});
+    areaLabelMarker.on('click',zoomToSanVicente);
+  } else {
+    areaLabelMarker.setIcon(areaLabelIcon()); // rebuild so the place count stays current
+  }
+  if(!map.hasLayer(areaLabelMarker)) areaLabelMarker.addTo(map);
+  const el = areaLabelMarker.getElement();
+  if(el){
+    el.setAttribute('role','button');
+    el.setAttribute('aria-label','San Vicente, Palawan — zoom in to see places');
+  }
+}
+function zoomToSanVicente(){
+  if(!map) return;
+  if(activeMarkerSet.length && activeMarkerSet.length < allMarkers.length){
+    map.flyToBounds(L.featureGroup(activeMarkerSet).getBounds().pad(.25),{duration:.9,maxZoom:15});
+  } else {
+    map.flyTo(SANVICENTE_CENTER,PIN_VISIBLE_ZOOM,{duration:.9});
   }
 }
 
@@ -1388,12 +1440,18 @@ function renderExploreContent(){
   body.innerHTML=matches.length?matches.map(explorePlaceCard).join(''):
     `<div class="explore-empty">${lucideSvg('map-pin',32)}<h3>${destinations.length?'No matching places yet':'The directory is taking shape'}</h3><p>${destinations.length?'Try a different name, category or barangay.':'Local businesses and tourist places will appear here as they are added.'}</p>${destinations.length?'<button class="es-action" onclick="resetExploreFilters()">Show all places</button>':''}</div>`;
 }
+// True only when the visitor has actually narrowed Explore (search text,
+// category, barangay area, or "near me"). An unfiltered Explore list must not
+// keep the whole municipality pinned to the map at every zoom level.
+function exploreIsNarrowed(){
+  return !!(exploreState.query || exploreState.area || exploreState.nearby || (exploreState.category && exploreState.category!=='all'));
+}
 function syncExploreMap(){
   if(!map) return;
   const ids=new Set(exploreResults().filter(SanvicExplore.hasCoordinates).map(d=>String(d.id)));
   allMarkers.forEach(m=>{ if(!ids.has(String(m._d.id))) map.removeLayer(m); });
   activeMarkerSet=allMarkers.filter(m=>ids.has(String(m._d.id)));
-  pinVisibilityOverride=true;
+  pinVisibilityOverride=exploreIsNarrowed();
   applyPinVisibility();
   highlightExplorePlace(exploreState.selected);
 }
