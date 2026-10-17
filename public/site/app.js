@@ -344,13 +344,12 @@ function selectDashSection(section){
 
 async function renderDashOverview(){
   const body = document.getElementById('dashSectionBody');
-  if(!currentUser){
-    body.innerHTML = `<div class="dash-section-title">Overview</div><div class="dash-empty-state">Sign in to track your saved places and Pulse activity.<br><button class="login-provider-btn" style="margin-top:12px;" onclick="openLoginModal()">Sign in</button></div>`;
-    return;
-  }
+  const owner = saveOwner();
   try {
-    const { data: saved } = await sb.from('saved_places').select('id').eq('user_id', currentUser.id);
-    const { data: posts } = await sb.from('pulse_posts').select('id').eq('user_id', currentUser.id);
+    const { data: saved } = await sb.from('saved_places').select('id').eq(owner.col, owner.val);
+    const { data: posts } = isLoggedIn()
+      ? await sb.from('pulse_posts').select('id').eq('user_id', currentUser.id)
+      : { data: [] };
     body.innerHTML = `
       <div class="dash-section-title">Overview</div>
       <div class="admin-grid-2" style="margin-bottom:14px;">
@@ -363,7 +362,9 @@ async function renderDashOverview(){
           <div style="font-size:.7rem;margin-top:4px;">Pulse posts</div>
         </div>
       </div>
-      <div class="dash-empty-state">Trip planning and richer activity history are coming in a future update.</div>`;
+      ${isLoggedIn()
+        ? `<div class="dash-empty-state">Your saves follow you to any device you sign in on.</div>`
+        : `<div class="dash-empty-state">Your saves live on this device.<br><button class="login-provider-btn" style="margin-top:12px;" onclick="openLoginModal()">Sign in</button> to sync them across your devices.</div>`}`;
   } catch(err){
     body.innerHTML = `<div class="dash-empty-state">Couldn't load your overview right now.</div>`;
   }
@@ -371,23 +372,25 @@ async function renderDashOverview(){
 
 async function renderDashSaved(){
   const body = document.getElementById('dashSectionBody');
-  if(!currentUser){
-    body.innerHTML = `<div class="dash-section-title">Saved Places</div><div class="dash-empty-state">Sign in to save places and sync them across your devices.<br><button class="login-provider-btn" style="margin-top:12px;" onclick="openLoginModal()">Sign in</button></div>`;
-    return;
-  }
+  const owner = saveOwner();
+  const heading = `<div class="dash-section-title">Saved Places</div>`;
   try {
     const { data, error } = await sb.from('saved_places')
       .select('id, destination_id, destinations(name, image, category)')
-      .eq('user_id', currentUser.id)
+      .eq(owner.col, owner.val)
       .order('created_at', { ascending: false });
     if(error) throw error;
 
     if(!data || !data.length){
-      body.innerHTML = `<div class="dash-section-title">Saved Places</div><div class="dash-empty-state">You haven't saved any places yet. Tap the bookmark on a destination to save it here.</div>`;
+      body.innerHTML = heading + `<div class="dash-empty-state">You haven't saved any places yet. Tap the bookmark on a place to save it here.`
+        + (isLoggedIn() ? '' : `<br><button class="login-provider-btn" style="margin-top:12px;" onclick="openLoginModal()">Sign in</button> to sync your saves across your devices.`)
+        + `</div>`;
       return;
     }
 
-    body.innerHTML = `<div class="dash-section-title">Saved Places</div>` + data.map(row=>{
+    body.innerHTML = heading
+      + (isLoggedIn() ? '' : `<div class="dash-empty-state" style="margin-bottom:10px;">Saved on this device. <button class="login-provider-btn" style="margin-top:8px;" onclick="openLoginModal()">Sign in</button> to sync them across your devices.</div>`)
+      + data.map(row=>{
       const d = row.destinations;
       if(!d) return '';
       return `
@@ -400,7 +403,7 @@ async function renderDashSaved(){
       </div>`;
     }).join('');
   } catch(err){
-    body.innerHTML = `<div class="dash-empty-state">Couldn't load saved places right now.</div>`;
+    body.innerHTML = heading + `<div class="dash-empty-state">Couldn't load saved places right now.</div>`;
   }
 }
 
@@ -463,22 +466,37 @@ async function saveDashSettings(){
   }
 }
 
-// ─── Save / unsave a destination (requires login) ───
+// ─── Save / unsave a place ───
+// Signed in: saved against the account, so it follows the traveller to another
+// device. Not signed in: saved against this device, using the same anonymous id
+// Pulse likes and tribe joins use. Demanding an email before a bookmark works is
+// the friction the owner ruled out, so the button now works either way.
+function saveOwner(){
+  if(isLoggedIn()) return { col:'user_id', val:currentUser.id, row:{ user_id: currentUser.id } };
+  const id = personId();
+  return { col:'device_id', val:id, row:{ device_id:id } };
+}
+
 async function toggleSavePlace(destinationId, btnEl){
-  requireAuth(async ()=>{
-    try {
-      const { data: existing } = await sb.from('saved_places').select('id').eq('user_id', currentUser.id).eq('destination_id', destinationId).maybeSingle();
-      if(existing){
-        await sb.from('saved_places').delete().eq('id', existing.id);
-        if(btnEl) btnEl.classList.remove('saved');
-      } else {
-        await sb.from('saved_places').insert({ user_id: currentUser.id, destination_id: destinationId });
-        if(btnEl) btnEl.classList.add('saved');
-      }
-    } catch(err){
-      alert('Could not update saved places: ' + (err.message || err));
+  const owner = saveOwner();
+  try {
+    const { data: existing } = await sb.from('saved_places').select('id')
+      .eq(owner.col, owner.val).eq('destination_id', destinationId).maybeSingle();
+    if(existing){
+      const { error } = await sb.from('saved_places').delete().eq('id', existing.id);
+      if(error) throw error;
+      if(btnEl) btnEl.classList.remove('saved');
+      toast('Removed from saved places.');
+    } else {
+      const { error } = await sb.from('saved_places').insert({ ...owner.row, destination_id: destinationId });
+      if(error && error.code !== '23505') throw error;
+      if(btnEl) btnEl.classList.add('saved');
+      toast(isLoggedIn() ? 'Saved to your places.' : 'Saved on this device.');
     }
-  });
+  } catch(err){
+    console.warn('[SANVIC] Save failed:', err);
+    toast('Could not update saved places just now.');
+  }
 }
 
 function handleDestSaveClick(){
@@ -490,9 +508,10 @@ async function refreshDestSaveButton(destinationId){
   const btn = document.getElementById('deSaveBtn');
   if(!btn) return;
   btn.classList.remove('saved');
-  if(!isLoggedIn()) return; // anonymous visitors always see the un-saved state
+  const owner = saveOwner();
   try {
-    const { data } = await sb.from('saved_places').select('id').eq('user_id', currentUser.id).eq('destination_id', destinationId).maybeSingle();
+    const { data } = await sb.from('saved_places').select('id')
+      .eq(owner.col, owner.val).eq('destination_id', destinationId).maybeSingle();
     if(data) btn.classList.add('saved');
   } catch(err){
     // fail silently — save state is a nice-to-have, not critical path
@@ -541,7 +560,7 @@ function isSuggestionActiveToday(s){
 async function loadDataFromSupabase(){
   let directoryLoaded=false;
   try {
-    const [destRes, talaRes, settingsRes, sugRes, siteRes, catRes, nearbyRes, aiSettingsRes, todayRes, tribesRes, eventsRes, upcomingRes, huntRewardsRes, huntSettingsRes, joinTribeRes, joinEventRes] = await Promise.all([
+    const [destRes, talaRes, settingsRes, sugRes, siteRes, catRes, nearbyRes, aiSettingsRes, todayRes, tribesRes, eventsRes, upcomingRes, huntRewardsRes, huntSettingsRes, joinTribeRes, joinEventRes, joinTodayRes] = await Promise.all([
       sb.from('destinations').select('*').order('sort_order', { ascending: true }),
       sb.from('tala_responses').select('*').order('sort_order', { ascending: true }),
       sb.from('tala_settings').select('*').eq('key', 'default_response').maybeSingle(),
@@ -558,6 +577,7 @@ async function loadDataFromSupabase(){
       sb.from('hunt_settings').select('*'),
       sb.from('tribe_members').select('tribe_id,device_id,display_name'),
       sb.from('event_interest').select('event_id,device_id,display_name'),
+      sb.from('today_interest').select('item_id,device_id,display_name'),
     ].map(request=>Promise.resolve(request).catch(error=>({data:null,error}))));
 
     if (destRes.error) throw destRes.error;
@@ -676,6 +696,7 @@ async function loadDataFromSupabase(){
 
     // Who has joined what. Anonymous device identity — no email, no account.
     applyJoinRows(joinTribeRes && joinTribeRes.data, joinEventRes && joinEventRes.data);
+    applyTodayInterestRows(joinTodayRes && joinTodayRes.data);
   } catch(err) {
     console.warn('[SANVIC] Supabase load failed, using built-in defaults:', err);
     if(!directoryLoaded){
@@ -1665,8 +1686,15 @@ function renderTodayContent(){
     <article class="today-card">
       <div class="today-kicker">Happening today</div>
       <ul class="today-list">
-        ${d.happening.map(e=>`
+        ${d.happening.map((e,i)=>{
+          const key = todayItemKey(e, i);
+          const going = myToday.has(key);
+          const count = todayGoingCount(key);
+          const names = todayGoingNames(key);
+          const photo = todayFirstImage(e);
+          return `
           <li class="today-row">
+            ${photo ? `<div class="trow-photo"><img src="${escT(photo)}" alt="" loading="lazy" onerror="this.closest('.trow-photo').remove()"></div>` : ''}
             <div class="trow-main">
               <div class="trow-title">${escT(e.title)}</div>
               <div class="trow-meta">${escT(e.place)} · ${escT(e.time)}</div>
@@ -1674,33 +1702,38 @@ function renderTodayContent(){
             <div class="trow-chips">
               <span class="tchip">${escT(e.dist)}</span>
               <span class="tchip tchip-accent">${escT(e.vibe)}</span>
+              ${count ? `<span class="tchip tchip-going">${count} going</span>` : ''}
             </div>
+            ${names.length ? `<div class="trow-names">With ${escT(names.slice(0,3).join(', '))}${names.length>3 ? ' +'+(names.length-3) : ''}</div>` : ''}
             <div class="trow-actions">
-              <button class="tbtn tbtn-primary">Join</button>
-              <button class="tbtn">Save</button>
-              <button class="tbtn">Directions</button>
+              <button class="tbtn tbtn-primary${going?' is-on':''}" onclick="todayJoinHappening(${i})" aria-pressed="${going?'true':'false'}">${going ? 'Going' : 'Join'}</button>
+              <button class="tbtn" onclick="todaySaveHappening(${i}, this)">Save</button>
+              <button class="tbtn" onclick="todayDirectionsHappening(${i})">Directions</button>
             </div>
-          </li>
-        `).join('')}
+          </li>`;
+        }).join('')}
       </ul>
+      ${todayCreditsHtml(d.happening)}
     </article>`;
   const joinable = `
     <article class="today-card">
       <div class="today-kicker">Joinable today</div>
       <div class="today-title">Open spots, right now</div>
       <ul class="today-list">
-        ${d.joinable.map(j=>`
+        ${d.joinable.map((j,i)=>{
+          const on = myToday.has(todayJoinableKey(j));
+          return `
           <li class="today-row">
             <div class="trow-main">
               <div class="trow-title">${escT(j.title)}</div>
               <div class="trow-meta">${escT(j.detail)}</div>
             </div>
-            <div class="tavatars">${Array.from({length:j.crowd}).map((_,i)=>`<span class="tav" style="--i:${i}"></span>`).join('')}</div>
+            <div class="tavatars">${Array.from({length:j.crowd}).map((_,k)=>`<span class="tav" style="--i:${k}"></span>`).join('')}</div>
             <div class="trow-actions">
-              <button class="tbtn tbtn-primary">Ask to join</button>
+              <button class="tbtn tbtn-primary${on?' is-on':''}" onclick="todayJoinJoinable(${i})" aria-pressed="${on?'true':'false'}">${on ? 'On the list' : 'Ask to join'}</button>
             </div>
-          </li>
-        `).join('')}
+          </li>`;
+        }).join('')}
       </ul>
     </article>`;
   const weather = `
@@ -1720,13 +1753,17 @@ function renderTodayContent(){
     <article class="today-card">
       <div class="today-kicker">Fresh from locals</div>
       <ul class="today-locals">
-        ${d.locals.map(l=>`
+        ${d.locals.map(l=>{
+          const photo = todayFirstImage(l);
+          return `
           <li class="tlocal">
             <span class="tl-badge">${iconOrText(l.badge,18)}</span>
             <div><div class="tl-text">${escT(l.text)}</div><div class="tl-meta">${escT(l.biz)} · ${escT(l.meta)}</div></div>
-          </li>
-        `).join('')}
+            ${photo ? `<div class="tl-photo"><img src="${escT(photo)}" alt="" loading="lazy" onerror="this.closest('.tl-photo').remove()"></div>` : ''}
+          </li>`;
+        }).join('')}
       </ul>
+      ${todayCreditsHtml(d.locals)}
     </article>`;
   const notices = `
     <article class="today-card today-card-muted">
@@ -2109,6 +2146,121 @@ function tribeMemberNames(id){
   return (tribeMembers[String(id)]||[]).map(r=>r.display_name).filter(Boolean);
 }
 function eventRealCount(id){ return (eventInterest[String(id)]||[]).length; }
+
+// ── TODAY: WHO'S GOING ────────────────────────────────────────────────────
+// A "Happening today" item is an element of a jsonb array, not a row, so it
+// carries its own stable id instead of a foreign key. Same person-id model as
+// tribes and events: one row per (item, device), no email, no password.
+let todayInterest = {};   // { itemId: [{device_id, display_name}] }
+let myToday = new Set();
+
+function applyTodayInterestRows(rows){
+  todayInterest = {}; myToday = new Set();
+  const me = personId();
+  (rows||[]).forEach(r=>{
+    const k = String(r.item_id);
+    (todayInterest[k] = todayInterest[k] || []).push(r);
+    if(r.device_id === me) myToday.add(k);
+  });
+}
+async function loadTodayInterest(){
+  try{
+    const { data } = await sb.from('today_interest').select('item_id,device_id,display_name');
+    applyTodayInterestRows(data);
+  }catch(err){ console.warn('[SANVIC] Could not load Today interest:', err); }
+}
+function todayGoingCount(key){ return (todayInterest[String(key)]||[]).length; }
+function todayGoingNames(key){ return (todayInterest[String(key)]||[]).map(r=>r.display_name).filter(Boolean); }
+
+// The stable key for a Happening item: the id the admin wrote, or one derived
+// from the item's own text for rows saved before ids existed. The derived key
+// is written back on the next save in the Backoffice, so it stops moving then.
+function todayItemKey(e, i){
+  if(e && e.id) return String(e.id);
+  const base = [e && e.title, e && e.place, e && e.time].filter(Boolean).join(' ')
+    .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60);
+  return 't_' + (base || ('item-' + (i||0)));
+}
+function todayJoinableKey(j){
+  const base = [j && j.title, j && j.detail].filter(Boolean).join(' ')
+    .toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60);
+  return 'j_' + (base || 'open-spot');
+}
+function todayHappeningItem(i){ return (TODAY_DATA.happening || [])[i] || null; }
+
+function todayInterestToggle(key, doneMsg){
+  ensurePerson(async person=>{
+    const on = myToday.has(key);
+    try{
+      if(on){
+        const { error } = await sb.from('today_interest').delete().eq('item_id', key).eq('device_id', person.id);
+        if(error) throw error;
+        myToday.delete(key);
+      } else {
+        const { error } = await sb.from('today_interest').insert({ item_id:key, device_id:person.id, display_name:person.name, kind:person.kind });
+        if(error && error.code !== '23505') throw error;
+        myToday.add(key);
+      }
+      await loadTodayInterest();
+      renderTodayContent();
+      toast(on ? 'Removed from your list.' : (doneMsg || ("You're going, " + person.name + '.')));
+    }catch(err){
+      console.warn('[SANVIC] Today interest failed:', err);
+      toast('Could not save that just now. Try again.');
+    }
+  });
+}
+function todayJoinHappening(i){
+  const e = todayHappeningItem(i);
+  if(e) todayInterestToggle(todayItemKey(e, i));
+}
+function todayJoinJoinable(i){
+  const j = (TODAY_DATA.joinable || [])[i];
+  if(j) todayInterestToggle(todayJoinableKey(j), "You're on the list.");
+}
+
+// An admin types a place as free text ("Long Beach", "Alimanguan", "Poblacion").
+// Save and Directions need a real directory row behind it, so match loosely:
+// exact name, then either name containing the other, then the barangay.
+function findDestinationByPlace(place){
+  const norm = s => String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  const needle = norm(place);
+  if(!needle) return null;
+  const list = (typeof destinations !== 'undefined' && destinations) ? destinations : [];
+  return list.find(d=>norm(d.name) === needle)
+      || list.find(d=>norm(d.name).includes(needle))
+      || list.find(d=>needle.includes(norm(d.name)) && norm(d.name).length > 2)
+      || list.find(d=>norm(d.barangay) === needle)
+      || null;
+}
+function todaySaveHappening(i, btnEl){
+  const e = todayHappeningItem(i);
+  if(!e) return;
+  const d = findDestinationByPlace(e.place);
+  if(!d){ toast('No directory entry for ' + (e.place || 'that spot') + ' yet.'); return; }
+  toggleSavePlace(d.id, btnEl);
+}
+function todayDirectionsHappening(i){
+  const e = todayHappeningItem(i);
+  if(!e) return;
+  const d = findDestinationByPlace(e.place);
+  const target = (d && d.lat && d.lng)
+    ? (d.lat + ',' + d.lng)
+    : ((e.place || e.title || '') + ', San Vicente, Palawan');
+  window.open('https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(target), '_blank', 'noopener,noreferrer');
+}
+// Attribution travels with the card, not the row: one short line listing the
+// credits actually in use, so a licensed photo is never shown without one.
+function todayCreditsHtml(items){
+  const credits = [...new Set((items||[])
+    .map(x => (x && x.imageCredit) ? String(x.imageCredit).trim() : '')
+    .filter(Boolean))];
+  if(!credits.length) return '';
+  return `<div class="today-credits">${credits.map(escT).join(' · ')}</div>`;
+}
+function todayFirstImage(item){
+  return (item && Array.isArray(item.images) && item.images[0]) ? String(item.images[0]) : '';
+}
 function toast(msg){
   let el = document.getElementById('sanvicToast');
   if(!el){
@@ -5249,13 +5401,26 @@ async function adminSaveSplashFooter(){
 let __mediaGallery = [];    // current image URLs being edited
 let __mediaPrefix = 'item'; // storage path prefix (dest_, tribe_, event_)
 
+// One thumbnail, shared by every gallery in the Backoffice so the add / edit /
+// delete affordances cannot drift apart. Index 0 is the cover — the hero photo
+// of a destination, the thumbnail of a tribe — so every other thumb carries a
+// star that moves it to the front.
+function mediaThumbHtml(url, i, delCall, coverCall){
+  return `
+    <div class="admin-media-thumb">
+      <img src="${escT(url)}" alt="" onerror="this.parentElement.style.display='none'">
+      ${i === 0
+        ? '<span class="admin-media-cover-tag" title="This image is the cover">Cover</span>'
+        : (coverCall ? `<button class="admin-media-cover-btn" title="Make this the cover" aria-label="Make this the cover" onclick="${coverCall}">${lucideSvg('star',12)}</button>` : '')}
+      <button class="admin-media-del" title="Remove this image" aria-label="Remove this image" onclick="${delCall}">${lucideSvg('x',14)}</button>
+    </div>`;
+}
+
 function mediaGalleryHtml(containerId, prefix){
   __mediaPrefix = prefix || 'item';
-  const imgs = (__mediaGallery || []).map((url, i) => `
-    <div class="admin-media-thumb">
-      <img src="${escapeHtml(url)}" onerror="this.parentElement.style.display='none'">
-      <button class="admin-media-del" onclick="mediaRemoveImage(${i},'${containerId}')">${lucideSvg('x',14)}</button>
-    </div>`).join('');
+  const imgs = (__mediaGallery || []).map((url, i) =>
+    mediaThumbHtml(url, i, `mediaRemoveImage(${i},'${containerId}')`, `mediaMakeCover(${i},'${containerId}')`)
+  ).join('');
   return `
     <label>Gallery images (tap + to upload from device, or paste a URL)</label>
     <div class="admin-media-grid" id="${containerId}Gallery">${imgs}
@@ -5302,15 +5467,22 @@ function mediaRemoveImage(idx, containerId){
   mediaRefreshGrid(containerId);
 }
 
+// Choosing the cover is a move, not a separate field: the first gallery image
+// becomes destinations.image / tribes.thumb_url on save.
+function mediaMakeCover(idx, containerId){
+  if(idx <= 0 || idx >= (__mediaGallery || []).length) return;
+  const [url] = __mediaGallery.splice(idx, 1);
+  __mediaGallery.unshift(url);
+  mediaRefreshGrid(containerId);
+}
+
 function mediaRefreshGrid(containerId){
   const grid = document.getElementById(containerId + 'Gallery');
   if(!grid) return;
   const addBtn = grid.querySelector('.admin-media-add');
-  const thumbs = (__mediaGallery || []).map((url, i) => `
-    <div class="admin-media-thumb">
-      <img src="${escapeHtml(url)}" onerror="this.parentElement.style.display='none'">
-      <button class="admin-media-del" onclick="mediaRemoveImage(${i},'${containerId}')">${lucideSvg('x',14)}</button>
-    </div>`).join('');
+  const thumbs = (__mediaGallery || []).map((url, i) =>
+    mediaThumbHtml(url, i, `mediaRemoveImage(${i},'${containerId}')`, `mediaMakeCover(${i},'${containerId}')`)
+  ).join('');
   grid.innerHTML = thumbs + (addBtn ? addBtn.outerHTML : `<label class="admin-media-add"><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onchange="mediaUploadFile(this,'${containerId}')" hidden><span>+</span></label>`);
 }
 
@@ -5382,12 +5554,10 @@ let __todayLocalGalleries = {};
 let __todayNextHid = 0;
 let __todayNextLid = 0;
 
-function todayItemGalleryHtml(itemId, prefix, galleryMap, itemLabel){
-  const imgs = (galleryMap[itemId] || []).map((url, i) => `
-    <div class="admin-media-thumb">
-      <img src="${escapeHtml(url)}" onerror="this.parentElement.style.display='none'">
-      <button class="admin-media-del" onclick="todayRemoveItemImage('${itemId}',${i},'${prefix}')">${lucideSvg('x',14)}</button>
-    </div>`).join('');
+function todayItemGalleryHtml(itemId, prefix, galleryMap, itemLabel, credit){
+  const imgs = (galleryMap[itemId] || []).map((url, i) =>
+    mediaThumbHtml(url, i, `todayRemoveItemImage('${itemId}',${i},'${prefix}')`, `todayMakeItemCover('${itemId}',${i},'${prefix}')`)
+  ).join('');
   return `
     <label>Gallery images (tap + to upload from device, or paste a URL)</label>
     <div class="admin-media-grid" id="${prefix}${itemId}Gallery">${imgs}
@@ -5399,7 +5569,9 @@ function todayItemGalleryHtml(itemId, prefix, galleryMap, itemLabel){
     <div style="display:flex;gap:6px;margin-top:6px;">
       <input id="${prefix}${itemId}UrlInput" placeholder="Or paste image URL…" style="flex:1;padding:7px 10px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
       <button class="admin-mini-btn" onclick="todayAddItemImageUrl('${itemId}','${prefix}')">Add URL</button>
-    </div>`;
+    </div>
+    <label style="margin-top:8px;">Photo credit (only required for CC BY / CC BY-SA photos)</label>
+    <input id="${prefix}${itemId}Credit" value="${escT(credit||'')}" placeholder="e.g. Photo: Jane Doe, Wikimedia Commons, CC BY 4.0 — leave empty for public domain or CC0" style="width:100%;padding:7px 10px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">`;
 }
 
 function todayAddItemImageUrl(itemId, prefix){
@@ -5450,15 +5622,22 @@ function todayRemoveItemImage(itemId, idx, prefix){
   todayRefreshItemGallery(itemId, prefix);
 }
 
+// The first image in a Today item's gallery is the one the panel shows.
+function todayMakeItemCover(itemId, idx, prefix){
+  const list = (prefix === 'happening' ? __todayHappeningGalleries : __todayLocalGalleries)[itemId];
+  if(!list || idx <= 0 || idx >= list.length) return;
+  const [url] = list.splice(idx, 1);
+  list.unshift(url);
+  todayRefreshItemGallery(itemId, prefix);
+}
+
 function todayRefreshItemGallery(itemId, prefix){
   const grid = document.getElementById(prefix + itemId + 'Gallery');
   if(!grid) return;
   const galleryMap = prefix === 'happening' ? __todayHappeningGalleries : __todayLocalGalleries;
-  const imgs = (galleryMap[itemId] || []).map((url, i) => `
-    <div class="admin-media-thumb">
-      <img src="${escapeHtml(url)}" onerror="this.parentElement.style.display='none'">
-      <button class="admin-media-del" onclick="todayRemoveItemImage('${itemId}',${i},'${prefix}')">${lucideSvg('x',14)}</button>
-    </div>`).join('');
+  const imgs = (galleryMap[itemId] || []).map((url, i) =>
+    mediaThumbHtml(url, i, `todayRemoveItemImage('${itemId}',${i},'${prefix}')`, `todayMakeItemCover('${itemId}',${i},'${prefix}')`)
+  ).join('');
   grid.innerHTML = imgs + `
     <label class="admin-media-add">
       <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onchange="todayUploadItemImage(this,'${itemId}','${prefix}')" hidden>
@@ -5485,8 +5664,12 @@ function todayBuildHappeningCard(id, e){
   const time = e ? escapeHtml(e.time||'') : '';
   const dist = e ? escapeHtml(e.dist||'') : '';
   const vibe = e ? escapeHtml(e.vibe||'') : '';
+  // The stable id is what a "Join" is stored against. Items saved before ids
+  // existed get one derived from their own text, and it is written back on the
+  // next save so it stops moving.
+  const itemKey = todayItemKey(e, id);
   return `
-    <div class="admin-list-item" id="happeningCard_${id}">
+    <div class="admin-list-item" id="happeningCard_${id}" data-itemid="${escT(itemKey)}">
       <div class="admin-list-item-head">
         <div style="flex:1;">
           <input id="hapTitle_${id}" value="${title}" placeholder="Title" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;margin-bottom:4px;">
@@ -5501,7 +5684,7 @@ function todayBuildHappeningCard(id, e){
         </div>
         <button class="admin-mini-btn danger" onclick="todayRemoveHappening('${id}')">${lucideSvg('x',14)}</button>
       </div>
-      <div style="padding:0 8px 8px;">${todayItemGalleryHtml(id, 'happening', __todayHappeningGalleries, 'event')}</div>
+      <div style="padding:0 8px 8px;">${todayItemGalleryHtml(id, 'happening', __todayHappeningGalleries, 'event', e && e.imageCredit)}</div>
     </div>`;
 }
 
@@ -5531,7 +5714,7 @@ function todayBuildLocalCard(id, l){
         </div>
         <button class="admin-mini-btn danger" onclick="todayRemoveLocal('${id}')">${lucideSvg('x',14)}</button>
       </div>
-      <div style="padding:0 8px 8px;">${todayItemGalleryHtml(id, 'local', __todayLocalGalleries, 'tip')}</div>
+      <div style="padding:0 8px 8px;">${todayItemGalleryHtml(id, 'local', __todayLocalGalleries, 'tip', l && l.imageCredit)}</div>
     </div>`;
 }
 
@@ -5622,12 +5805,16 @@ function collectTodayHappeningItems(){
     const id = card.id.replace('happeningCard_', '');
     const title = (document.getElementById('hapTitle_' + id)||{}).value||'';
     if(!title.trim()) return;
+    const place = ((document.getElementById('hapPlace_' + id)||{}).value||'').trim();
+    const time = ((document.getElementById('hapTime_' + id)||{}).value||'').trim();
     items.push({
+      id: card.dataset.itemid || todayItemKey({ title:title.trim(), place, time }, items.length),
       title: title.trim(),
-      place: ((document.getElementById('hapPlace_' + id)||{}).value||'').trim(),
-      time: ((document.getElementById('hapTime_' + id)||{}).value||'').trim(),
+      place: place,
+      time: time,
       dist: ((document.getElementById('hapDist_' + id)||{}).value||'').trim(),
       vibe: ((document.getElementById('hapVibe_' + id)||{}).value||'').trim(),
+      imageCredit: ((document.getElementById('happening' + id + 'Credit')||{}).value||'').trim(),
       images: (__todayHappeningGalleries[id] || []).slice()
     });
   });
@@ -5646,6 +5833,7 @@ function collectTodayLocalItems(){
       biz: ((document.getElementById('locBiz_' + id)||{}).value||'').trim(),
       text: text.trim(),
       meta: ((document.getElementById('locMeta_' + id)||{}).value||'').trim(),
+      imageCredit: ((document.getElementById('local' + id + 'Credit')||{}).value||'').trim(),
       images: (__todayLocalGalleries[id] || []).slice()
     });
   });
