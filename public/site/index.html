@@ -1433,6 +1433,13 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .pv2-event-org-dot{width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#5eead4,#0f766e);display:grid;place-items:center;color:#02121b;font-size:.6rem;font-weight:700}
   .pv2-event-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:2px}
   .pv2-pricechip{font-size:.7rem;padding:4px 10px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:rgba(255,255,255,.8)}
+  /* Photo credit under a Pulse photo. The Commons licences that allow us to use
+     these photos at all require naming the author and the licence, so the line is
+     not decoration - it is the condition of use. Kept small and dim so it reads as
+     a caption rather than as content. */
+  .pv2-creditline{font-size:.58rem;line-height:1.4;color:rgba(255,255,255,.34);margin-top:4px}
+  .pv2-tribe-thumb.is-empty{display:grid;place-items:center;color:rgba(255,255,255,.18)}
+  .pv2-event .pulse-card-image{margin-top:0}
   /* Lounge */
   .pv2-lounge{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0}
   .pv2-lmsg{max-width:82%;padding:9px 12px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.05);font-size:.86rem;color:rgba(255,255,255,.9);line-height:1.4}
@@ -2049,7 +2056,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-17-today-r2';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-17-pulse-photos-r1';
 </script>
 <script src="barangays.geojson.js"></script>
 <script>

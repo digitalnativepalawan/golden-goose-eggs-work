@@ -2338,10 +2338,15 @@ function tribeCardHTML(t){
   const thumbClick = uniqueImages.length > 1
     ? `onclick="openCarousel(${JSON.stringify(uniqueImages).replace(/"/g, '&quot;')},0)"`
     : '';
-  const thumbStyle = uniqueImages.length > 1 ? 'cursor:pointer' : '';
+  // A tribe with no photo used to render an empty grey box. It now falls back to
+  // the palm mark on a tinted tile, so a card never looks broken mid-scroll.
+  const hasThumb = !!(t.thumb && String(t.thumb).trim());
+  const thumbStyle = hasThumb
+    ? `background-image:url('${escT(t.thumb)}')${uniqueImages.length > 1 ? ';cursor:pointer' : ''}`
+    : '';
   return `
   <div class="pv2-tribe">
-    <div class="pv2-tribe-thumb" style="background-image:url('${t.thumb}');${thumbStyle}" ${thumbClick}></div>
+    <div class="pv2-tribe-thumb${hasThumb ? '' : ' is-empty'}" style="${thumbStyle}" ${thumbClick}>${hasThumb ? '' : lucideSvg('palmtree',26)}</div>
     <div class="pv2-tribe-body">
       <div class="pv2-tribe-title">${t.title}</div>
       <div class="pv2-tribe-meta">
@@ -2357,6 +2362,7 @@ function tribeCardHTML(t){
         </div>
         <button class="pv2-join${mine?' on':''}" onclick="joinTribe('${t.id}')">${mine ? lucideSvg('check',13)+' Joined' : 'Join Tribe'}</button>
       </div>
+      ${t.image_credit ? `<div class="pv2-creditline">${escT(t.image_credit)}</div>` : ''}
     </div>
   </div>`;
 }
@@ -2364,12 +2370,15 @@ function eventCardHTML(e){
   const allImages = (e.images && Array.isArray(e.images) && e.images.length) ? e.images : [];
   const interested = eventRealCount(e.id);
   const mine = myEvents.has(String(e.id));
-  const imageHtml = allImages.length > 1
-    ? `<img class="pulse-card-image" src="${allImages[0]}" alt="" loading="lazy" style="cursor:pointer" onclick="openCarousel(${JSON.stringify(allImages).replace(/"/g, '&quot;')},0)" onerror="this.style.display='none'">`
+  // This used to require more than one image, so an event with a single photo -
+  // which is the normal case - rendered no photo at all. One image now renders.
+  const imageHtml = allImages.length
+    ? `<img class="pulse-card-image" src="${escT(allImages[0])}" alt="" loading="lazy"${allImages.length > 1 ? ` style="cursor:pointer" onclick="openCarousel(${JSON.stringify(allImages).replace(/"/g, '&quot;')},0)"` : ''} onerror="this.style.display='none'">`
     : '';
   return `
   <div class="pv2-event">
     ${imageHtml}
+    ${e.image_credit ? `<div class="pv2-creditline">${escT(e.image_credit)}</div>` : ''}
     <div class="pv2-event-t">${e.title}</div>
     <div class="pv2-event-org"><span class="pv2-event-org-dot">${e.org.slice(0,1)}</span>${e.org}</div>
     <div class="pv2-event-meta"><span>${lucideSvg('map-pin',12)} ${e.where}</span><span>${lucideSvg('clock',12)} ${e.when}</span></div>
@@ -5927,6 +5936,7 @@ async function adminEditTribe(id){
       </div>
       <div class="admin-field"><label>Tags (comma-separated)</label><input id="atbfTags" value="${(t.tags||[]).join(', ')}"></div>
       ${mediaGalleryHtml('atbf','tribe')}
+      <div class="admin-field"><label>Photo credit</label><input id="atbfCredit" value="${escapeHtml(t.image_credit||'')}" placeholder="Photo: Name, Wikimedia Commons, CC BY 4.0"></div>
       ${mediaVideoHtml('atbf', t.video_url, t.video_type)}
       <div class="admin-field"><label>Sort order</label><input type="number" id="atbfSort" value="${t.sort_order||0}"></div>
       <div class="admin-edit-actions">
@@ -5950,6 +5960,7 @@ async function adminSaveTribe(id){
       sub: document.getElementById('atbfSub').value.trim(),
       thumb_url: thumbUrl,
       images: images,
+      image_credit: document.getElementById('atbfCredit').value.trim() || null,
       video_url: video.url || null,
       video_type: video.type || null,
       joined: parseInt(document.getElementById('atbfJoined').value)||0,
@@ -6040,6 +6051,7 @@ async function adminEditEvent(id){
       <div class="admin-field"><label>Price</label><input id="aevfPrice" value="${escapeHtml(ev.price||'')}"></div>
       <div class="admin-field"><label>Tags (comma-separated)</label><input id="aevfTags" value="${(ev.tags||[]).join(', ')}"></div>
       ${mediaGalleryHtml('aevf','event')}
+      <div class="admin-field"><label>Photo credit</label><input id="aevfCredit" value="${escapeHtml(ev.image_credit||'')}" placeholder="Photo: Name, Wikimedia Commons, CC BY 4.0"></div>
       ${mediaVideoHtml('aevf', ev.video_url, ev.video_type)}
       <div class="admin-field"><label>Sort order</label><input type="number" id="aevfSort" value="${ev.sort_order||0}"></div>
       <div class="admin-edit-actions">
@@ -6062,6 +6074,7 @@ async function adminSaveEvent(id){
       price: document.getElementById('aevfPrice').value.trim(),
       tags: document.getElementById('aevfTags').value.split(',').map(s=>s.trim()).filter(Boolean),
       images: __mediaGallery.slice(),
+      image_credit: document.getElementById('aevfCredit').value.trim() || null,
       video_url: video.url || null,
       video_type: video.type || null,
       sort_order: parseInt(document.getElementById('aevfSort').value)||0,
