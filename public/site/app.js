@@ -428,7 +428,7 @@ async function renderDashActivity(){
 
     body.innerHTML = `<div class="dash-section-title">Activity</div>` + data.map(p=>`
       <div class="around-card" style="margin-bottom:10px;">
-        <div class="around-card-icon">📍</div>
+        <div class="around-card-icon">${lucideSvg('map-pin',18)}</div>
         <div class="around-card-body">
           <div class="around-card-name">${escapeHtml((p.text_content||'').slice(0,60))}${(p.text_content||'').length>60?'…':''}</div>
           <div class="around-card-meta">${new Date(p.created_at).toLocaleDateString()}</div>
@@ -741,12 +741,95 @@ const EXTRA_ICONS = {
   "shield": "<path d=\"M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z\"/>",
   "globe": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/><path d=\"M2 12h20\"/>"
 };
+// ── Additional Lucide icons ────────────────────────────────────────────
+// Inlined from lucide-static (Lucide — ISC licence, the same project the
+// curated set above comes from) so that no emoji is used as a UI icon.
+// Fetched from https://cdn.jsdelivr.net/npm/lucide-static/icons/<name>.svg
+// and stripped to the inner shape markup, matching the format above.
+const LUCIDE_MORE_ICONS = {
+  "banknote": "<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\" /> <circle cx=\"12\" cy=\"12\" r=\"2\" /> <path d=\"M6 12h.01M18 12h.01\" />",
+  "pizza": "<path d=\"m12 14-1 1\" /> <path d=\"m13.75 18.25-1.25 1.42\" /> <path d=\"M17.775 5.654a15.68 15.68 0 0 0-12.121 12.12\" /> <path d=\"M18.8 9.3a1 1 0 0 0 2.1 7.7\" /> <path d=\"M21.964 20.732a1 1 0 0 1-1.232 1.232l-18-5a1 1 0 0 1-.695-1.232A19.68 19.68 0 0 1 15.732 2.037a1 1 0 0 1 1.232.695z\" />",
+  "shirt": "<path d=\"M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z\" />",
+  "gauge": "<path d=\"m12 14 4-4\" /> <path d=\"M3.34 19a10 10 0 1 1 17.32 0\" />",
+  "signal": "<path d=\"M2 20h.01\" /> <path d=\"M7 20v-4\" /> <path d=\"M12 20v-8\" /> <path d=\"M17 20V8\" /> <path d=\"M22 4v16\" />",
+  "moon": "<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />",
+  "moon-star": "<path d=\"M18 5h4\" /> <path d=\"M20 3v4\" /> <path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />",
+  "sunset": "<path d=\"M12 10V2\" /> <path d=\"m4.93 10.93 1.41 1.41\" /> <path d=\"M2 18h2\" /> <path d=\"M20 18h2\" /> <path d=\"m19.07 10.93-1.41 1.41\" /> <path d=\"M22 22H2\" /> <path d=\"m16 6-4 4-4-4\" /> <path d=\"M16 18a4 4 0 0 0-8 0\" />",
+  "sunrise": "<path d=\"M12 2v8\" /> <path d=\"m4.93 10.93 1.41 1.41\" /> <path d=\"M2 18h2\" /> <path d=\"M20 18h2\" /> <path d=\"m19.07 10.93-1.41 1.41\" /> <path d=\"M22 22H2\" /> <path d=\"m8 6 4-4 4 4\" /> <path d=\"M16 18a4 4 0 0 0-8 0\" />",
+  "cloud-sun": "<path d=\"M12 2v2\" /> <path d=\"m4.93 4.93 1.41 1.41\" /> <path d=\"M20 12h2\" /> <path d=\"m19.07 4.93-1.41 1.41\" /> <path d=\"M15.947 12.65a4 4 0 0 0-5.925-4.128\" /> <path d=\"M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z\" />",
+  "cloud-rain": "<path d=\"M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242\" /> <path d=\"M16 14v6\" /> <path d=\"M8 14v6\" /> <path d=\"M12 16v6\" />",
+  "wind": "<path d=\"M12.8 19.6A2 2 0 1 0 14 16H2\" /> <path d=\"M17.5 8a2.5 2.5 0 1 1 2 4H2\" /> <path d=\"M9.8 4.4A2 2 0 1 1 11 8H2\" />",
+  "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\" />",
+  "clock": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 6v6l4 2\" />",
+  "users": "<path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\" /> <path d=\"M16 3.128a4 4 0 0 1 0 7.744\" /> <path d=\"M22 21v-2a4 4 0 0 0-3-3.87\" /> <circle cx=\"9\" cy=\"7\" r=\"4\" />",
+  "party-popper": "<path d=\"M5.8 11.3 2 22l10.7-3.79\" /> <path d=\"M4 3h.01\" /> <path d=\"M22 8h.01\" /> <path d=\"M15 2h.01\" /> <path d=\"M22 20h.01\" /> <path d=\"m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.1.86-.57 1.63-1.45 1.63h-.38c-.86 0-1.6.6-1.76 1.44L14 10\" /> <path d=\"m22 13-.82-.33c-.86-.34-1.82.2-1.98 1.11c-.11.7-.72 1.22-1.43 1.22H17\" /> <path d=\"m11 2 .33.82c.34.86-.2 1.82-1.11 1.98C9.52 4.9 9 5.52 9 6.23V7\" /> <path d=\"M11 13c1.93 1.93 2.83 4.17 2 5-.83.83-3.07-.07-5-2-1.93-1.93-2.83-4.17-2-5 .83-.83 3.07.07 5 2Z\" />",
+  "calendar": "<path d=\"M8 2v3\" /> <path d=\"M16 2v3\" /> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /> <path d=\"M3 9h18\" />",
+  "calendar-days": "<path d=\"M8 2v3\" /> <path d=\"M16 2v3\" /> <rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\" /> <path d=\"M3 9h18\" /> <path d=\"M8 13h.01\" /> <path d=\"M12 13h.01\" /> <path d=\"M16 13h.01\" /> <path d=\"M8 17h.01\" /> <path d=\"M12 17h.01\" /> <path d=\"M16 17h.01\" />",
+  "target": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <circle cx=\"12\" cy=\"12\" r=\"6\" /> <circle cx=\"12\" cy=\"12\" r=\"2\" />",
+  "trophy": "<path d=\"M10 14.66V17a1 1 0 0 1-1 1 2 2 0 0 0-2 2v2\" /> <path d=\"M14 14.66V17a1 1 0 0 0 1 1 2 2 0 0 1 2 2v2\" /> <path d=\"M17.916 10H19.5A2.5 2.5 0 0 0 22 7.5V5a1 1 0 0 0-1-1h-3\" /> <path d=\"M4 22h16\" /> <path d=\"M6 9a6 6 0 0 0 12 0V3a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1z\" /> <path d=\"M6.084 10H4.5A2.5 2.5 0 0 1 2 7.5V5a1 1 0 0 1 1-1h3\" />",
+  "gift": "<path d=\"M12 7v14\" /> <path d=\"M20 11v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-8\" /> <path d=\"M7.5 7a1 1 0 0 1 0-5A4.8 8 0 0 1 12 7a4.8 8 0 0 1 4.5-5 1 1 0 0 1 0 5\" /> <rect x=\"3\" y=\"7\" width=\"18\" height=\"4\" rx=\"1\" />",
+  "chart-column": "<path d=\"M3 3v16a2 2 0 0 0 2 2h16\" /> <path d=\"M18 17V9\" /> <path d=\"M13 17V5\" /> <path d=\"M8 17v-3\" />",
+  "map": "<path d=\"M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z\" /> <path d=\"M15 5.764v15\" /> <path d=\"M9 3.236v15\" />",
+  "luggage": "<path d=\"M6 20a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2\" /> <path d=\"M8 18V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v14\" /> <path d=\"M10 20h4\" /> <circle cx=\"16\" cy=\"20\" r=\"2\" /> <circle cx=\"8\" cy=\"20\" r=\"2\" />",
+  "backpack": "<path d=\"M4 10a4 4 0 0 1 4-4h8a4 4 0 0 1 4 4v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z\" /> <path d=\"M8 10h8\" /> <path d=\"M8 18h8\" /> <path d=\"M8 22v-6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v6\" /> <path d=\"M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2\" />",
+  "medal": "<path d=\"M7.21 15 2.66 7.14a2 2 0 0 1 .13-2.2L4.4 2.8A2 2 0 0 1 6 2h12a2 2 0 0 1 1.6.8l1.6 2.14a2 2 0 0 1 .14 2.2L16.79 15\" /> <path d=\"M11 12 5.12 2.2\" /> <path d=\"m13 12 5.88-9.8\" /> <path d=\"M8 7h8\" /> <circle cx=\"12\" cy=\"17\" r=\"5\" /> <path d=\"M12 18v-2h-.5\" />",
+  "shopping-cart": "<path d=\"m2.05 2.05 1.099-.028a1 1 0 0 1 1.008.815l2.69 14.347A1 1 0 0 0 7.83 18H18\" /> <path d=\"M4.563 5h16.435a1 1 0 0 1 .981 1.204l-1.026 6.226A2 2 0 0 1 18.962 14H6.25\" /> <circle cx=\"18\" cy=\"20\" r=\"2\" /> <circle cx=\"8\" cy=\"20\" r=\"2\" />",
+  "sailboat": "<path d=\"M10 2v15\" /> <path d=\"M7 22a4 4 0 0 1-4-4 1 1 0 0 1 1-1h16a1 1 0 0 1 1 1 4 4 0 0 1-4 4z\" /> <path d=\"M9.159 2.46a1 1 0 0 1 1.521-.193l9.977 8.98A1 1 0 0 1 20 13H4a1 1 0 0 1-.824-1.567z\" />",
+  "croissant": "<path d=\"M10.2 18H4.774a1.5 1.5 0 0 1-1.352-.97 11 11 0 0 1 .132-6.487\" /> <path d=\"M18 10.2V4.774a1.5 1.5 0 0 0-.97-1.352 11 11 0 0 0-6.486.132\" /> <path d=\"M18 5a4 3 0 0 1 4 3 2 2 0 0 1-2 2 10 10 0 0 0-5.139 1.42\" /> <path d=\"M5 18a3 4 0 0 0 3 4 2 2 0 0 0 2-2 10 10 0 0 1 1.42-5.14\" /> <path d=\"M8.709 2.554a10 10 0 0 0-6.155 6.155 1.5 1.5 0 0 0 .676 1.626l9.807 5.42a2 2 0 0 0 2.718-2.718l-5.42-9.807a1.5 1.5 0 0 0-1.626-.676\" />",
+  "martini": "<path d=\"M12 12 4.207 4.207A.707.707 0 0 1 4.707 3h14.586a.707.707 0 0 1 .5 1.207z\" /> <path d=\"M12 12v10\" /> <path d=\"M7 22h10\" />",
+  "eye-off": "<path d=\"M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49\" /> <path d=\"M14.084 14.158a3 3 0 0 1-4.242-4.242\" /> <path d=\"M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143\" /> <path d=\"m2 2 20 20\" />",
+  "eye": "<path d=\"M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0\" /> <circle cx=\"12\" cy=\"12\" r=\"3\" />",
+  "crown": "<path d=\"M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z\" /> <path d=\"M5 21h14\" />",
+  "triangle-alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\" /> <path d=\"M12 9v4\" /> <path d=\"M12 17h.01\" />",
+  "arrow-right": "<path d=\"M5 12h14\" /> <path d=\"m12 5 7 7-7 7\" />",
+  "arrow-left": "<path d=\"m12 19-7-7 7-7\" /> <path d=\"M19 12H5\" />",
+  "arrow-up-left": "<path d=\"M7 17V7h10\" /> <path d=\"M17 17 7 7\" />",
+  "arrow-up-right": "<path d=\"M7 7h10v10\" /> <path d=\"M7 17 17 7\" />",
+  "chevron-down": "<path d=\"m6 9 6 6 6-6\" />",
+  "upload": "<path d=\"M12 3v12\" /> <path d=\"m17 8-5-5-5 5\" /> <path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\" />",
+  "info": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"M12 16v-4\" /> <path d=\"M12 8h.01\" />",
+  "plus": "<path d=\"M5 12h14\" /> <path d=\"M12 5v14\" />",
+  "external-link": "<path d=\"M15 3h6v6\" /> <path d=\"M10 14 21 3\" /> <path d=\"M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6\" />",
+  "navigation": "<polygon points=\"3 11 22 2 13 21 11 13 3 11\" />",
+  "route": "<circle cx=\"6\" cy=\"19\" r=\"3\" /> <path d=\"M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15\" /> <circle cx=\"18\" cy=\"5\" r=\"3\" />",
+  "flame": "<path d=\"M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4\" />",
+  "mic": "<path d=\"M12 19v3\" /> <path d=\"M19 10v2a7 7 0 0 1-14 0v-2\" /> <rect x=\"9\" y=\"2\" width=\"6\" height=\"13\" rx=\"3\" />",
+  "beef": "<path d=\"M16.4 13.7A6.5 6.5 0 1 0 6.28 6.6c-1.1 3.13-.78 3.9-3.18 6.08A3 3 0 0 0 5 18c4 0 8.4-1.8 11.4-4.3\" /> <path d=\"m18.5 6 1.754 3.5a6.48 6.48 0 0 1-1.854 8.2C15.4 20.2 11 22 7 22a3 3 0 0 1-2.68-1.66L2.4 16.5\" /> <circle cx=\"12.5\" cy=\"8.5\" r=\"2.5\" />",
+  "ticket": "<path d=\"M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z\" /> <path d=\"M13 5v2\" /> <path d=\"M13 17v2\" /> <path d=\"M13 11v2\" />",
+  "pencil": "<path d=\"M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z\" /> <path d=\"m15 5 4 4\" />",
+  "trash-2": "<path d=\"M10 11v6\" /> <path d=\"M14 11v6\" /> <path d=\"M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6\" /> <path d=\"M3 6h18\" /> <path d=\"M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2\" />",
+  "image": "<rect width=\"18\" height=\"18\" x=\"3\" y=\"3\" rx=\"2\" ry=\"2\" /> <circle cx=\"9\" cy=\"9\" r=\"2\" /> <path d=\"m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21\" />",
+  "link": "<path d=\"M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71\" /> <path d=\"M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71\" />",
+  "circle-check": "<circle cx=\"12\" cy=\"12\" r=\"10\" /> <path d=\"m16 9-5.5 5.5L8 12\" />",
+  "badge-check": "<path d=\"M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z\" /> <path d=\"m16 9-5.5 5.5L8 12\" />",
+  "list": "<path d=\"M3 5h.01\" /> <path d=\"M3 12h.01\" /> <path d=\"M3 19h.01\" /> <path d=\"M8 5h13\" /> <path d=\"M8 12h13\" /> <path d=\"M8 19h13\" />",
+  "layout-dashboard": "<rect width=\"7\" height=\"9\" x=\"3\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"5\" x=\"14\" y=\"3\" rx=\"1\" /> <rect width=\"7\" height=\"9\" x=\"14\" y=\"12\" rx=\"1\" /> <rect width=\"7\" height=\"5\" x=\"3\" y=\"16\" rx=\"1\" />",
+  "rice": "<path d=\"M11.248 3c.273.1.808.53.747 1.36-.05.83-.938 1.2-.989 2.02-.06.78.333 1.24.727 1.62\" /> <path d=\"M16.252 3c.268.1.794.53.745 1.36-.06.83-.923 1.2-.993 2.02-.05.78.338 1.24.725 1.62\" /> <path d=\"M19.5 12 22 6\" /> <path d=\"M4 12a1 1 0 00-.99 1.133A9 9 0 0012 21a9 9 0 008.99-7.867A1 1 0 0020 12z\" /> <path d=\"M6.252 3c.268.1.794.53.745 1.36-.06.83-.923 1.2-.993 2.02-.05.78.338 1.24.735 1.62\" /> <path d=\"M7 21h10\" />",
+  "utensils-crossed": "<path d=\"m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8\" /> <path d=\"M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7\" /> <path d=\"m2.1 21.8 6.4-6.3\" /> <path d=\"m19 5-7 7\" />",
+  "scooter": "<path d=\"M21 4h-3.5l2 11.05\" /> <path d=\"M6.95 17h5.142c.523 0 .95-.406 1.063-.916a6.5 6.5 0 0 1 5.345-5.009\" /> <circle cx=\"19.5\" cy=\"17.5\" r=\"2.5\" /> <circle cx=\"4.5\" cy=\"17.5\" r=\"2.5\" />",
+  "thermometer": "<path d=\"M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z\" />",
+  "origami": "<path d=\"M12 12V4a1 1 0 0 1 1-1h6.297a1 1 0 0 1 .651 1.759l-4.696 4.025\" /> <path d=\"m12 21-7.414-7.414A2 2 0 0 1 4 12.172V6.415a1.002 1.002 0 0 1 1.707-.707L20 20.009\" /> <path d=\"m12.214 3.381 8.414 14.966a1 1 0 0 1-.167 1.199l-1.168 1.163a1 1 0 0 1-.706.291H6.351a1 1 0 0 1-.625-.219L3.25 18.8a1 1 0 0 1 .631-1.781l4.165.027\" />",
+};
+Object.assign(EXTRA_ICONS, LUCIDE_MORE_ICONS);
+
 const LUCIDE_ICONS = JSON.parse('{"anchor": "<path d=\\"M12 6v16\\" /> <path d=\\"m19 13 2-1a9 9 0 0 1-18 0l2 1\\" /> <path d=\\"M9 11h6\\" /> <circle cx=\\"12\\" cy=\\"4\\" r=\\"2\\" />", "bed-double": "<path d=\\"M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8\\" /> <path d=\\"M4 10V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v4\\" /> <path d=\\"M12 4v6\\" /> <path d=\\"M2 18h20\\" />", "bike": "<circle cx=\\"18.5\\" cy=\\"17.5\\" r=\\"3.5\\" /> <circle cx=\\"5.5\\" cy=\\"17.5\\" r=\\"3.5\\" /> <circle cx=\\"15\\" cy=\\"5\\" r=\\"1\\" /> <path d=\\"M12 17.5V14l-3-3 4-3 2 3h2\\" />", "camera": "<path d=\\"M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z\\" /> <circle cx=\\"12\\" cy=\\"13\\" r=\\"3\\" />", "car": "<path d=\\"M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2\\" /> <circle cx=\\"7\\" cy=\\"17\\" r=\\"2\\" /> <path d=\\"M9 17h6\\" /> <circle cx=\\"17\\" cy=\\"17\\" r=\\"2\\" />", "coffee": "<path d=\\"M10 2v2\\" /> <path d=\\"M14 2v2\\" /> <path d=\\"M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1\\" /> <path d=\\"M6 2v2\\" />", "compass": "<circle cx=\\"12\\" cy=\\"12\\" r=\\"10\\" /> <path d=\\"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z\\" />", "droplets": "<path d=\\"M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z\\" /> <path d=\\"M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97\\" />", "fish": "<path d=\\"M6.5 12c.94-3.46 4.94-6 8.5-6 3.56 0 6.06 2.54 7 6-.94 3.47-3.44 6-7 6s-7.56-2.53-8.5-6Z\\" /> <path d=\\"M18 12v.5\\" /> <path d=\\"M16 17.93a9.77 9.77 0 0 1 0-11.86\\" /> <path d=\\"M7 10.67C7 8 5.58 5.97 2.73 5.5c-1 1.5-1 5 .23 6.5-1.24 1.5-1.24 5-.23 6.5C5.58 18.03 7 16 7 13.33\\" /> <path d=\\"M10.46 7.26C10.2 5.88 9.17 4.24 8 3h5.8a2 2 0 0 1 1.98 1.67l.23 1.4\\" /> <path d=\\"m16.01 17.93-.23 1.4A2 2 0 0 1 13.8 21H9.5a5.96 5.96 0 0 0 1.49-3.98\\" />", "flower-2": "<path d=\\"M12 5a3 3 0 1 1 3 3m-3-3a3 3 0 1 0-3 3m3-3v1M9 8a3 3 0 1 0 3 3M9 8h1m5 0a3 3 0 1 1-3 3m3-3h-1m-2 3v-1\\" /> <circle cx=\\"12\\" cy=\\"8\\" r=\\"2\\" /> <path d=\\"M12 10v12\\" /> <path d=\\"M12 22c4.2 0 7-1.667 7-5-4.2 0-7 1.667-7 5Z\\" /> <path d=\\"M12 22c-4.2 0-7-1.667-7-5 4.2 0 7 1.667 7 5Z\\" />", "footprints": "<path d=\\"M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z\\" /> <path d=\\"M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z\\" /> <path d=\\"M16 17h4\\" /> <path d=\\"M4 13h4\\" />", "gem": "<path d=\\"M10.5 3 8 9l4 13 4-13-2.5-6\\" /> <path d=\\"M17 3a2 2 0 0 1 1.6.8l3 4a2 2 0 0 1 .013 2.382l-7.99 10.986a2 2 0 0 1-3.247 0l-7.99-10.986A2 2 0 0 1 2.4 7.8l2.998-3.997A2 2 0 0 1 7 3z\\" /> <path d=\\"M2 9h20\\" />", "heart": "<path d=\\"M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5\\" />", "landmark": "<path d=\\"M10 18v-7\\" /> <path d=\\"M11.119 2.205a2 2 0 0 1 1.762 0l7.84 3.846A.5.5 0 0 1 20.5 7h-17a.5.5 0 0 1-.22-.949z\\" /> <path d=\\"M14 18v-7\\" /> <path d=\\"M18 18v-7\\" /> <path d=\\"M3 22h18\\" /> <path d=\\"M6 18v-7\\" />", "map-pin": "<path d=\\"M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0\\" /> <circle cx=\\"12\\" cy=\\"10\\" r=\\"3\\" />", "mountain": "<path d=\\"m8 3 4 8 5-5 5 15H2L8 3z\\" />", "music": "<path d=\\"M9 18V5l12-2v13\\" /> <circle cx=\\"6\\" cy=\\"18\\" r=\\"3\\" /> <circle cx=\\"18\\" cy=\\"16\\" r=\\"3\\" />", "palmtree": "<path d=\\"M13 8c0-2.76-2.46-5-5.5-5S2 5.24 2 8h2l1-1 1 1h4\\" /> <path d=\\"M13 7.14A5.82 5.82 0 0 1 16.5 6c3.04 0 5.5 2.24 5.5 5h-3l-1-1-1 1h-3\\" /> <path d=\\"M5.89 9.71c-2.15 2.15-2.3 5.47-.35 7.43l4.24-4.25.7-.7.71-.71 2.12-2.12c-1.95-1.96-5.27-1.8-7.42.35\\" /> <path d=\\"M11 15.5c.5 2.5-.17 4.5-1 6.5h4c2-5.5-.5-12-1-14\\" />", "plane": "<path d=\\"M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z\\" />", "ship": "<path d=\\"M12 10.189V14\\" /> <path d=\\"M12 2v3\\" /> <path d=\\"M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6\\" /> <path d=\\"M19.38 20A11.6 11.6 0 0 0 21 14l-8.188-3.639a2 2 0 0 0-1.624 0L3 14a11.6 11.6 0 0 0 2.81 7.76\\" /> <path d=\\"M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1s1.2 1 2.5 1c2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1\\" />", "shopping-bag": "<path d=\\"M16 10a4 4 0 0 1-8 0\\" /> <path d=\\"M3.103 6.034h17.794\\" /> <path d=\\"M3.4 5.467a2 2 0 0 0-.4 1.2V20a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6.667a2 2 0 0 0-.4-1.2l-2-2.667A2 2 0 0 0 17 2H7a2 2 0 0 0-1.6.8z\\" />", "sparkles": "<path d=\\"M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z\\" /> <path d=\\"M20 2v4\\" /> <path d=\\"M22 4h-4\\" /> <circle cx=\\"4\\" cy=\\"20\\" r=\\"2\\" />", "star": "<path d=\\"M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z\\" />", "sun": "<circle cx=\\"12\\" cy=\\"12\\" r=\\"4\\" /> <path d=\\"M12 2v2\\" /> <path d=\\"M12 20v2\\" /> <path d=\\"m4.93 4.93 1.41 1.41\\" /> <path d=\\"m17.66 17.66 1.41 1.41\\" /> <path d=\\"M2 12h2\\" /> <path d=\\"M20 12h2\\" /> <path d=\\"m6.34 17.66-1.41 1.41\\" /> <path d=\\"m19.07 4.93-1.41 1.41\\" />", "tent": "<path d=\\"M3.5 21 14 3\\" /> <path d=\\"M20.5 21 10 3\\" /> <path d=\\"M15.5 21 12 15l-3.5 6\\" /> <path d=\\"M2 21h20\\" />", "trees": "<path d=\\"M10 10v.2A3 3 0 0 1 8.9 16H5a3 3 0 0 1-1-5.8V10a3 3 0 0 1 6 0Z\\" /> <path d=\\"M7 16v6\\" /> <path d=\\"M13 19v3\\" /> <path d=\\"M12 19h8.3a1 1 0 0 0 .7-1.7L18 14h.3a1 1 0 0 0 .7-1.7L16 9h.2a1 1 0 0 0 .8-1.7L13 3l-1.4 1.5\\" />", "umbrella": "<path d=\\"M12 13v7a2 2 0 0 0 4 0\\" /> <path d=\\"M12 2v2\\" /> <path d=\\"M20.992 13a1 1 0 0 0 .97-1.274 10.284 10.284 0 0 0-19.923 0A1 1 0 0 0 3 13z\\" />", "utensils": "<path d=\\"M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2\\" /> <path d=\\"M7 2v20\\" /> <path d=\\"M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7\\" />", "waves": "<path d=\\"M2 12q2.5 2 5 0t5 0 5 0 5 0\\" /> <path d=\\"M2 19q2.5 2 5 0t5 0 5 0 5 0\\" /> <path d=\\"M2 5q2.5 2 5 0t5 0 5 0 5 0\\" />", "wine": "<path d=\\"M8 22h8\\" /> <path d=\\"M7 10h10\\" /> <path d=\\"M12 15v7\\" /> <path d=\\"M12 15a5 5 0 0 0 5-5c0-2-.5-4-2-8H9c-1.5 4-2 6-2 8a5 5 0 0 0 5 5Z\\" />"}');
 const LUCIDE_ICON_KEYS = Object.keys(LUCIDE_ICONS);
+// Everything an admin can pick: the curated set plus the icons added later.
+const ALL_ICON_KEYS = Array.from(new Set([...LUCIDE_ICON_KEYS, ...Object.keys(EXTRA_ICONS)]));
 function lucideSvg(name, size){
   const inner = EXTRA_ICONS[name] || LUCIDE_ICONS[name] || LUCIDE_ICONS['map-pin'];
   const s = size || 16;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" class="lucide" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+}
+
+// Renders an admin-entered icon value. A Lucide name ("palmtree") becomes an
+// icon; anything else — a legacy emoji, say — is shown as text, so rows saved
+// before the icon set existed keep working.
+function iconOrText(value, size){
+  const v = String(value==null?'':value).trim();
+  if(!v) return '';
+  if(EXTRA_ICONS[v] || LUCIDE_ICONS[v]) return lucideSvg(v, size||16);
+  return escT(v);
 }
 
 // Converts a "#rrggbb" hex color into the soft translucent background
@@ -1417,10 +1500,10 @@ else initExploreInteractions();
 // ─── TODAY DAILY DATA (demo seed; DB wiring is a follow-up) ───
 const TODAY_DATA = {
   snapshot: {
-    weather: { icon:'☀️', temp:'29°C', label:'Sunny' },
+    weather: { icon:'sun', temp:'29°C', label:'Sunny' },
     sea: 'Calm swell',
     sunset: '17:52',
-    moon: { glyph:'🌔', label:'Waxing gibbous' },
+    moon: { glyph:'moon', label:'Waxing gibbous' },
     tribes: 3,
     happenings: 6
   },
@@ -1444,15 +1527,15 @@ const TODAY_DATA = {
     { title:'Van to Puerto Princesa',       detail:'1 seat left · Friday 06:00 pickup',      crowd:4 }
   ],
   weather: [
-    { icon:'🏝️', label:'Island hopping', verdict:'Good morning for it. Wind picks up after 2 PM — head out early.' },
-    { icon:'🏄', label:'Surf',            verdict:'Small and clean at Alimanguan. Fine for longboards, patient shortboarders.' },
-    { icon:'🌧️', label:'Rain risk',       verdict:'Low until early evening. A short shower possible around 18:00.' },
-    { icon:'🌊', label:'Tide',            verdict:'Low tide at 14:20 — good for tidepools, not great for shallow boat launches.' }
+    { icon:'palmtree', label:'Island hopping', verdict:'Good morning for it. Wind picks up after 2 PM — head out early.' },
+    { icon:'waves', label:'Surf',            verdict:'Small and clean at Alimanguan. Fine for longboards, patient shortboarders.' },
+    { icon:'cloud-rain', label:'Rain risk',       verdict:'Low until early evening. A short shower possible around 18:00.' },
+    { icon:'droplets', label:'Tide',            verdict:'Low tide at 14:20 — good for tidepools, not great for shallow boat launches.' }
   ],
   locals: [
-    { biz:'Long Beach Grill',   badge:'🐟', text:'Fresh yellowfin tuna just came in. Ask for kinilaw.',        meta:'Poblacion · 18m ago' },
-    { biz:'Nauti Beach Bar',    badge:'🍹', text:'2-for-1 sunset drinks, 17:00 to 18:30 only.',                meta:'Long Beach · 42m ago' },
-    { biz:'Aling Rosa Bakery',  badge:'🥖', text:'Fresh pandesal from 6 AM. Ube version back tomorrow.',       meta:'Poblacion · 2h ago' }
+    { biz:'Long Beach Grill',   badge:'fish', text:'Fresh yellowfin tuna just came in. Ask for kinilaw.',        meta:'Poblacion · 18m ago' },
+    { biz:'Nauti Beach Bar',    badge:'martini', text:'2-for-1 sunset drinks, 17:00 to 18:30 only.',                meta:'Long Beach · 42m ago' },
+    { biz:'Aling Rosa Bakery',  badge:'croissant', text:'Fresh pandesal from 6 AM. Ube version back tomorrow.',       meta:'Poblacion · 2h ago' }
   ],
   notices: [
     { text:'BPI ATM Poblacion — cash available, no queue right now.' },
@@ -1478,12 +1561,12 @@ function renderTodayContent(){
       <div class="today-kicker">Daily snapshot</div>
       <div class="today-title">San Vicente, right now</div>
       <div class="today-snap-grid">
-        <div class="today-snap"><span class="tsn-glyph">${d.snapshot.weather.icon}</span><span class="tsn-val">${escT(d.snapshot.weather.temp)}</span><span class="tsn-lbl">${escT(d.snapshot.weather.label)}</span></div>
-        <div class="today-snap"><span class="tsn-glyph">🌊</span><span class="tsn-val">${escT(d.snapshot.sea)}</span><span class="tsn-lbl">Sea</span></div>
-        <div class="today-snap"><span class="tsn-glyph">🌇</span><span class="tsn-val">${escT(d.snapshot.sunset)}</span><span class="tsn-lbl">Sunset</span></div>
-        <div class="today-snap"><span class="tsn-glyph">${d.snapshot.moon.glyph}</span><span class="tsn-val">${escT(d.snapshot.moon.label)}</span><span class="tsn-lbl">Moon</span></div>
-        <div class="today-snap"><span class="tsn-glyph">👥</span><span class="tsn-val">${tribeCount}</span><span class="tsn-lbl">Tribes forming</span></div>
-        <div class="today-snap"><span class="tsn-glyph">✨</span><span class="tsn-val">${happenCount}</span><span class="tsn-lbl">Happening today</span></div>
+        <div class="today-snap"><span class="tsn-glyph">${iconOrText(d.snapshot.weather.icon,20)}</span><span class="tsn-val">${escT(d.snapshot.weather.temp)}</span><span class="tsn-lbl">${escT(d.snapshot.weather.label)}</span></div>
+        <div class="today-snap"><span class="tsn-glyph">${lucideSvg('waves',20)}</span><span class="tsn-val">${escT(d.snapshot.sea)}</span><span class="tsn-lbl">Sea</span></div>
+        <div class="today-snap"><span class="tsn-glyph">${lucideSvg('sunset',20)}</span><span class="tsn-val">${escT(d.snapshot.sunset)}</span><span class="tsn-lbl">Sunset</span></div>
+        <div class="today-snap"><span class="tsn-glyph">${iconOrText(d.snapshot.moon.glyph,20)}</span><span class="tsn-val">${escT(d.snapshot.moon.label)}</span><span class="tsn-lbl">Moon</span></div>
+        <div class="today-snap"><span class="tsn-glyph">${lucideSvg('users',20)}</span><span class="tsn-val">${tribeCount}</span><span class="tsn-lbl">Tribes forming</span></div>
+        <div class="today-snap"><span class="tsn-glyph">${lucideSvg('sparkles',20)}</span><span class="tsn-val">${happenCount}</span><span class="tsn-lbl">Happening today</span></div>
       </div>
     </article>`;
   const pick = `
@@ -1496,7 +1579,7 @@ function renderTodayContent(){
             <div class="tnode-label">${escT(n.label)}</div>
             <div class="tnode-sub">${escT(n.sub)}</div>
           </div>
-          ${i<d.talaPick.path.length-1?'<div class="today-arrow">→</div>':''}
+          ${i<d.talaPick.path.length-1?'<div class="today-arrow">'+lucideSvg('arrow-right',16)+'</div>':''}
         `).join('')}
       </div>
     </article>`;
@@ -1549,7 +1632,7 @@ function renderTodayContent(){
       <ul class="today-verdicts">
         ${d.weather.map(w=>`
           <li class="tverdict">
-            <span class="tv-icon">${w.icon}</span>
+            <span class="tv-icon">${iconOrText(w.icon,18)}</span>
             <div><div class="tv-label">${escT(w.label)}</div><div class="tv-text">${escT(w.verdict)}</div></div>
           </li>
         `).join('')}
@@ -1561,7 +1644,7 @@ function renderTodayContent(){
       <ul class="today-locals">
         ${d.locals.map(l=>`
           <li class="tlocal">
-            <span class="tl-badge">${l.badge}</span>
+            <span class="tl-badge">${iconOrText(l.badge,18)}</span>
             <div><div class="tl-text">${escT(l.text)}</div><div class="tl-meta">${escT(l.biz)} · ${escT(l.meta)}</div></div>
           </li>
         `).join('')}
@@ -1571,7 +1654,7 @@ function renderTodayContent(){
     <article class="today-card today-card-muted">
       <div class="today-kicker">Small notices</div>
       <ul class="today-notices">
-        ${d.notices.map(n=>`<li class="tnotice"><span class="tn-glyph">⚠︎</span><span>${escT(n.text)}</span></li>`).join('')}
+        ${d.notices.map(n=>`<li class="tnotice"><span class="tn-glyph">${lucideSvg('triangle-alert',14)}</span><span>${escT(n.text)}</span></li>`).join('')}
       </ul>
     </article>`;
   host.innerHTML = snap + pick + happening + joinable + weather + locals + notices;
@@ -1587,18 +1670,18 @@ let currentDest = null;
 // DEFAULT_NEARBY_PLACES below is only the offline fallback.
 const DEFAULT_NEARBY_PLACES = {
   "Poblacion": [
-    { name:"Tienda ni Aling Rosa", cat:"shop", desc:"Sari-sari store, snacks & drinks", dist:"Poblacion town", icon:"🛒" },
-    { name:"Long Beach Grill", cat:"food", desc:"Grilled seafood, beachfront seating", dist:"Poblacion town", icon:"🍽️" },
-    { name:"Motorbike Rental Hub", cat:"service", desc:"Daily & weekly rentals", dist:"Poblacion town", icon:"🛵" }
+    { name:"Tienda ni Aling Rosa", cat:"shop", desc:"Sari-sari store, snacks & drinks", dist:"Poblacion town", icon:"shopping-cart" },
+    { name:"Long Beach Grill", cat:"food", desc:"Grilled seafood, beachfront seating", dist:"Poblacion town", icon:"utensils" },
+    { name:"Motorbike Rental Hub", cat:"service", desc:"Daily & weekly rentals", dist:"Poblacion town", icon:"scooter" }
   ],
   "Port Barton": [
-    { name:"Jambalaya Cajun Café", cat:"food", desc:"Cajun-Filipino fusion, fast wifi", dist:"Port Barton town", icon:"🍽️" },
-    { name:"Ballesteros General Store", cat:"shop", desc:"Supplies, snacks, sunscreen", dist:"Port Barton town", icon:"🛒" },
-    { name:"NFH Port Barton Dive Club", cat:"service", desc:"PADI training & equipment", dist:"Port Barton town", icon:"🤿" }
+    { name:"Jambalaya Cajun Café", cat:"food", desc:"Cajun-Filipino fusion, fast wifi", dist:"Port Barton town", icon:"utensils" },
+    { name:"Ballesteros General Store", cat:"shop", desc:"Supplies, snacks, sunscreen", dist:"Port Barton town", icon:"shopping-cart" },
+    { name:"NFH Port Barton Dive Club", cat:"service", desc:"PADI training & equipment", dist:"Port Barton town", icon:"waves" }
   ],
   "Alimanguan": [
-    { name:"Alimanguan Boat Co-op", cat:"service", desc:"Island-hopping boat hire", dist:"At the dock", icon:"🛶" },
-    { name:"Beachside Carinderia", cat:"food", desc:"Home-style Filipino meals", dist:"Alimanguan", icon:"🍽️" }
+    { name:"Alimanguan Boat Co-op", cat:"service", desc:"Island-hopping boat hire", dist:"At the dock", icon:"sailboat" },
+    { name:"Beachside Carinderia", cat:"food", desc:"Home-style Filipino meals", dist:"Alimanguan", icon:"utensils" }
   ]
 };
 
@@ -1614,7 +1697,7 @@ function applyNearbyPlacesFromRows(rows){
   const next = {};
   rows.forEach(r=>{
     if(!next[r.barangay]) next[r.barangay] = [];
-    next[r.barangay].push({ id:r.id, name:r.name, cat:r.category, desc:r.description, dist:r.distance_label, icon:r.icon||'📍' });
+    next[r.barangay].push({ id:r.id, name:r.name, cat:r.category, desc:r.description, dist:r.distance_label, icon:r.icon||'map-pin' });
   });
   nearbyPlacesByBarangay = next;
 }
@@ -1670,7 +1753,7 @@ function renderAroundList(){
 
   list.innerHTML = filtered.map(p => `
     <div class="around-card">
-      <div class="around-card-icon">${p.icon}</div>
+      <div class="around-card-icon">${iconOrText(p.icon,20)}</div>
       <div class="around-card-body">
         <div class="around-card-name">${escapeHtml(p.name)}</div>
         <div class="around-card-meta">${escapeHtml(p.desc)}</div>
@@ -1716,18 +1799,18 @@ async function loadPulseCategoriesFromDB(){
 
 const PULSE_POSTS = [
   { id:1, cat:'food', name:'Alex', avatar:'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=100&h=100&fit=crop&q=70', time:'3m ago', text:'Fresh tuna arrived at the market!', location:'Poblacion Public Market', image:'assets/pulse/street-food-skewers.jpg', likes:12, comments:5 },
-  { id:2, cat:'hidden', name:'Sophie', avatar:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&q=70', time:'8m ago', text:'Crystal clear water today at Bigaho Falls 💧', location:'Bigaho Falls', image:'assets/pulse/kayak-lagoon.jpg', likes:18, comments:7 },
+  { id:2, cat:'hidden', name:'Sophie', avatar:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&q=70', time:'8m ago', text:'Crystal clear water today at Bigaho Falls', location:'Bigaho Falls', image:'assets/pulse/kayak-lagoon.jpg', likes:18, comments:7 },
   { id:3, cat:'island', name:'Jon', avatar:'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&q=70', time:'12m ago', text:'Looking for 2 more people to share a private boat tomorrow.', tag:'Island Hopping', avatars:3, likes:6, comments:3 },
   { id:4, cat:'all', name:'Local Guide – Jun', time:'15m ago', admin:true, text:'If you\'re heading to Port Barton, bring cash. ATM offline.', location:'Port Barton', likes:9, comments:2 },
-  { id:5, cat:'all', name:'Maya', avatar:'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&fit=crop&q=70', time:'18m ago', text:'Best sunset right now at Long Beach 🌅 Come and join!', location:'Long Beach', image:'assets/pulse/island-boats-beach.jpg', likes:24, comments:11 },
+  { id:5, cat:'all', name:'Maya', avatar:'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&fit=crop&q=70', time:'18m ago', text:'Best sunset right now at Long Beach. Come and join!', location:'Long Beach', image:'assets/pulse/island-boats-beach.jpg', likes:24, comments:11 },
   { id:6, cat:'surf', name:'Diego', avatar:'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop&q=70', time:'24m ago', text:'Clean 2-3ft sets at Alimanguan this morning, light offshore wind. Good for beginners right now.', location:'Alimanguan Beach', likes:15, comments:4 },
   { id:7, cat:'events', name:'Beach Bar Co.', time:'35m ago', admin:true, text:'Live acoustic set tonight from 7pm, free entry. Come early for sunset seats.', location:'Long Beach', likes:21, comments:6 },
-  { id:8, cat:'food', name:'Pia', avatar:'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&q=70', time:'41m ago', text:'Night market has the best halo-halo right now, ube version is back 🍧', location:'Poblacion Night Market', image:'assets/pulse/bulalo-boodle.jpg', likes:14, comments:3 },
+  { id:8, cat:'food', name:'Pia', avatar:'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&q=70', time:'41m ago', text:'Night market has the best halo-halo right now, ube version is back.', location:'Poblacion Night Market', image:'assets/pulse/bulalo-boodle.jpg', likes:14, comments:3 },
   { id:9, cat:'hidden', name:'Marco', avatar:'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&q=70', time:'52m ago', text:'Found a quiet tide pool past the rocks at Bato ni Ningning, perfect for sunset photos and almost nobody there.', location:'Bato ni Ningning', likes:19, comments:8 },
   { id:10, cat:'island', name:'Tara', avatar:'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&q=70', time:'1h ago', text:'Anyone heading to Port Barton this weekend? Let\'s share a ride and explore together!', location:'Port Barton', image:'assets/pulse/island-boats-aerial.jpg', likes:8, comments:6 },
   { id:11, cat:'all', name:'Carlos', avatar:'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=100&h=100&fit=crop&q=70', time:'1h ago', text:'Lost a small black drone near Long Beach this afternoon. If found please message — happy to reward!', location:'Long Beach', likes:5, comments:9 },
   { id:12, cat:'surf', name:'Diego', avatar:'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop&q=70', time:'2h ago', text:'Tide is dropping fast, current picking up past the point. Be careful past 5pm today.', location:'Alimanguan Beach', likes:11, comments:1 },
-  { id:13, cat:'food', name:'Reyna', avatar:'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&fit=crop&q=70', time:'3h ago', text:'Boodle fight with the whole barangay tonight! Bring your appetite, everyone\'s welcome 🐟', location:'Poblacion', image:'assets/pulse/boodle-fight-fish.jpg', likes:27, comments:9 }
+  { id:13, cat:'food', name:'Reyna', avatar:'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&fit=crop&q=70', time:'3h ago', text:'Boodle fight with the whole barangay tonight! Bring your appetite, everyone\'s welcome.', location:'Poblacion', image:'assets/pulse/boodle-fight-fish.jpg', likes:27, comments:9 }
 ];
 
 let pulseCategory = 'all';
@@ -1743,24 +1826,24 @@ const PV2_AV = [
   'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=80&h=80&fit=crop&q=70',
 ];
 const PULSE_TRIBES = [
-  { id:'t1', title:'Sunset Chasers 🌅', where:'Long Beach', when:'Today, 5:30 PM', sub:'Sunset, drinks, photos & good vibes.', cap:6, joined:4, extra:2, tags:['Sunset'],
+  { id:'t1', title:'Sunset Chasers', where:'Long Beach', when:'Today, 5:30 PM', sub:'Sunset, drinks, photos & good vibes.', cap:6, joined:4, extra:2, tags:['Sunset'],
     thumb:'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=200&h=260&fit=crop&q=70' },
-  { id:'t2', title:'Island Hopping Tomorrow 🚣', where:'Port Barton', when:'Tomorrow, 8:00 AM', sub:'3 island stops, crystal water.', cap:6, joined:4, extra:1, tags:['Island Hopping'], spots:2, warn:true,
+  { id:'t2', title:'Island Hopping Tomorrow', where:'Port Barton', when:'Tomorrow, 8:00 AM', sub:'3 island stops, crystal water.', cap:6, joined:4, extra:1, tags:['Island Hopping'], spots:2, warn:true,
     thumb:'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=200&h=260&fit=crop&q=70' },
-  { id:'t3', title:'Sunset Drinks 🍸', where:'Poblacion', when:'Today, 6:00 PM', sub:"Let's catch the golden hour.", cap:5, joined:4, extra:3, tags:['Sunset','Food & Drinks','Nightlife'],
+  { id:'t3', title:'Sunset Drinks', where:'Poblacion', when:'Today, 6:00 PM', sub:"Let's catch the golden hour.", cap:5, joined:4, extra:3, tags:['Sunset','Food & Drinks','Nightlife'],
     thumb:'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=200&h=260&fit=crop&q=70' },
-  { id:'t4', title:'Sunrise Surf Crew 🌊', where:'Alimanguan', when:'Tomorrow, 6:00 AM', sub:'Waves, coffee, go!', cap:3, joined:4, extra:1, tags:['Surf'],
+  { id:'t4', title:'Sunrise Surf Crew', where:'Alimanguan', when:'Tomorrow, 6:00 AM', sub:'Waves, coffee, go!', cap:3, joined:4, extra:1, tags:['Surf'],
     thumb:'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=200&h=260&fit=crop&q=70' },
-  { id:'t5', title:'Shared Ride to Port Barton 🚐', where:'Poblacion', when:'Tomorrow, 10:00 AM', sub:"2 seats open. Let's split gas!", cap:0, joined:4, extra:1, tags:['Transport'], seatsOpen:2, ok:true,
+  { id:'t5', title:'Shared Ride to Port Barton', where:'Poblacion', when:'Tomorrow, 10:00 AM', sub:"2 seats open. Let's split gas!", cap:0, joined:4, extra:1, tags:['Transport'], seatsOpen:2, ok:true,
     thumb:'https://images.unsplash.com/photo-1519638831568-d9897f54ed69?w=200&h=260&fit=crop&q=70' },
 ];
 const PULSE_EVENTS = [
-  { id:'e1', title:'🎉 Full Moon Party at Baybay', org:'Baybay Beach Club', where:'Baybay Beach', when:'Tonight, 9:00 PM', price:'Free entry', tags:['Nightlife'] },
-  { id:'e2', title:'🍖 Lechon by the Beach', org:'Sunset Resort', where:'Sunset Resort', when:'Today, 6:00 PM', price:'₱650 / plate', tags:['Food & Drinks'] },
-  { id:'e3', title:'🎸 Acoustic Night in Poblacion', org:'The Deck', where:'Poblacion', when:'Tonight, 7:30 PM', price:'No cover', tags:['Nightlife','Food & Drinks'] },
+  { id:'e1', title:'Full Moon Party at Baybay', org:'Baybay Beach Club', where:'Baybay Beach', when:'Tonight, 9:00 PM', price:'Free entry', tags:['Nightlife'] },
+  { id:'e2', title:'Lechon by the Beach', org:'Sunset Resort', where:'Sunset Resort', when:'Today, 6:00 PM', price:'₱650 / plate', tags:['Food & Drinks'] },
+  { id:'e3', title:'Acoustic Night in Poblacion', org:'The Deck', where:'Poblacion', when:'Tonight, 7:30 PM', price:'No cover', tags:['Nightlife','Food & Drinks'] },
 ];
 const PULSE_LOUNGE = [
-  { id:'l1', name:'Marco', text:'Hey! Anyone at Long Beach right now? Weather is unreal 🌤️' },
+  { id:'l1', name:'Marco', text:'Hey! Anyone at Long Beach right now? Weather is unreal.' },
   { id:'l2', name:'Tara', text:'Just got to Port Barton — where should I grab lunch?' },
   { id:'l3', name:'Kai', text:'Board rental at Alimanguan is 400/day fyi.' },
 ];
@@ -1888,7 +1971,7 @@ function eventCardHTML(e){
     ${imageHtml}
     <div class="pv2-event-t">${e.title}</div>
     <div class="pv2-event-org"><span class="pv2-event-org-dot">${e.org.slice(0,1)}</span>${e.org}</div>
-    <div class="pv2-event-meta"><span>📍 ${e.where}</span><span>🕒 ${e.when}</span></div>
+    <div class="pv2-event-meta"><span>${lucideSvg('map-pin',12)} ${e.where}</span><span>${lucideSvg('clock',12)} ${e.when}</span></div>
     <div class="pv2-event-foot">
       ${e.price ? `<span class="pv2-pricechip">${e.price}</span>` : '<span></span>'}
       <button class="pv2-join" onclick="interestedEvent('${e.id}')">I'm Interested</button>
@@ -1898,7 +1981,7 @@ function eventCardHTML(e){
 
 function emptyStateHTML(){
   return `<div class="pv2-empty">
-    <div style="font-size:1.6rem">🤫</div>
+    <div style="display:flex;justify-content:center;color:rgba(255,255,255,.4)">${lucideSvg('eye-off',28)}</div>
     <div>Quiet for now. Start the first tribe and see who joins!</div>
     <button class="pv2-cta" onclick="selectPulseView('form')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Form Your Tribe</button>
   </div>`;
@@ -1913,14 +1996,14 @@ function renderPulseBody(){
     body.innerHTML = `
       <div class="pv2-listhead">
         <div class="pv2-listhead-l">
-          <div class="pv2-listhead-t">👥 Active Tribes</div>
+          <div class="pv2-listhead-t">${lucideSvg('users',15)} Active Tribes</div>
           <div class="pv2-listhead-s">Groups of travelers planning something together.</div>
         </div>
         <button class="pv2-viewall">View all ›</button>
       </div>
       ${list.map(tribeCardHTML).join('')}
       <div class="pv2-footbanner">
-        <div class="pv2-footbanner-i">👥</div>
+        <div class="pv2-footbanner-i">${lucideSvg('users',18)}</div>
         <div class="pv2-footbanner-body">
           <div class="pv2-footbanner-t">Can't find what you're looking for?</div>
           <div class="pv2-footbanner-s">Start a tribe and see who joins!</div>
@@ -1931,7 +2014,7 @@ function renderPulseBody(){
     const list = PULSE_EVENTS.filter(matchesCat);
     if(!list.length){ body.innerHTML = emptyStateHTML(); return; }
     body.innerHTML = `
-      <div class="pv2-listhead"><div class="pv2-listhead-l"><div class="pv2-listhead-t">🎉 Events &amp; Happenings</div><div class="pv2-listhead-s">Verified organizers only.</div></div></div>
+      <div class="pv2-listhead"><div class="pv2-listhead-l"><div class="pv2-listhead-t">${lucideSvg('party-popper',15)} Events &amp; Happenings</div><div class="pv2-listhead-s">Verified organizers only.</div></div></div>
       ${list.map(eventCardHTML).join('')}`;
   } else if(pulseView==='lounge'){
     renderPulseLounge();
@@ -2029,7 +2112,7 @@ function wizCreate(){
   const whereLabel = formDraft.wherePick==='current' ? 'Current map area' : (formDraft.wherePick==='type' ? formDraft.whereText : 'Chosen place');
   const whenLabel = formDraft.when==='custom' ? formDraft.whenCustom.replace('T',', ') : formDraft.when;
   PULSE_TRIBES.unshift({
-    id:'t_'+Date.now(), title:formDraft.plan+' 🆕', where:whereLabel, when:whenLabel, sub:formDraft.note||'Just formed.',
+    id:'t_'+Date.now(), title:formDraft.plan, where:whereLabel, when:whenLabel, sub:formDraft.note||'Just formed.',
     cap:formDraft.size, joined:1, extra:0, tags:[formDraft.plan],
     thumb:'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=200&h=260&fit=crop&q=70'
   });
@@ -3466,7 +3549,7 @@ function adminDestCatFormHtml(){
   const isNew = editingDestCatId === 'new';
   const c = isNew ? {key:'',label:'',color:'#0ea5e9',icon:'map-pin'} : { key: editingDestCatId, ...catStyle[editingDestCatId] };
   const currentIcon = c.icon || 'map-pin';
-  const iconGrid = LUCIDE_ICON_KEYS.map(name=>{
+  const iconGrid = ALL_ICON_KEYS.map(name=>{
     const sel = name === currentIcon ? ' is-selected' : '';
     return `<button type="button" class="sv-icon-opt${sel}" data-icon="${name}" onclick="adminPickIcon('${name}')" title="${name}">${lucideSvg(name,18)}</button>`;
   }).join('');
@@ -3494,10 +3577,17 @@ function adminDestCatFormHtml(){
     </div>`;
 }
 
-function adminPickIcon(name){
-  const f = document.getElementById('dcfIcon'); if(!f) return;
+function adminPickIcon(name, targetId){
+  const t = targetId || 'dcfIcon';
+  const f = document.getElementById(t); if(!f) return;
   f.value = name;
-  document.querySelectorAll('.sv-icon-opt').forEach(b=>b.classList.toggle('is-selected', b.dataset.icon===name));
+  const scope = f.closest('.admin-edit-box') || document;
+  scope.querySelectorAll('.sv-icon-opt').forEach(b=>b.classList.toggle('is-selected', b.dataset.icon===name));
+  if(t === 'npfIcon'){
+    const lbl = document.getElementById('npfIconName'); if(lbl) lbl.textContent = name;
+    const prev = document.getElementById('npfIconPreview'); if(prev) prev.innerHTML = lucideSvg(name,18);
+    return;
+  }
   const lbl = document.getElementById('dcfIconName'); if(lbl) lbl.textContent = name;
   adminRefreshIconPreview();
 }
@@ -3589,7 +3679,7 @@ function adminNearbyPanelHtml(){
         <div class="admin-list-item">
           <div class="admin-list-item-head">
             <div onclick="adminEditNearby(${p.id})" style="flex:1;cursor:pointer;display:flex;align-items:center;gap:10px;">
-              <span style="font-size:1.1rem;">${escapeHtml(p.icon)}</span>
+              <span style="display:inline-flex;color:var(--ocean-teal-light)">${iconOrText(p.icon,18)}</span>
               <div>
                 <strong>${escapeHtml(p.name)}</strong> <span style="color:var(--white-dim);font-size:.68rem;">(${NEARBY_CAT_LABELS[p.cat]||p.cat})</span><br>
                 <span>${escapeHtml(p.desc)}</span>
@@ -3615,7 +3705,12 @@ function adminNearbyFormHtml(){
       if(found){ p = {...found, barangay:b}; break; }
     }
   }
-  p = p || {barangay:'', name:'', cat:'food', desc:'', dist:'', icon:'📍'};
+  p = p || {barangay:'', name:'', cat:'food', desc:'', dist:'', icon:'utensils'};
+  const currentNearbyIcon = (p.icon && (EXTRA_ICONS[p.icon] || LUCIDE_ICONS[p.icon])) ? p.icon : 'utensils';
+  const nearbyIconGrid = ALL_ICON_KEYS.map(name=>{
+    const sel = name === currentNearbyIcon ? ' is-selected' : '';
+    return `<button type="button" class="sv-icon-opt${sel}" data-icon="${name}" onclick="adminPickIcon('${name}','npfIcon')" title="${name}">${lucideSvg(name,18)}</button>`;
+  }).join('');
   return `
     <div class="admin-edit-box">
       <div class="admin-field">
@@ -3633,7 +3728,15 @@ function adminNearbyFormHtml(){
             <option value="stay" ${p.cat==='stay'?'selected':''}>Stay</option>
           </select>
         </div>
-        <div class="admin-field"><label>Icon (single emoji)</label><input id="npfIcon" value="${escapeHtml(p.icon)}" placeholder="🍽️"></div>
+        <div class="admin-field">
+          <label>Icon</label>
+          <input id="npfIcon" type="hidden" value="${escapeHtml(currentNearbyIcon)}">
+          <div class="sv-icon-preview-row">
+            <span id="npfIconPreview" class="sv-pin-preview" style="--pin-color:#0ea5e9">${lucideSvg(currentNearbyIcon,18)}</span>
+            <span style="font-size:.72rem;color:var(--white-dim);">Preview · <span id="npfIconName">${escapeHtml(currentNearbyIcon)}</span></span>
+          </div>
+          <div class="sv-icon-grid">${nearbyIconGrid}</div>
+        </div>
       </div>
       <div class="admin-field"><label>Short description</label><input id="npfDesc" value="${escapeHtml(p.desc)}" placeholder="e.g. Grilled seafood, beachfront seating"></div>
       <div class="admin-field"><label>Distance / location label</label><input id="npfDist" value="${escapeHtml(p.dist)}" placeholder="e.g. Poblacion town, 5 min walk"></div>
@@ -3652,7 +3755,7 @@ async function adminSaveNearby(id){
   const barangay = document.getElementById('npfBarangay').value.trim();
   const name = document.getElementById('npfName').value.trim();
   const cat = document.getElementById('npfCat').value;
-  const icon = document.getElementById('npfIcon').value.trim() || '📍';
+  const icon = document.getElementById('npfIcon').value.trim() || 'utensils';
   const desc = document.getElementById('npfDesc').value.trim();
   const dist = document.getElementById('npfDist').value.trim();
   if(!barangay || !name){ alert('Barangay and name are both required.'); return; }
@@ -3915,14 +4018,14 @@ function renderAdminDest(){
   html += `
     <div class="admin-dir-tools-label">Directory tools</div>
     <div class="admin-section-toggle" onclick="adminToggleDestCatPanel()">
-      <span>${lucideSvg('tag',13)} Manage categories ${destCatPanelOpen?'▾':'▸'}</span>
+      <span>${lucideSvg('tag',13)} Manage categories ${lucideSvg(destCatPanelOpen?'chevron-down':'chevron-right',13)}</span>
       <span class="admin-section-count">${Object.keys(catStyle).length}</span>
     </div>
     <div id="adfCatPanel" style="display:${destCatPanelOpen?'':'none'}">
       ${adminDestCatPanelHtml()}
     </div>
     <div class="admin-section-toggle" onclick="adminToggleNearbyPanel()" style="margin-top:8px;">
-      <span>${lucideSvg('map-pin',13)} Manage "What's around me" ${nearbyPanelOpen?'▾':'▸'}</span>
+      <span>${lucideSvg('map-pin',13)} Manage "What's around me" ${lucideSvg(nearbyPanelOpen?'chevron-down':'chevron-right',13)}</span>
       <span class="admin-section-count">${Object.values(nearbyPlacesByBarangay).reduce((n,arr)=>n+arr.length,0)}</span>
     </div>
     <div id="adfNearbyPanel" style="display:${nearbyPanelOpen?'':'none'}">
@@ -3930,7 +4033,7 @@ function renderAdminDest(){
     </div>
     ${typeof adminKmzPanelHtml === 'function' ? `
     <div class="admin-section-toggle" onclick="adminKmzTogglePanel()" style="margin-top:8px;">
-      <span>${lucideSvg('upload',13)} Import places from KMZ / KML ${kmzPanelOpen?'▾':'▸'}</span>
+      <span>${lucideSvg('upload',13)} Import places from KMZ / KML ${lucideSvg(kmzPanelOpen?'chevron-down':'chevron-right',13)}</span>
       <span class="admin-section-count">${kmzRows.length||''}</span>
     </div>
     <div id="adfKmzPanel" style="display:${kmzPanelOpen?'':'none'}">
@@ -5105,7 +5208,7 @@ function todayBuildLocalCard(id, l){
       <div class="admin-list-item-head">
         <div style="flex:1;">
           <div class="admin-grid-2">
-            <input id="locBadge_${id}" value="${badge}" placeholder="Badge (emoji)" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+            <input id="locBadge_${id}" value="${badge}" placeholder="Icon name (e.g. fish, martini, croissant)" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
             <input id="locBiz_${id}" value="${biz}" placeholder="Business name" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
           </div>
           <input id="locText_${id}" value="${text}" placeholder="Tip text" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;margin-top:4px;">
@@ -5171,7 +5274,7 @@ async function renderAdminToday(){
       <textarea id="atJoinable" rows="3">${joinable.map(j=> [j.title,j.detail,j.crowd].join(' | ')).join('\n')}</textarea>
     </div>
     <div class="admin-field">
-      <label>Weather verdicts (one per line: Icon | Label | Verdict)</label>
+      <label>Weather verdicts (one per line: Icon | Label | Verdict — icon is a Lucide name, e.g. palmtree, waves, cloud-rain, droplets)</label>
       <textarea id="atWeather" rows="3">${weather.map(w=> [w.icon,w.label,w.verdict].join(' | ')).join('\n')}</textarea>
     </div>
     <div class="admin-field">
@@ -5257,7 +5360,7 @@ async function adminSaveToday(){
     ];
     const { error } = await sb.from('today_content').upsert(rows, { onConflict:'key' });
     if(error) throw error;
-    status.innerHTML = '<span style="color:#5eead4">✓ Saved</span>';
+    status.innerHTML = '<span style="color:#5eead4;display:inline-flex;align-items:center;gap:4px">' + lucideSvg('check',12) + ' Saved</span>';
     TODAY_DATA.talaPick = { intro: pickIntro, path: pickPath };
     TODAY_DATA.happening = happening;
     TODAY_DATA.joinable = joinable;
@@ -5770,7 +5873,7 @@ function renderAdminTala(){
   const body = document.getElementById('adminBody');
   let html = `
     <div class="admin-section-toggle" onclick="adminToggleSuggestionsPanel()">
-      <span>${lucideSvg('zap',13)} Quick suggestion chips ${talaSuggestionsOpen?'▾':'▸'}</span>
+      <span>${lucideSvg('zap',13)} Quick suggestion chips ${lucideSvg(talaSuggestionsOpen?'chevron-down':'chevron-right',13)}</span>
       <span class="admin-section-count">${talaSuggestions.length}</span>
     </div>
     <div id="adfSuggestionsPanel" style="display:${talaSuggestionsOpen?'':'none'}">
@@ -5783,7 +5886,7 @@ function renderAdminTala(){
     </div>
     <div class="admin-grid-2" style="margin-bottom:14px;">
       <button class="admin-add-btn" style="margin-bottom:0;" onclick="adminNewTala()">+ Add response</button>
-      <button class="admin-add-btn" style="margin-bottom:0;" onclick="document.getElementById('adfBulkFile').click()">⇧ Upload .txt files</button>
+      <button class="admin-add-btn" style="margin-bottom:0;" onclick="document.getElementById('adfBulkFile').click()">${lucideSvg('upload',13)} Upload .txt files</button>
     </div>
     <input type="file" id="adfBulkFile" accept=".txt,text/plain" multiple style="display:none" onchange="adminHandleBulkFiles(event)">
     <div id="adfBulkQueue"></div>`;
@@ -6373,10 +6476,10 @@ let HUNT_REWARDS = [
 // MY SANVIC — private pocket panel
 // ═══════════════════════════════════════════════════════
 let MYSV_UPCOMING = [
-  { id:'u1', title:'Sunset Chasers 🌅', meta:'5:30 PM • Long Beach', badge:'Today', badgeStyle:'solid', avatars:4, more:3, cta:'Open Tribe Chat', action:'openChat', images:['https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=75','https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?w=400&q=75'], grad:'linear-gradient(135deg,#f97316,#7c2d12)' },
-  { id:'u2', title:'Lechon by the Beach 🍖', meta:'6:00 PM • Sunset Resort', badge:'Today', badgeStyle:'solid', cta:'View Details', action:'details', images:['https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=75','https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=75'], grad:'linear-gradient(135deg,#d97706,#78350f)' },
-  { id:'u3', title:'Island Hopping Tribe 🚣', meta:'8:00 AM • Port Barton', badge:'Tomorrow', badgeStyle:'solid', avatars:4, more:2, cta:'Open Tribe Chat', action:'openChat', images:['https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=75','https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&q=75'], grad:'linear-gradient(135deg,#0ea5e9,#0c4a6e)' },
-  { id:'u4', title:'Acoustic Night 🎸', meta:'7:30 PM • Poblacion', badge:'May 18', badgeStyle:'soft', cta:"I'm Interested", action:'interested', images:['https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&q=75'], grad:'linear-gradient(135deg,#7c3aed,#1e1b4b)' }
+  { id:'u1', title:'Sunset Chasers', meta:'5:30 PM • Long Beach', badge:'Today', badgeStyle:'solid', avatars:4, more:3, cta:'Open Tribe Chat', action:'openChat', images:['https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=75','https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?w=400&q=75'], grad:'linear-gradient(135deg,#f97316,#7c2d12)' },
+  { id:'u2', title:'Lechon by the Beach', meta:'6:00 PM • Sunset Resort', badge:'Today', badgeStyle:'solid', cta:'View Details', action:'details', images:['https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=75','https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=75'], grad:'linear-gradient(135deg,#d97706,#78350f)' },
+  { id:'u3', title:'Island Hopping Tribe', meta:'8:00 AM • Port Barton', badge:'Tomorrow', badgeStyle:'solid', avatars:4, more:2, cta:'Open Tribe Chat', action:'openChat', images:['https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=75','https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&q=75'], grad:'linear-gradient(135deg,#0ea5e9,#0c4a6e)' },
+  { id:'u4', title:'Acoustic Night', meta:'7:30 PM • Poblacion', badge:'May 18', badgeStyle:'soft', cta:"I'm Interested", action:'interested', images:['https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&q=75'], grad:'linear-gradient(135deg,#7c3aed,#1e1b4b)' }
 ];
 let MYSV_SAVED = [
   { id:'s1', title:'Long Beach', cat:'Beach · San Vicente', km:12, image:'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=75', grad:'linear-gradient(135deg,#38bdf8,#0c4a6e)' },
@@ -6386,13 +6489,13 @@ let MYSV_SAVED = [
   { id:'s5', title:'Alimanguan Beach', cat:'Beach · Alimanguan', km:25, image:'https://images.unsplash.com/photo-1506953823976-52e1fdc0149a?w=400&q=75', grad:'linear-gradient(135deg,#60a5fa,#1e3a8a)' }
 ];
 let MYSV_TRIBES = [
-  { id:'t1', title:'Sunset Chasers 🌅', meta:'Long Beach • Today, 5:30 PM', more:3, thumb:'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=75', grad:'linear-gradient(135deg,#f97316,#7c2d12)' },
-  { id:'t2', title:'Island Hopping Tomorrow 🚣', meta:'Port Barton • Tomorrow, 8:00 AM', more:2, thumb:'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=75', grad:'linear-gradient(135deg,#0ea5e9,#0c4a6e)' },
-  { id:'t3', title:'Shared Ride to Port Barton 🚐', meta:'Poblacion • May 18, 10:00 AM', more:1, thumb:'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&q=75', grad:'linear-gradient(135deg,#10b981,#064e3b)' }
+  { id:'t1', title:'Sunset Chasers', meta:'Long Beach • Today, 5:30 PM', more:3, thumb:'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=75', grad:'linear-gradient(135deg,#f97316,#7c2d12)' },
+  { id:'t2', title:'Island Hopping Tomorrow', meta:'Port Barton • Tomorrow, 8:00 AM', more:2, thumb:'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=75', grad:'linear-gradient(135deg,#0ea5e9,#0c4a6e)' },
+  { id:'t3', title:'Shared Ride to Port Barton', meta:'Poblacion • May 18, 10:00 AM', more:1, thumb:'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&q=75', grad:'linear-gradient(135deg,#10b981,#064e3b)' }
 ];
 const MYSV_EVENTS = [
-  { id:'e1', title:'Full Moon Party 🌙', meta:'Baybay • Tonight, 9:00 PM', more:12, images:['https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&q=75','https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=400&q=75'], grad:'linear-gradient(135deg,#a78bfa,#1e1b4b)' },
-  { id:'e2', title:'Acoustic Night 🎸', meta:'Poblacion • May 18, 7:30 PM', more:8, images:['https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&q=75'], grad:'linear-gradient(135deg,#f472b6,#831843)' }
+  { id:'e1', title:'Full Moon Party', meta:'Baybay • Tonight, 9:00 PM', more:12, images:['https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&q=75','https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=400&q=75'], grad:'linear-gradient(135deg,#a78bfa,#1e1b4b)' },
+  { id:'e2', title:'Acoustic Night', meta:'Poblacion • May 18, 7:30 PM', more:8, images:['https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&q=75'], grad:'linear-gradient(135deg,#f472b6,#831843)' }
 ];
 const MYSV_RECENT = [
   { id:'r1', label:'Port Barton Village', image:'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=200&q=75', grad:'linear-gradient(135deg,#38bdf8,#0c4a6e)' },
@@ -6524,7 +6627,7 @@ function renderMySanvic(){
   const upcoming = `
     <div class="mysv-section">
       <div class="mysv-sec-head">
-        <div><div class="mysv-sec-title">📅 Upcoming</div><div class="mysv-sec-sub">Things you're going to or interested in.</div></div>
+        <div><div class="mysv-sec-title">${lucideSvg('calendar',15)} Upcoming</div><div class="mysv-sec-sub">Things you're going to or interested in.</div></div>
         <button class="mysv-viewall">View all ›</button>
       </div>
       <div class="mysv-hscroll">
@@ -6554,7 +6657,7 @@ function renderMySanvic(){
   const saved = `
     <div class="mysv-section">
       <div class="mysv-sec-head">
-        <div><div class="mysv-sec-title">🧳 Saved Places</div><div class="mysv-sec-sub">Places you saved from Explore.</div></div>
+        <div><div class="mysv-sec-title">${lucideSvg('luggage',15)} Saved Places</div><div class="mysv-sec-sub">Places you saved from Explore.</div></div>
         <button class="mysv-viewall">View all ›</button>
       </div>
       <div class="mysv-hscroll">
@@ -6571,7 +6674,7 @@ function renderMySanvic(){
               <div class="mysv-sv-title">${escapeHtml(s.title)}</div>
               <div class="mysv-sv-cat">${escapeHtml(s.cat)}</div>
               <div class="mysv-sv-row">
-                <span class="mysv-km">📍 ${s.km} km</span>
+                <span class="mysv-km">${lucideSvg('map-pin',12)} ${s.km} km</span>
                 <button class="mysv-dot" onclick="mysvAction('menu','${s.id}')">⋯</button>
               </div>
             </div>
@@ -6583,7 +6686,7 @@ function renderMySanvic(){
   const tribes = `
     <div class="mysv-section">
       <div class="mysv-sec-head">
-        <div><div class="mysv-sec-title">👥 Joined Tribes</div><div class="mysv-sec-sub">Tribes you joined in Pulse.</div></div>
+        <div><div class="mysv-sec-title">${lucideSvg('users',15)} Joined Tribes</div><div class="mysv-sec-sub">Tribes you joined in Pulse.</div></div>
         <button class="mysv-viewall">View all ›</button>
       </div>
       <div>
@@ -6610,7 +6713,7 @@ function renderMySanvic(){
       <div class="mysv-split">
         <div class="mysv-col">
           <div class="mysv-sec-head" style="margin-bottom:6px">
-            <div><div class="mysv-sec-title">📅 Events I'm Interested In</div><div class="mysv-sec-sub">You showed interest in these.</div></div>
+            <div><div class="mysv-sec-title">${lucideSvg('calendar',15)} Events I'm Interested In</div><div class="mysv-sec-sub">You showed interest in these.</div></div>
             <button class="mysv-viewall">View all ›</button>
           </div>
           ${MYSV_EVENTS.map(e=>{
@@ -6634,7 +6737,7 @@ function renderMySanvic(){
         </div>
         <div class="mysv-col">
           <div class="mysv-sec-head" style="margin-bottom:6px">
-            <div><div class="mysv-sec-title">🎯 Hunt Progress</div><div class="mysv-sec-sub">Your discoveries and rewards.</div></div>
+            <div><div class="mysv-sec-title">${lucideSvg('target',15)} Hunt Progress</div><div class="mysv-sec-sub">Your discoveries and rewards.</div></div>
             <button class="mysv-viewall">View all ›</button>
           </div>
           <div class="mysv-hunt">
@@ -6670,7 +6773,7 @@ function renderMySanvic(){
   const recent = `
     <div class="mysv-section">
       <div class="mysv-sec-head">
-        <div><div class="mysv-sec-title">🕒 Recently Viewed</div><div class="mysv-sec-sub">Places you recently looked at.</div></div>
+        <div><div class="mysv-sec-title">${lucideSvg('clock',15)} Recently Viewed</div><div class="mysv-sec-sub">Places you recently looked at.</div></div>
         <button class="mysv-viewall">View all ›</button>
       </div>
       <div class="mysv-hscroll">
@@ -6894,14 +6997,14 @@ function renderHunt(){
       <div class="hunt-today" style="background-image:url('${today.image||''}');background-size:cover;background-position:center">
         <div class="hunt-today-body">
           <span class="hunt-today-badge">TODAY</span>
-          <div class="hunt-today-title">${escapeHtml(today.name)} 🌅</div>
+          <div class="hunt-today-title">${escapeHtml(today.name)}</div>
           <div class="hunt-today-desc">${escapeHtml(today.description || today.tip || 'Find the hidden marker at this featured spot.')}</div>
           <div class="hunt-meta-row">
-            ${today.barangay ? `<span class="hunt-meta-pill">📍 ${escapeHtml(today.barangay)}</span>` : ''}
-            <span class="hunt-meta-pill">📶 ${escapeHtml((today.stats && today.stats.rating) || 'Easy')}</span>
-            ${(today.stats && today.stats.travel) ? `<span class="hunt-meta-pill">🕒 ${escapeHtml(today.stats.travel)}</span>` : ''}
+            ${today.barangay ? `<span class="hunt-meta-pill">${lucideSvg('map-pin',12)} ${escapeHtml(today.barangay)}</span>` : ''}
+            <span class="hunt-meta-pill">${lucideSvg('gauge',12)} ${escapeHtml((today.stats && today.stats.rating) || 'Easy')}</span>
+            ${(today.stats && today.stats.travel) ? `<span class="hunt-meta-pill">${lucideSvg('clock',12)} ${escapeHtml(today.stats.travel)}</span>` : ''}
           </div>
-          <div class="hunt-reward-strip">REWARD: 100 pts • Explorer Badge 🏅</div>
+          <div class="hunt-reward-strip">REWARD: 100 pts • ${lucideSvg('medal',13)} Explorer Badge</div>
         </div>
         <div class="hunt-today-side">
           ${huntAvatars(4, 12)}
@@ -6957,9 +7060,9 @@ function renderHunt(){
           const imgSrc = matchDest?.image || huntNearbyImages[i%huntNearbyImages.length];
           return `
           <div class="hunt-near-card" style="background-image:url('${imgSrc}');background-size:cover;background-position:center" onclick="huntNearbyTap(${i})">
-            ${c.dist ? `<span class="hunt-chip-dist">↖ ${escapeHtml(c.dist)}</span>` : ''}
+            ${c.dist ? `<span class="hunt-chip-dist">${lucideSvg('navigation',12)} ${escapeHtml(c.dist)}</span>` : ''}
             <div class="hunt-near-info">
-              <div class="hunt-near-title">${escapeHtml(c.icon||'📍')} ${escapeHtml(c.name)}</div>
+              <div class="hunt-near-title">${iconOrText(c.icon||'map-pin',14)} ${escapeHtml(c.name)}</div>
               <div class="hunt-near-desc">${escapeHtml(c.desc||'')}</div>
               <div class="hunt-near-meta">${escapeHtml(c.barangay||'')} • ${escapeHtml(c.cat||'')}</div>
             </div>
@@ -6998,7 +7101,7 @@ function renderHunt(){
       <div class="hunt-split">
         <div class="hunt-col">
           <div class="hunt-sec-head" style="margin-bottom:6px">
-            <div><div class="hunt-sec-title">🎁 Rewards</div><div class="hunt-sec-sub">Redeem your unlocked rewards.</div></div>
+            <div><div class="hunt-sec-title">${lucideSvg('gift',15)} Rewards</div><div class="hunt-sec-sub">Redeem your unlocked rewards.</div></div>
           </div>
           ${rewards.length ? rewards.map(r=>{
             const allImgs = [];
@@ -7023,7 +7126,7 @@ function renderHunt(){
         </div>
         <div class="hunt-col">
           <div class="hunt-sec-head" style="margin-bottom:6px">
-            <div><div class="hunt-sec-title">📊 My Progress</div><div class="hunt-sec-sub">Your journey so far.</div></div>
+            <div><div class="hunt-sec-title">${lucideSvg('chart-column',15)} My Progress</div><div class="hunt-sec-sub">Your journey so far.</div></div>
           </div>
           <div class="hunt-progress-panel">
             <div class="hunt-donut">
@@ -7034,10 +7137,10 @@ function renderHunt(){
               <div class="hunt-donut-label">${pct}%</div>
             </div>
             <div class="hunt-progress-list">
-              <div class="hunt-progress-item">🎯 ${discoveries} discoveries unlocked</div>
-              <div class="hunt-progress-item">🗺️ ${trails.length} trails available</div>
-              <div class="hunt-progress-item">🏆 ${state.points} points earned</div>
-              <div class="hunt-progress-item">🎁 ${readyRewards} rewards ready</div>
+              <div class="hunt-progress-item">${lucideSvg('target',13)} ${discoveries} discoveries unlocked</div>
+              <div class="hunt-progress-item">${lucideSvg('map',13)} ${trails.length} trails available</div>
+              <div class="hunt-progress-item">${lucideSvg('trophy',13)} ${state.points} points earned</div>
+              <div class="hunt-progress-item">${lucideSvg('gift',13)} ${readyRewards} rewards ready</div>
             </div>
           </div>
         </div>

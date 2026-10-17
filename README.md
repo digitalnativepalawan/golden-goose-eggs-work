@@ -319,6 +319,9 @@ potential to reach far beyond it.
 - Satellite imagery © Esri, Vantor, Earthstar Geographics and the GIS User Community
 - Barangay boundaries: Philippine Statistics Authority, December 2023, via
   [faeldon/philippines-json-maps](https://github.com/faeldon/philippines-json-maps) (MIT)
+- Icons: [Lucide](https://lucide.dev) — ISC, with the Feather-derived icons
+  under MIT. The icon shapes are inlined into `public/site/app.js`; the full
+  notices are in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)
 
 ---
 
