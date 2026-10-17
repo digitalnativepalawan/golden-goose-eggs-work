@@ -145,7 +145,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--charcoal-deep)
 .hero-subtitle{font-family:var(--font-body);font-size:.92rem;font-weight:300;line-height:1.5;color:var(--white-muted);pointer-events:none;margin:0;max-width:480px}
 .hero-subtitle:empty{display:none}
 
-.hero-weather{display:inline-flex;align-items:center;justify-content:center;gap:9px;margin:0;padding:9px 16px;border-radius:var(--radius-pill);font-family:var(--font-body);font-size:.78rem;font-weight:500;pointer-events:auto;flex-wrap:nowrap;cursor:default;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:opacity .28s ease,transform .28s ease,background .3s var(--ease-smooth),border-color .3s var(--ease-smooth);width:auto;max-width:100%;overflow-x:auto;white-space:nowrap;min-height:26px;align-self:center}
+.hero-weather{display:inline-flex;align-items:center;justify-content:center;gap:9px;margin:0;padding:9px 16px;border-radius:var(--radius-pill);font-family:var(--font-body);font-size:.78rem;font-weight:500;pointer-events:auto;flex-wrap:wrap;cursor:default;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);transition:opacity .28s ease,transform .28s ease,background .3s var(--ease-smooth),border-color .3s var(--ease-smooth);width:auto;max-width:100%;min-width:0;overflow:visible;white-space:normal;min-height:26px;align-self:center}
 .hero-weather.wx-calm{background:rgba(20,184,166,.14);border:1px solid rgba(20,184,166,.35);color:#e8fffb}
 .hero-weather.wx-caution{background:rgba(245,158,11,.18);border:1px solid rgba(245,158,11,.5);color:#fff8e8;box-shadow:0 0 20px rgba(245,158,11,.15)}
 .hero-weather.wx-severe{background:rgba(239,68,68,.2);border:1px solid rgba(239,68,68,.55);color:#fff0f0;box-shadow:0 0 24px rgba(239,68,68,.25);animation:wxPulse 2.4s ease-in-out infinite}
@@ -1166,7 +1166,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   <button class="es-handle" id="esHandle" aria-label="Expand place list" aria-expanded="false"><span></span></button>
   <div class="es-peek">
     <div class="es-heading">
-      <div class="es-heading-copy"><p class="es-eyebrow">PALAWAN, PHILIPPINES</p><h2 class="es-heading-title">Explore San Vicente</h2></div>
+      <h2 class="es-heading-title">Explore San Vicente</h2>
       <button class="es-close" onclick="closeExploreSheet()" aria-label="Collapse Explore panel"><svg xmlns="http://www.w3.org/2000/svg" class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
     <div class="es-audience" aria-label="Choose Explore view">
@@ -1177,15 +1177,14 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-5-5"/></svg>
       <input id="esSearchInput" type="search" aria-label="Search places" placeholder="Beach, food, waterfall or barangay" oninput="filterExploreResults(this.value)" autocomplete="off">
     </label>
-    <div class="es-ribbon" id="esRibbon" aria-label="Place categories"></div>
   </div>
   <div class="es-browse-controls">
     <div class="es-filter-row"><label class="es-area-label"><span class="sr-only">Barangay</span><select id="esArea" onchange="selectExploreArea(this.value)"><option value="">All barangays</option></select></label><button id="esNearby" class="es-action" aria-pressed="false" onclick="locateUser(true)">Near me</button></div>
+    <div class="es-ribbon" id="esRibbon" aria-label="Place categories"></div>
     <div class="es-results-heading"><span id="esResultCount" role="status">Loading places…</span><button id="esReset" onclick="resetExploreFilters()" hidden>Show all</button><button class="es-fit" onclick="fitExploreResults()">Fit on map</button></div>
     <p class="es-data-status" id="esDataStatus" role="status"></p>
   </div>
   <div class="es-body" id="exploreContent"></div>
-  <footer class="es-footer"><button onclick="dockNav('hunt')">The Hunt <span aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="lucide" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg></span></button></footer>
 </section>
 <button class="explore-reopen" onclick="dockNav('discover')">Explore places</button>
 
@@ -2011,7 +2010,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-17-far-zoom-area-label-r3';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-17-mobile-layout-r1';
 </script>
 <script src="barangays.geojson.js"></script>
 <script>
@@ -2096,6 +2095,53 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   <div class="carousel-dots" id="carouselDots"></div>
 </div>
 
-<link rel="stylesheet" href="explore-ux.css?v=2026-09-06-round-markers">
+<link rel="stylesheet" href="explore-ux.css?v=2026-10-17-mobile-layout-r1">
+<style id="sanvicNoHScroll">
+  /* ── Nothing in the product scrolls sideways. ─────────────────────────────
+     Chip rows wrap; card strips wrap into uniform full-width rows. The same
+     content therefore reads the same on a 360px phone, a tablet and a desktop,
+     and nothing is ever hidden off the right edge.
+     Loaded after explore-ux.css so it wins on equal specificity. */
+  .discover-cats,
+  .around-cats,
+  .pulse-categories,
+  .pv2-catribbon-scroll,
+  .hunt-viewtabs,
+  .admin-tabs{flex-wrap:wrap;overflow:visible}
+  .discover-cats::-webkit-scrollbar,
+  .around-cats::-webkit-scrollbar,
+  .pulse-categories::-webkit-scrollbar,
+  .pv2-catribbon-scroll::-webkit-scrollbar,
+  .hunt-viewtabs::-webkit-scrollbar,
+  .admin-tabs::-webkit-scrollbar{display:none}
+  /* The right-edge fade chevron only made sense while the ribbon scrolled. */
+  .pv2-catchev{display:none}
+  .pv2-catribbon{padding:12px 14px}
+  .pulse-categories{row-gap:12px}
+
+  .discover-list,
+  .sv-carousel,
+  .mysv-hscroll,
+  .hunt-hscroll{display:flex;flex-wrap:wrap;overflow:visible;scroll-snap-type:none}
+  /* Image cards wrap two-up on a phone and more on wider screens, so a long
+     strip never becomes one enormous single column. */
+  .discover-list>*,
+  .mysv-hscroll>*,
+  .hunt-hscroll>*{flex:1 1 150px;width:auto;min-width:0;max-width:none}
+  .sv-carousel>*{flex:1 1 240px;width:auto;min-width:0;max-width:none}
+  /* Rich/text cards read better across the full row on a phone, two-up on a
+     tablet, so they keep a wider basis than the image cards. */
+  .mysv-hscroll>.mysv-up-card,
+  .hunt-hscroll>.hunt-trail-card{flex-basis:300px}
+  .sv-carousel{margin:0;padding:2px 0 8px}
+  .discover-card-name{white-space:normal}
+
+  /* Hero weather pill shrinks and wraps instead of scrolling. */
+  .hero-weather{gap:8px;padding:8px 14px}
+  @media (max-width:520px){.hero-weather{gap:6px;padding:7px 12px;font-size:.72rem}}
+
+  /* The Backoffice sidebar keeps its own single vertical column. */
+  @media (min-width:860px){.admin-tabs{flex-wrap:nowrap;overflow-x:hidden}}
+</style>
 </body>
 </html>

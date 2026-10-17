@@ -1330,6 +1330,10 @@ try{ exploreAudience = localStorage.getItem('sanvic_explore_audience') === 'loca
 const exploreState = {query:'', category:'all', area:'', snap:1, selected:null, scroll:0, nearby:false};
 let exploreReturnView = null;
 let exploreResizeObserver = null;
+// True while a thumb is dragging the Explore sheet. The sheet's ResizeObserver
+// fires on every height change, so re-measuring Leaflet mid-drag used to call
+// map.invalidateSize() ~60x/second and make the drag crawl. See syncMapViewport.
+let exploreSheetDragging = false;
 function exploreIsSide(){ return window.matchMedia(EXPLORE_SIDE_QUERY).matches; }
 function setExploreAudience(mode){
   exploreAudience = mode === 'local' ? 'local' : 'visitor';
@@ -1372,6 +1376,9 @@ function setExploreSnap(level){
 function cycleExploreSnap(){ setExploreSnap(exploreState.snap===3?1:exploreState.snap+1); }
 function syncMapViewport(){
   if(!map) return;
+  // A drag rewrites the sheet height every frame. Re-measuring the map each
+  // time is what made the sheet feel slow, so defer the whole sync to release.
+  if(exploreSheetDragging) return;
   const sheet = document.getElementById('exploreSheet');
   const detail = document.body.classList.contains('place-open');
   const open = document.body.classList.contains('explore-open');
@@ -1405,11 +1412,14 @@ function explorePlaceCard(d){
   const photo=SanvicExplore.safeUrl(d.image,true);
   const selected=String(exploreState.selected)===String(d.id);
   const distance=exploreState.nearby && userLocationMarker && SanvicExplore.hasCoordinates(d)
-    ? SanvicExplore.distanceKm(userLocationMarker.getLatLng(),d).toFixed(1)+' km straight-line' : '';
+    ? SanvicExplore.distanceKm(userLocationMarker.getLatLng(),d).toFixed(1)+' km' : '';
+  // Two lines, always: the name (clamped) and one meta line. Keeps every row the
+  // same height so the list scans as one uniform column at any width.
+  const meta=distance||d.stats?.travel||'';
   return `<button class="explore-result${selected?' selected':''}" data-place-id="${escT(d.id)}" aria-pressed="${selected}" onclick="selectExplorePlace(this.dataset.placeId)">
     <span class="explore-result-image">${photo?`<img src="${escT(photo)}" alt="${escT(d.name)}" loading="lazy" onerror="this.hidden=true">`:''}<span class="image-placeholder" aria-hidden="true">${lucideSvg(cat.icon||'map-pin',24)}</span></span>
-    <span class="explore-result-copy"><span class="result-category">${escT(cat.label)}</span><strong>${escT(d.name)}</strong><span class="result-area">${lucideSvg('map-pin',13)} ${escT(d.barangay||'San Vicente')}</span>
-    ${distance||d.stats?.travel?`<span class="result-access">${escT(distance||d.stats.travel)}</span>`:''}</span><span class="result-arrow" aria-hidden="true">${lucideSvg('chevron-right',17)}</span>
+    <span class="explore-result-copy"><strong class="result-name">${escT(d.name)}</strong><span class="result-meta"><span class="result-category">${escT(cat.label)}</span><span class="result-area">${lucideSvg('map-pin',12)} ${escT(d.barangay||'San Vicente')}</span>${meta?`<span class="result-access">${escT(meta)}</span>`:''}</span></span>
+    <span class="result-arrow" aria-hidden="true">${lucideSvg('chevron-right',17)}</span>
   </button>`;
 }
 function renderExploreContent(){
@@ -1422,8 +1432,8 @@ function renderExploreContent(){
   const keys=Object.keys(catStyle).filter(k=>destinations.some(d=>d.category===k));
   // Show real categories only; the admin remains free to add or rename them.
   const ribbon=document.getElementById('esRibbon');
-  ribbon.innerHTML=`<button class="es-chip ${exploreState.category==='all'?'accent':''}" data-category="all" aria-pressed="${exploreState.category==='all'}" onclick="selectExploreCategory('all')">All places</button>`+
-    keys.map(k=>`<button class="es-chip ${exploreState.category===k?'accent':''}" data-category="${escT(k)}" aria-pressed="${exploreState.category===k}" onclick="selectExploreCategory(this.dataset.category)">${lucideSvg(catStyle[k].icon||'map-pin',16)}${escT(catStyle[k].label)}</button>`).join('');
+  ribbon.innerHTML=`<button class="es-chip ${exploreState.category==='all'?'accent':''}" data-category="all" aria-pressed="${exploreState.category==='all'}" onclick="selectExploreCategory('all')"><span class="es-chip-label">All places</span></button>`+
+    keys.map(k=>`<button class="es-chip ${exploreState.category===k?'accent':''}" data-category="${escT(k)}" aria-pressed="${exploreState.category===k}" onclick="selectExploreCategory(this.dataset.category)">${lucideSvg(catStyle[k].icon||'map-pin',16)}<span class="es-chip-label">${escT(catStyle[k].label)}</span></button>`).join('');
   const areas=Array.from(new Set(destinations.map(d=>d.barangay).filter(Boolean))).sort();
   const area=document.getElementById('esArea');
   area.innerHTML='<option value="">All barangays</option>'+areas.map(b=>`<option value="${escT(b)}">${escT(b)}</option>`).join('');
@@ -1517,32 +1527,46 @@ function recommendExplorePlace(){
 }
 function initExploreInteractions(){
   const sheet=document.getElementById('exploreSheet'), handle=document.getElementById('esHandle');
+  const heading=document.querySelector('.es-heading');
   let drag=null, moved=false;
-  handle.addEventListener('pointerdown',e=>{
+  function start(e){
     if(exploreIsSide()) return;
     drag={y:e.clientY,height:sheet.getBoundingClientRect().height}; moved=false;
-    handle.setPointerCapture(e.pointerId);
+    exploreSheetDragging=true;
+    try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(err){}
     sheet.style.transition='none';
-  });
-  handle.addEventListener('pointermove',e=>{
+  }
+  function move(e){
     if(!drag) return;
     moved=moved||Math.abs(drag.y-e.clientY)>5;
     sheet.style.setProperty('height',Math.max(180,Math.min(window.innerHeight-84,drag.height+drag.y-e.clientY))+'px','important');
-  });
+  }
   function release(){
     if(!drag) return;
     const h=sheet.getBoundingClientRect().height;
     sheet.style.height=''; sheet.style.transition='';
     if(moved){
-      const heights=[Math.min(232,window.innerHeight*.4),window.innerHeight*.60,window.innerHeight-84];
+      const heights=[Math.min(232,window.innerHeight*.4),window.innerHeight*.74,window.innerHeight-84];
       let best=0; heights.forEach((v,i)=>{if(Math.abs(v-h)<Math.abs(heights[best]-h))best=i;});
       setExploreSnap(best+1);
     }
     drag=null;
+    exploreSheetDragging=false;
+    syncMapViewport();
   }
+  handle.addEventListener('pointerdown',start);
+  handle.addEventListener('pointermove',move);
   handle.addEventListener('pointerup',release);
   handle.addEventListener('pointercancel',release);
   handle.addEventListener('click',()=>{if(!moved)cycleExploreSnap(); moved=false;});
+  if(heading){
+    // Second drag surface: the whole title row drags the sheet, but a touch
+    // that starts on a control (the close button) must not be hijacked.
+    heading.addEventListener('pointerdown',e=>{ if(e.target.closest('button')) return; start(e); });
+    heading.addEventListener('pointermove',move);
+    heading.addEventListener('pointerup',release);
+    heading.addEventListener('pointercancel',release);
+  }
   document.getElementById('esSearchInput').addEventListener('focus',()=>{if(!exploreIsSide())setExploreSnap(2);});
   document.getElementById('exploreContent').addEventListener('scroll',e=>{exploreState.scroll=e.target.scrollTop;},{passive:true});
   exploreResizeObserver=new ResizeObserver(syncMapViewport);
