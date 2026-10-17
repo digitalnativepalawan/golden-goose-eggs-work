@@ -598,6 +598,34 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
 .login-email-status{text-align:center;font-size:.74rem;margin-top:12px;min-height:18px;line-height:1.5}
 .login-fine-print{text-align:center;font-size:.66rem;color:var(--white-dim);margin-top:18px;line-height:1.5}
 
+/* ─── Person ID (one field, no email) ─── */
+.person-overlay{position:fixed;inset:0;z-index:150;background:rgba(2,14,38,.7);backdrop-filter:blur(5px);opacity:0;visibility:hidden;transition:opacity .28s,visibility .28s}
+.person-overlay.active{opacity:1;visibility:visible}
+.person-sheet{position:fixed;left:0;right:0;bottom:0;z-index:151;max-height:92vh;overflow-y:auto;background:var(--charcoal-surface);border-radius:var(--radius-xl) var(--radius-xl) 0 0;box-shadow:0 -10px 60px rgba(0,0,0,.45);transform:translateY(100%);transition:transform .42s var(--ease-out-expo);padding:26px 22px calc(28px + env(safe-area-inset-bottom,0px))}
+.person-sheet.open{transform:translateY(0)}
+.person-close{position:absolute;top:16px;right:16px;width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.06);color:var(--white-muted);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.person-head{display:flex;flex-direction:column;gap:6px;margin-bottom:18px;padding-right:40px}
+.person-title{font-family:var(--font-display);font-size:1.4rem;color:var(--white-soft);line-height:1.2}
+.person-sub{font-size:.82rem;color:var(--white-muted);line-height:1.5}
+.person-field{display:flex;flex-direction:column;gap:12px}
+.person-field input{width:100%;padding:14px 16px;border-radius:var(--radius-pill);border:1px solid var(--glass-border);background:rgba(255,255,255,.04);color:var(--white-soft);font-family:var(--font-body);font-size:1rem;outline:none}
+.person-field input:focus{border-color:rgba(20,184,166,.45)}
+.person-kinds{display:flex;gap:8px}
+.person-kind{flex:1;padding:11px 12px;border-radius:var(--radius-pill);border:1px solid var(--glass-border);background:rgba(255,255,255,.03);color:var(--white-muted);font-family:var(--font-body);font-size:.84rem;font-weight:500;cursor:pointer}
+.person-kind.active{border-color:rgba(20,184,166,.6);background:rgba(20,184,166,.14);color:#a7f3d0}
+.person-go{width:100%;padding:14px;border-radius:var(--radius-pill);border:none;background:linear-gradient(135deg,var(--ocean-teal),var(--ocean-teal-light));color:#fff;font-family:var(--font-body);font-size:.9rem;font-weight:600;cursor:pointer}
+.person-status{min-height:18px;font-size:.76rem;color:var(--white-muted);text-align:center}
+.person-status.err{color:#fca5a5}
+.person-fine{font-size:.68rem;color:var(--white-dim);text-align:center;margin-top:14px;line-height:1.5}
+
+/* ─── Toast ─── */
+.sanvic-toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom,0px));transform:translate(-50%,14px);z-index:200;max-width:min(88vw,420px);padding:12px 18px;border-radius:999px;background:rgba(10,25,45,.96);border:1px solid rgba(20,184,166,.45);color:var(--white-soft);font-family:var(--font-body);font-size:.82rem;line-height:1.35;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.5);opacity:0;visibility:hidden;transition:opacity .25s,transform .25s,visibility .25s;pointer-events:none}
+.sanvic-toast.on{opacity:1;visibility:visible;transform:translate(-50%,0)}
+@media(min-width:720px){
+  .person-sheet{left:50%;right:auto;transform:translate(-50%,100%);width:min(440px,92vw);border-radius:var(--radius-xl)}
+  .person-sheet.open{transform:translate(-50%,0)}
+}
+
 /* ─── Dashboard ─── */
 .dashboard-panel{position:fixed;inset:0;z-index:85;background:var(--charcoal-deep);transform:translateY(100%);transition:transform .5s var(--ease-out-expo);overflow-y:auto;pointer-events:none}
 .dashboard-panel.open{transform:translateY(0);pointer-events:auto}
@@ -1365,8 +1393,15 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .pv2-metaline{font-size:.72rem;color:rgba(255,255,255,.65);margin-top:2px}
   .pv2-metaline.warn{color:#f59e0b}
   .pv2-metaline.ok{color:#10b981;font-weight:600}
-  .pv2-join{flex-shrink:0;padding:7px 14px;border-radius:999px;background:transparent;border:1px solid rgba(20,184,166,.55);color:#5eead4;font-size:.78rem;font-weight:600;cursor:pointer}
+  .pv2-metaline.names{color:rgba(94,234,212,.8)}
+  .pv2-join{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:999px;background:transparent;border:1px solid rgba(20,184,166,.55);color:#5eead4;font-size:.78rem;font-weight:600;cursor:pointer}
   .pv2-join:hover{background:rgba(20,184,166,.1)}
+  .pv2-join.on{background:rgba(20,184,166,.16);border-color:rgba(20,184,166,.75);color:#a7f3d0}
+  .pv2-join .lucide{flex-shrink:0}
+  .pv2-event-left{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
+  .pv2-interested-count{font-size:.72rem;color:rgba(94,234,212,.85)}
+  .hunt-progress-who{gap:6px}
+  .hunt-name-btn{background:none;border:0;padding:0;color:#5eead4;font:inherit;text-decoration:underline;cursor:pointer}
   .pv2-footbanner{display:flex;align-items:center;gap:12px;padding:14px;border-radius:18px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);margin-top:4px}
   .pv2-footbanner-i{width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.05);display:grid;place-items:center;color:rgba(255,255,255,.7);flex-shrink:0}
   .pv2-footbanner-body{min-width:0;flex:1}
@@ -1407,14 +1442,8 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .pv2-wiz-back{background:none;border:0;color:rgba(255,255,255,.7);font-size:.86rem;cursor:pointer;padding:8px 4px}
   .pv2-wiz-next{padding:10px 18px;border-radius:999px;background:rgba(20,184,166,.9);color:#02121b;border:0;font-weight:700;font-size:.86rem;cursor:pointer}
   .pv2-wiz-next:disabled{opacity:.4;cursor:not-allowed}
-  /* Empty state / auth overlay */
+  /* Empty state */
   .pv2-empty{padding:26px 16px;border-radius:20px;background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.1);text-align:center;color:rgba(255,255,255,.75);display:flex;flex-direction:column;align-items:center;gap:12px}
-  .pv2-authwrap{position:absolute;inset:0;background:rgba(4,10,26,.86);backdrop-filter:blur(10px);z-index:5;display:none;align-items:center;justify-content:center;padding:24px}
-  .pv2-authwrap.on{display:flex}
-  .pv2-authcard{max-width:340px;padding:22px;border-radius:20px;background:rgba(10,20,40,.95);border:1px solid rgba(255,255,255,.1);text-align:center;display:flex;flex-direction:column;gap:12px}
-  .pv2-authcard-t{font-size:1.05rem;font-weight:600;color:#fff}
-  .pv2-authcard-s{font-size:.86rem;color:rgba(255,255,255,.7);line-height:1.45}
-  .pv2-authcard-btns{display:flex;gap:8px;justify-content:center}
   @media(min-width:900px){
     .pv2-body,.pv2-viewtabs,.pv2-catribbon,.pv2-head{max-width:640px;margin-left:auto;margin-right:auto}
   }
@@ -1465,17 +1494,6 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   </div>
 
   <div class="pv2-body" id="pulseBody"></div>
-
-  <div class="pv2-authwrap" id="pv2AuthWrap" onclick="if(event.target===this)closePulseAuthGate()">
-    <div class="pv2-authcard">
-      <div class="pv2-authcard-t">Want to start something?</div>
-      <div class="pv2-authcard-s">Sign in to form a tribe, join plans, or talk in the Lounge.</div>
-      <div class="pv2-authcard-btns">
-        <button class="pv2-join" onclick="closePulseAuthGate()">Not now</button>
-        <button class="pv2-cta" onclick="pulseSignInContinue()">Sign in / Continue</button>
-      </div>
-    </div>
-  </div>
 </div>
 
 <!-- ═══ PULSE COMPOSE ═══ -->
@@ -1598,6 +1616,28 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
     <button class="login-link-btn" onclick="sendMagicLink()">Email me a one-time link instead</button>
     <div class="login-fine-print">By continuing you agree to act respectfully toward other travelers and locals in the SANVIC community.</div>
   </div>
+</div>
+
+<!-- ═══ PERSON ID — joining a tribe or an event costs one field, not an email ═══ -->
+<div class="person-overlay" id="personOverlay" onclick="closePersonSheet(true)"></div>
+<div class="person-sheet" id="personSheet" role="dialog" aria-modal="true" aria-labelledby="personTitle">
+  <button class="person-close" onclick="closePersonSheet(true)" aria-label="Close">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+  </button>
+  <div class="person-head">
+    <div class="person-title" id="personTitle">What should we call you?</div>
+    <div class="person-sub">Just a name. No email, no password, no inbox — this is all it takes to join.</div>
+  </div>
+  <div class="person-field">
+    <input type="text" id="personNameInput" maxlength="40" placeholder="Your name or nickname" autocomplete="nickname" onkeydown="if(event.key==='Enter')confirmPerson()">
+    <div class="person-kinds">
+      <button type="button" class="person-kind" data-kind="traveler" onclick="setPersonKind('traveler')">I'm visiting</button>
+      <button type="button" class="person-kind" data-kind="local" onclick="setPersonKind('local')">I'm local</button>
+    </div>
+    <div class="person-status" id="personStatus"></div>
+    <button class="person-go" onclick="confirmPerson()">Continue</button>
+  </div>
+  <div class="person-fine">Kept on this device only. It is never shown to anyone except as your first name beside the plans you join.</div>
 </div>
 
 <!-- ═══ DASHBOARD ═══ -->
@@ -2012,7 +2052,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-17-today-panel-r1';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-17-person-id-r1';
 </script>
 <script src="barangays.geojson.js"></script>
 <script>

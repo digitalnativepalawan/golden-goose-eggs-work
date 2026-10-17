@@ -543,7 +543,7 @@ function isSuggestionActiveToday(s){
 async function loadDataFromSupabase(){
   let directoryLoaded=false;
   try {
-    const [destRes, talaRes, settingsRes, sugRes, siteRes, catRes, nearbyRes, aiSettingsRes, todayRes, tribesRes, eventsRes, upcomingRes, huntRewardsRes, huntSettingsRes] = await Promise.all([
+    const [destRes, talaRes, settingsRes, sugRes, siteRes, catRes, nearbyRes, aiSettingsRes, todayRes, tribesRes, eventsRes, upcomingRes, huntRewardsRes, huntSettingsRes, joinTribeRes, joinEventRes] = await Promise.all([
       sb.from('destinations').select('*').order('sort_order', { ascending: true }),
       sb.from('tala_responses').select('*').order('sort_order', { ascending: true }),
       sb.from('tala_settings').select('*').eq('key', 'default_response').maybeSingle(),
@@ -558,6 +558,8 @@ async function loadDataFromSupabase(){
       sb.from('my_sanvic_upcoming').select('*').order('sort_order', { ascending: true }),
       sb.from('hunt_rewards').select('*').order('sort_order', { ascending: true }),
       sb.from('hunt_settings').select('*'),
+      sb.from('tribe_members').select('tribe_id,device_id,display_name'),
+      sb.from('event_interest').select('event_id,device_id,display_name'),
     ].map(request=>Promise.resolve(request).catch(error=>({data:null,error}))));
 
     if (destRes.error) throw destRes.error;
@@ -673,6 +675,9 @@ async function loadDataFromSupabase(){
         });
       });
     }
+
+    // Who has joined what. Anonymous device identity — no email, no account.
+    applyJoinRows(joinTribeRes && joinTribeRes.data, joinEventRes && joinEventRes.data);
   } catch(err) {
     console.warn('[SANVIC] Supabase load failed, using built-in defaults:', err);
     if(!directoryLoaded){
@@ -1919,25 +1924,18 @@ const PULSE_LOUNGE = [
   { id:'l3', name:'Kai', text:'Board rental at Alimanguan is 400/day fyi.' },
 ];
 
+// Real email accounts still exist for the Backoffice and for syncing saves.
+// Nothing a visitor does in Pulse requires one.
 function pulseIsSignedIn(){
   try{
     if(window.pulseIsSignedIn_override) return true;
     if(typeof supabase !== 'undefined' && supabase && supabase.auth){
-      // best-effort synchronous check via cached user
       const u = supabase.auth.__cachedUser;
       if(u) return true;
     }
     if(localStorage.getItem('sanvic_user')) return true;
   }catch(_){ }
   return false;
-}
-function openPulseAuthGate(){ const w=document.getElementById('pv2AuthWrap'); if(w) w.classList.add('on'); }
-function closePulseAuthGate(){ const w=document.getElementById('pv2AuthWrap'); if(w) w.classList.remove('on'); }
-function pulseSignInContinue(){
-  closePulseAuthGate();
-  if(typeof openAuthPanel==='function') openAuthPanel();
-  else if(typeof openDashboard==='function') openDashboard('account');
-  else alert('Sign-in coming soon.');
 }
 
 function openPulsePanel(){
@@ -1949,7 +1947,6 @@ function openPulsePanel(){
 function closePulsePanel(){
   const panel = document.getElementById('pulsePanel');
   if(panel) panel.classList.remove('open');
-  closePulseAuthGate();
 }
 
 function pulseDeviceId(){
@@ -1994,16 +1991,211 @@ function avStackHTML(count){
   const n = Math.min(4, count||4);
   return `<div class="pv2-avstack">${Array.from({length:n}).map((_,i)=>`<div class="pv2-av" style="background-image:url('${PV2_AV[i%PV2_AV.length]}')"></div>`).join('')}</div>`;
 }
-function guardOr(fn){ return pulseIsSignedIn() ? fn() : openPulseAuthGate(); }
-function joinTribe(id){ guardOr(()=>{ const t=PULSE_TRIBES.find(x=>x.id===id); if(t){ t.joined+=1; renderPulseBody(); } }); }
-function interestedEvent(id){ guardOr(()=>{ alert("You're on the list. We'll ping you nearer the time."); }); }
+// ── PERSON ID ─────────────────────────────────────────────────────────────
+// Joining a tribe or an event must not cost an email round-trip. A "person" is
+// the anonymous device id Pulse likes already use (pulse_likes.device_id) plus
+// a name chosen once. No password, no verification, no inbox.
+const PERSON_KEY = 'sanvic_person_v1';
+let personKindChoice = 'traveler';
+let pendingPersonAction = null;
+
+function personGet(){
+  try{
+    const raw = localStorage.getItem(PERSON_KEY);
+    if(raw){ const p = JSON.parse(raw); if(p && p.id) return p; }
+  }catch(_){ }
+  return null;
+}
+function personId(){
+  const p = personGet();
+  return (p && p.id) ? p.id : pulseDeviceId();
+}
+function personName(){
+  const p = personGet();
+  if(p && p.name) return p.name;
+  return todayNickname() || '';
+}
+function personSave(name, kind){
+  const p = { id: personId(), name: String(name||'').trim().slice(0,40), kind: kind==='local'?'local':'traveler', at: new Date().toISOString() };
+  try{ localStorage.setItem(PERSON_KEY, JSON.stringify(p)); }catch(_){ }
+  pulseSaveName(p.name);
+  return p;
+}
+// The one gate, and it is one field: what should we call you. Runs
+// `action(person)` straight away if a name is already known.
+function ensurePerson(action){
+  const p = personGet();
+  if(p && p.name){ action(p); return; }
+  pendingPersonAction = action;
+  openPersonSheet();
+}
+function openPersonSheet(){
+  const ov = document.getElementById('personOverlay');
+  const sh = document.getElementById('personSheet');
+  if(!sh) return;
+  const inp = document.getElementById('personNameInput');
+  if(inp) inp.value = personName();
+  const known = personGet();
+  setPersonKind(known ? known.kind : 'traveler');
+  const st = document.getElementById('personStatus');
+  if(st){ st.textContent = ''; st.className = 'person-status'; }
+  if(ov) ov.classList.add('active');
+  sh.classList.add('open');
+  try{ window.setTimeout(()=>{ try{ if(inp) inp.focus(); }catch(_){ } }, 80); }catch(_){ }
+}
+function closePersonSheet(cancelled){
+  const ov = document.getElementById('personOverlay');
+  const sh = document.getElementById('personSheet');
+  if(ov) ov.classList.remove('active');
+  if(sh) sh.classList.remove('open');
+  if(cancelled) pendingPersonAction = null;
+}
+function setPersonKind(k){
+  personKindChoice = (k==='local') ? 'local' : 'traveler';
+  document.querySelectorAll('.person-kind').forEach(b=>b.classList.toggle('active', b.dataset.kind===personKindChoice));
+}
+function confirmPerson(){
+  const inp = document.getElementById('personNameInput');
+  const name = (inp ? inp.value : '').trim();
+  const st = document.getElementById('personStatus');
+  if(name.length < 2){
+    if(st){ st.textContent = 'Please type a name — 2 letters or more.'; st.className = 'person-status err'; }
+    return;
+  }
+  const person = personSave(name, personKindChoice);
+  const action = pendingPersonAction;
+  pendingPersonAction = null;
+  closePersonSheet(false);
+  if(action) action(person);
+}
+// A tribe formed on this device has an id like 't_123' and no database row.
+function isDbId(id){ return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-/i.test(String(id||'')); }
+
+// ── REAL MEMBERSHIP ───────────────────────────────────────────────────────
+// Who has joined what, counted from rows rather than a hardcoded number.
+let tribeMembers = {};   // { tribeId: [{device_id, display_name}] }
+let eventInterest = {};  // { eventId: [{device_id, display_name}] }
+let myTribes = new Set();
+let myEvents = new Set();
+
+function applyJoinRows(tribeRows, eventRows){
+  tribeMembers = {}; eventInterest = {}; myTribes = new Set(); myEvents = new Set();
+  const me = personId();
+  (tribeRows||[]).forEach(r=>{
+    const k = String(r.tribe_id);
+    (tribeMembers[k] = tribeMembers[k] || []).push(r);
+    if(r.device_id === me) myTribes.add(k);
+  });
+  (eventRows||[]).forEach(r=>{
+    const k = String(r.event_id);
+    (eventInterest[k] = eventInterest[k] || []).push(r);
+    if(r.device_id === me) myEvents.add(k);
+  });
+}
+async function loadJoinData(){
+  try{
+    const [tm, ei] = await Promise.all([
+      sb.from('tribe_members').select('tribe_id,device_id,display_name'),
+      sb.from('event_interest').select('event_id,device_id,display_name')
+    ]);
+    applyJoinRows(tm && tm.data, ei && ei.data);
+  }catch(err){ console.warn('[SANVIC] Could not load joins:', err); }
+}
+function tribeRealCount(id){ return (tribeMembers[String(id)]||[]).length; }
+function tribeTotalCount(t){ return (t.joined||0) + tribeRealCount(t.id); }
+function tribeMemberNames(id){
+  return (tribeMembers[String(id)]||[]).map(r=>r.display_name).filter(Boolean);
+}
+function eventRealCount(id){ return (eventInterest[String(id)]||[]).length; }
+function toast(msg){
+  let el = document.getElementById('sanvicToast');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'sanvicToast';
+    el.className = 'sanvic-toast';
+    el.setAttribute('role','status');
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('on');
+  try{
+    clearTimeout(window.__sanvicToastT);
+    window.__sanvicToastT = setTimeout(()=>el.classList.remove('on'), 2800);
+  }catch(_){ }
+}
+
+function joinTribe(id){
+  ensurePerson(async person=>{
+    const key = String(id);
+    const t = PULSE_TRIBES.find(x=>String(x.id)===key);
+    if(!t) return;
+    const joined = myTribes.has(key);
+
+    // Formed on this device only: it has no database row to join.
+    if(!isDbId(key)){
+      t.joined = Math.max(1, (t.joined||1) + (joined ? -1 : 1));
+      if(joined) myTribes.delete(key); else myTribes.add(key);
+      renderPulseBody();
+      return;
+    }
+
+    try{
+      if(joined){
+        const { error } = await sb.from('tribe_members').delete().eq('tribe_id', key).eq('device_id', person.id);
+        if(error) throw error;
+        myTribes.delete(key);
+      } else {
+        const { error } = await sb.from('tribe_members').insert({ tribe_id:key, device_id:person.id, display_name:person.name, kind:person.kind });
+        if(error && error.code !== '23505') throw error;
+        myTribes.add(key);
+      }
+      await loadJoinData();
+      renderPulseBody();
+      toast(joined ? 'You left the tribe.' : 'You are in, ' + person.name + '.');
+    }catch(err){
+      console.warn('[SANVIC] Join failed:', err);
+      toast('Could not save that just now. Try again.');
+    }
+  });
+}
+
+function interestedEvent(id){
+  ensurePerson(async person=>{
+    const key = String(id);
+    if(!isDbId(key)){ toast("You're on the list."); return; }
+    const on = myEvents.has(key);
+    try{
+      if(on){
+        const { error } = await sb.from('event_interest').delete().eq('event_id', key).eq('device_id', person.id);
+        if(error) throw error;
+        myEvents.delete(key);
+      } else {
+        const { error } = await sb.from('event_interest').insert({ event_id:key, device_id:person.id, display_name:person.name, kind:person.kind });
+        if(error && error.code !== '23505') throw error;
+        myEvents.add(key);
+      }
+      await loadJoinData();
+      renderPulseBody();
+      toast(on ? 'Removed from your list.' : "You're on the list, " + person.name + '.');
+    }catch(err){
+      console.warn('[SANVIC] Interest failed:', err);
+      toast('Could not save that just now. Try again.');
+    }
+  });
+}
 
 function tribeCardHTML(t){
+  const total = tribeTotalCount(t);
+  const mine = myTribes.has(String(t.id));
+  const names = tribeMemberNames(t.id);
   const metaExtra = t.spots
-    ? `<div class="pv2-metaline warn">${t.joined} travelers • ${t.spots} spots left</div>`
+    ? `<div class="pv2-metaline warn">${total} travelers • ${t.spots} spots left</div>`
     : t.seatsOpen
-      ? `<div class="pv2-metaline ok">${t.joined} travelers • ${t.seatsOpen} seats open</div>`
-      : `<div class="pv2-metaline">${t.cap||t.joined} travelers</div>`;
+      ? `<div class="pv2-metaline ok">${total} travelers • ${t.seatsOpen} seats open</div>`
+      : `<div class="pv2-metaline">${total} travelers</div>`;
+  const namesLine = names.length
+    ? `<div class="pv2-metaline names">With ${escapeHtml(names.slice(0,3).join(', '))}${names.length>3 ? ' +'+(names.length-3) : ''}</div>`
+    : '';
   const allImages = [];
   if(t.thumb) allImages.push(t.thumb);
   if(t.images && Array.isArray(t.images)) allImages.push(...t.images);
@@ -2024,16 +2216,19 @@ function tribeCardHTML(t){
       <div class="pv2-tribe-sub">${t.sub}</div>
       <div class="pv2-tribe-foot">
         <div>
-          <div style="display:flex;align-items:center">${avStackHTML(4)}<span class="pv2-av-count">+${t.extra||1}</span></div>
+          <div style="display:flex;align-items:center">${avStackHTML(total)}<span class="pv2-av-count">+${total}</span></div>
           ${metaExtra}
+          ${namesLine}
         </div>
-        <button class="pv2-join" onclick="joinTribe('${t.id}')">Join Tribe</button>
+        <button class="pv2-join${mine?' on':''}" onclick="joinTribe('${t.id}')">${mine ? lucideSvg('check',13)+' Joined' : 'Join Tribe'}</button>
       </div>
     </div>
   </div>`;
 }
 function eventCardHTML(e){
   const allImages = (e.images && Array.isArray(e.images) && e.images.length) ? e.images : [];
+  const interested = eventRealCount(e.id);
+  const mine = myEvents.has(String(e.id));
   const imageHtml = allImages.length > 1
     ? `<img class="pulse-card-image" src="${allImages[0]}" alt="" loading="lazy" style="cursor:pointer" onclick="openCarousel(${JSON.stringify(allImages).replace(/"/g, '&quot;')},0)" onerror="this.style.display='none'">`
     : '';
@@ -2044,8 +2239,11 @@ function eventCardHTML(e){
     <div class="pv2-event-org"><span class="pv2-event-org-dot">${e.org.slice(0,1)}</span>${e.org}</div>
     <div class="pv2-event-meta"><span>${lucideSvg('map-pin',12)} ${e.where}</span><span>${lucideSvg('clock',12)} ${e.when}</span></div>
     <div class="pv2-event-foot">
-      ${e.price ? `<span class="pv2-pricechip">${e.price}</span>` : '<span></span>'}
-      <button class="pv2-join" onclick="interestedEvent('${e.id}')">I'm Interested</button>
+      <div class="pv2-event-left">
+        ${e.price ? `<span class="pv2-pricechip">${e.price}</span>` : ''}
+        ${interested ? `<span class="pv2-interested-count">${interested} interested</span>` : ''}
+      </div>
+      <button class="pv2-join${mine?' on':''}" onclick="interestedEvent('${e.id}')">${mine ? lucideSvg('check',13)+' Interested' : "I'm Interested"}</button>
     </div>
   </div>`;
 }
@@ -2113,13 +2311,17 @@ function renderPulseLounge(){
   const el = body; el.scrollTop = el.scrollHeight;
 }
 function sendLoungeMsg(){
-  if(!pulseIsSignedIn()) return openPulseAuthGate();
   const input = document.getElementById('pv2LoungeInput');
-  const text = (input?.value||'').trim();
-  if(!text) return;
-  const isCoord = /(anyone|who wants|looking for|split|share|join)/i.test(text) && /(tomorrow|tonight|today|hopping|surf|dinner|ride|boat|trip)/i.test(text);
-  LOUNGE_MSGS.push({ id:'my_'+Date.now(), name:pulseSavedName(), text, me:true, helper:isCoord });
-  renderPulseLounge();
+  const typed = (input && input.value ? input.value : '').trim();
+  if(!typed) return;
+  ensurePerson(person=>{
+    const el = document.getElementById('pv2LoungeInput');
+    const text = (el && el.value ? el.value : typed).trim();
+    if(!text) return;
+    const isCoord = /(anyone|who wants|looking for|split|share|join)/i.test(text) && /(tomorrow|tonight|today|hopping|surf|dinner|ride|boat|trip)/i.test(text);
+    LOUNGE_MSGS.push({ id:'my_'+Date.now(), name:person.name, text, me:true, helper:isCoord });
+    renderPulseLounge();
+  });
 }
 
 // ── WIZARD ──
@@ -2179,16 +2381,20 @@ function wizSet(k,v){ formDraft[k]=v; renderPulseWizard(); }
 function wizNext(){ if(wizStep<WIZ_STEPS-1) wizStep++; renderPulseWizard(); }
 function wizBack(){ if(wizStep>0) wizStep--; renderPulseWizard(); }
 function wizCreate(){
-  if(!pulseIsSignedIn()) return openPulseAuthGate();
-  const whereLabel = formDraft.wherePick==='current' ? 'Current map area' : (formDraft.wherePick==='type' ? formDraft.whereText : 'Chosen place');
-  const whenLabel = formDraft.when==='custom' ? formDraft.whenCustom.replace('T',', ') : formDraft.when;
-  PULSE_TRIBES.unshift({
-    id:'t_'+Date.now(), title:formDraft.plan, where:whereLabel, when:whenLabel, sub:formDraft.note||'Just formed.',
-    cap:formDraft.size, joined:1, extra:0, tags:[formDraft.plan],
-    thumb:'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=200&h=260&fit=crop&q=70'
+  ensurePerson(person=>{
+    const whereLabel = formDraft.wherePick==='current' ? 'Current map area' : (formDraft.wherePick==='type' ? formDraft.whereText : 'Chosen place');
+    const whenLabel = formDraft.when==='custom' ? formDraft.whenCustom.replace('T',', ') : formDraft.when;
+    const localId = 't_'+Date.now();
+    PULSE_TRIBES.unshift({
+      id:localId, title:formDraft.plan, where:whereLabel, when:whenLabel, sub:formDraft.note||'Just formed.',
+      cap:formDraft.size, joined:1, extra:0, by:person.name, tags:[formDraft.plan],
+      thumb:'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=200&h=260&fit=crop&q=70'
+    });
+    myTribes.add(localId);
+    selectPulseView_reset();
+    selectPulseView('tribes');
+    toast('Tribe formed, ' + person.name + '. It lives on this device for now.');
   });
-  selectPulseView_reset();
-  selectPulseView('tribes');
 }
 
 
@@ -6952,15 +7158,17 @@ function huntLoadState(){
     return {
       unlocked: JSON.parse(localStorage.getItem('sanvic_hunt_unlocked') || '[]'),
       points: parseInt(localStorage.getItem('sanvic_hunt_points') || '0', 10) || 0,
-      progress: JSON.parse(localStorage.getItem('sanvic_hunt_progress') || '{}')
+      progress: JSON.parse(localStorage.getItem('sanvic_hunt_progress') || '{}'),
+      claimed: JSON.parse(localStorage.getItem('sanvic_hunt_claimed') || '[]')
     };
-  }catch(_){ return { unlocked:[], points:0, progress:{} }; }
+  }catch(_){ return { unlocked:[], points:0, progress:{}, claimed:[] }; }
 }
 function huntSaveState(s){
   try{
     localStorage.setItem('sanvic_hunt_unlocked', JSON.stringify(s.unlocked||[]));
     localStorage.setItem('sanvic_hunt_points', String(s.points||0));
     localStorage.setItem('sanvic_hunt_progress', JSON.stringify(s.progress||{}));
+    localStorage.setItem('sanvic_hunt_claimed', JSON.stringify(s.claimed||[]));
   }catch(_){}
 }
 
@@ -7038,7 +7246,24 @@ function huntOpenTrail(catKey){
   if(typeof filterDestinations==='function'){ try{ filterDestinations(catKey); }catch(_){ } }
 }
 function huntRedeem(id){
-  showHuntOverlay('Reward pending', 'Complete the required discoveries to redeem this reward.');
+  ensurePerson(person=>{
+    const s = huntLoadState();
+    const key = String(id);
+    if(s.claimed.includes(key)){
+      showHuntOverlay('Already reserved', person.name + ', this reward is already held under your name.');
+      return;
+    }
+    const reward = huntRewardItems().find(r=>String(r.id)===key);
+    const need = (reward && reward.pointsRequired) ? reward.pointsRequired : 100;
+    if(s.points < need){
+      showHuntOverlay('Not yet, ' + person.name, 'You have ' + s.points + ' of ' + need + ' points. Unlock more discoveries and come back.');
+      return;
+    }
+    s.claimed.push(key);
+    huntSaveState(s);
+    renderHunt();
+    showHuntOverlay('Reserved for ' + person.name, 'Show this at the counter to collect. No email needed — it is tied to this device.');
+  });
 }
 
 function renderHunt(){
@@ -7212,6 +7437,11 @@ function renderHunt(){
               <div class="hunt-progress-item">${lucideSvg('map',13)} ${trails.length} trails available</div>
               <div class="hunt-progress-item">${lucideSvg('trophy',13)} ${state.points} points earned</div>
               <div class="hunt-progress-item">${lucideSvg('gift',13)} ${readyRewards} rewards ready</div>
+              <div class="hunt-progress-item hunt-progress-who">${lucideSvg('users',13)} ${
+                personName()
+                  ? escapeHtml(personName())
+                  : `<button class="hunt-name-btn" onclick="openPersonSheet()">Add your name</button>`
+              }</div>
             </div>
           </div>
         </div>
