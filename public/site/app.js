@@ -118,7 +118,6 @@ let destinationsSource = 'loading';
 // ═══════════════════════════════════════════════════════
 let currentUser = null;       // Supabase auth user object, or null if signed out
 let currentProfile = null;    // row from traveler_profiles, or null
-let pendingProtectedAction = null; // a function to re-run automatically after successful login
 
 async function initAuth(){
   const { data: { session } } = await sb.auth.getSession();
@@ -134,11 +133,6 @@ async function initAuth(){
       closeLoginModal();
       updateAuthUI();
       if(typeof refreshAdminAccess === 'function') refreshAdminAccess();
-      if(pendingProtectedAction){
-        const fn = pendingProtectedAction;
-        pendingProtectedAction = null;
-        fn();
-      }
     } else if(event === 'SIGNED_OUT'){
       currentUser = null;
       currentProfile = null;
@@ -167,18 +161,6 @@ function isLoggedIn(){
   return !!currentUser;
 }
 
-// Call this to gate any action that requires login. If logged in,
-// runs `action` immediately. If not, opens the login modal and
-// queues `action` to run automatically right after sign-in.
-function requireAuth(action){
-  if(isLoggedIn()){
-    action();
-  } else {
-    pendingProtectedAction = action;
-    openLoginModal();
-  }
-}
-
 function openLoginModal(){
   document.getElementById('loginModalOverlay').classList.add('active');
   document.getElementById('loginModalSheet').classList.add('open');
@@ -189,7 +171,6 @@ function openLoginModal(){
 function closeLoginModal(){
   document.getElementById('loginModalOverlay').classList.remove('active');
   document.getElementById('loginModalSheet').classList.remove('open');
-  pendingProtectedAction = null; // closing without logging in cancels the queued action
 }
 
 async function sendMagicLink(){
