@@ -4647,10 +4647,17 @@ async function adminPickWikimedia(i){
   // The form has one image list - the media gallery - and its first entry is the
   // cover. This used to write to a #adfImage field that no longer exists, so
   // tapping a Commons photo did nothing at all.
-  const artist = (ph.artist || '').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim() || 'unknown author';
-  const credit = 'Photo: ' + artist + ', Wikimedia Commons' + (ph.license ? ', ' + ph.license : '');
+  const artist = (ph.artist || '').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
+  const licence = String(ph.license || '');
+  // Only the CC BY family makes attribution a condition of use. A public-domain
+  // or CC0 photo owes nothing, and writing "unknown author" underneath one is
+  // both noise and a claim of an obligation the licence does not impose.
+  const needsCredit = /^CC BY/i.test(licence);
+  const credit = needsCredit
+    ? 'Photo: ' + (artist || 'unknown author') + ', Wikimedia Commons' + (licence ? ', ' + licence : '')
+    : '';
 
-  let added = null;
+  let added = null, copyNote = '';
   try {
     // Copy it into the owner's own bucket. Hotlinking Commons works but the
     // owner cannot then manage or replace the file, and the licence credit
@@ -4671,10 +4678,8 @@ async function adminPickWikimedia(i){
     // Losing the photo entirely would be worse than a hotlink, so fall back and
     // say plainly what happened.
     added = ph.thumb;
-    if(status){
-      status.innerHTML = 'Could not copy it into your storage (' + escapeHtml(e.message || String(e)) + '), so the Commons link was added directly. Replace it with your own upload whenever you like.';
-      status.style.color = '#f59e0b';
-    }
+    copyNote = 'Could not copy it into your storage (' + escapeHtml(e.message || String(e))
+      + '), so the Commons link was added directly. Replace it with your own upload whenever you like. ';
   }
 
   if(added){ __mediaGallery.push(added); mediaRefreshGrid('adf'); }
@@ -4682,15 +4687,18 @@ async function adminPickWikimedia(i){
   const creditInput = document.getElementById('adfCredit');
   if(creditInput){
     creditInput.value = credit;
-    creditInput.style.borderColor = 'var(--ocean-teal-light)';
-    setTimeout(()=>{ creditInput.style.borderColor = ''; }, 1800);
+    creditInput.style.borderColor = credit ? 'var(--ocean-teal-light)' : '';
+    if(credit) setTimeout(()=>{ creditInput.style.borderColor = ''; }, 1800);
   }
 
-  if(status && added && added !== ph.thumb){
-    status.innerHTML = 'Added to the gallery. The photo credit was filled in with <strong>' + escapeHtml(artist) + '</strong>'
-      + (ph.license ? ' (' + escapeHtml(ph.license) + ')' : '')
-      + ' — that credit is a condition of the licence, so please leave it in place.';
-    status.style.color = '#22c55e';
+  if(status && added){
+    status.innerHTML = copyNote + 'Added to the gallery. ' + (needsCredit
+      ? 'The photo credit was filled in with <strong>' + escapeHtml(artist || 'unknown author') + '</strong>'
+        + (licence ? ' (' + escapeHtml(licence) + ')' : '')
+        + ' — that credit is a condition of the licence, so please leave it in place.'
+      : 'This photo is <strong>' + escapeHtml(licence || 'freely licensed')
+        + '</strong>, which does not require a credit, so the credit field was cleared.');
+    status.style.color = copyNote ? '#f59e0b' : '#22c55e';
   }
 }
 
