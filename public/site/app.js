@@ -1216,7 +1216,7 @@ function closeAllPanels() {
 function refreshPanelOpen(){
   try{
     const sel = [
-      '.today-sheet.peek', '.today-sheet.expanded',
+      '.today-panel.open',
       '.explore-sheet.open',
       '#pulsePanel:not(.hidden)',
       '#mySanvicPanel:not(.hidden)',
@@ -1284,41 +1284,28 @@ function updateTodayGreeting(){
   updateLiveCounts();
 }
 function openTodaySheet(){
-  const s = document.getElementById('todaySheet');
+  const s = document.getElementById('todayPanel');
   if(!s) return;
   renderTodayContent();
   updateTodayGreeting();
-  s.classList.remove('hidden','expanded');
-  s.classList.add('peek');
+  s.classList.add('open');
+  s.setAttribute('aria-hidden','false');
 }
+// Today is a full-screen panel now, not a 3-snap bottom sheet, so "toggle",
+// "snap" and "collapse" all just resolve to open or close. Kept as named
+// aliases because other code and the mobile test harness still call them.
 function toggleTodaySheet(){
-  const s = document.getElementById('todaySheet');
+  const s = document.getElementById('todayPanel');
   if(!s) return;
-  const cur = s.classList.contains('expanded') ? 'expanded'
-    : s.classList.contains('mid') ? 'mid'
-    : s.classList.contains('peek') ? 'peek' : 'hidden';
-  s.classList.remove('peek','mid','expanded','hidden');
-  const next = cur==='peek' ? 'mid' : cur==='mid' ? 'expanded' : 'peek';
-  s.classList.add(next);
-  if(next!=='peek') updateTodayGreeting();
+  if(s.classList.contains('open')) closeTodaySheet(); else openTodaySheet();
 }
-function setTodaySnap(level){
-  const s = document.getElementById('todaySheet');
-  if(!s) return;
-  s.classList.remove('peek','mid','expanded','hidden');
-  s.classList.add(level===3?'expanded':level===2?'mid':'peek');
-}
-function collapseTodaySheet(){
-  const s = document.getElementById('todaySheet');
-  if(!s) return;
-  s.classList.remove('expanded','mid');
-  s.classList.add('peek');
-}
+function setTodaySnap(level){ if(level >= 2) openTodaySheet(); else closeTodaySheet(); }
+function collapseTodaySheet(){ closeTodaySheet(); }
 function closeTodaySheet(){
-  const s = document.getElementById('todaySheet');
+  const s = document.getElementById('todayPanel');
   if(!s) return;
-  s.classList.remove('peek','expanded');
-  s.classList.add('hidden');
+  s.classList.remove('open');
+  s.setAttribute('aria-hidden','true');
 }
 
 // ─── EXPLORE — one shared state for the list, map and selected place ───
