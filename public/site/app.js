@@ -1064,10 +1064,11 @@ function setAreaLabel(show){
 }
 function zoomToSanVicente(){
   if(!map) return;
+  const animate = !reducedMotion();
   if(activeMarkerSet.length && activeMarkerSet.length < allMarkers.length){
-    map.flyToBounds(L.featureGroup(activeMarkerSet).getBounds().pad(.25),{duration:.9,maxZoom:15});
+    map.flyToBounds(L.featureGroup(activeMarkerSet).getBounds().pad(.25),{duration:.9,maxZoom:15,animate});
   } else {
-    map.flyTo(SANVICENTE_CENTER,PIN_VISIBLE_ZOOM,{duration:.9});
+    map.flyTo(SANVICENTE_CENTER,PIN_VISIBLE_ZOOM,{duration:.9,animate});
   }
 }
 
