@@ -747,6 +747,7 @@ const EXTRA_ICONS = {
 // Fetched from https://cdn.jsdelivr.net/npm/lucide-static/icons/<name>.svg
 // and stripped to the inner shape markup, matching the format above.
 const LUCIDE_MORE_ICONS = {
+  "chevron-left": "<path d=\"m15 18-6-6 6-6\" />",
   "banknote": "<rect width=\"20\" height=\"12\" x=\"2\" y=\"6\" rx=\"2\" /> <circle cx=\"12\" cy=\"12\" r=\"2\" /> <path d=\"M6 12h.01M18 12h.01\" />",
   "pizza": "<path d=\"m12 14-1 1\" /> <path d=\"m13.75 18.25-1.25 1.42\" /> <path d=\"M17.775 5.654a15.68 15.68 0 0 0-12.121 12.12\" /> <path d=\"M18.8 9.3a1 1 0 0 0 2.1 7.7\" /> <path d=\"M21.964 20.732a1 1 0 0 1-1.232 1.232l-18-5a1 1 0 0 1-.695-1.232A19.68 19.68 0 0 1 15.732 2.037a1 1 0 0 1 1.232.695z\" />",
   "shirt": "<path d=\"M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z\" />",
@@ -1999,7 +2000,7 @@ function renderPulseBody(){
           <div class="pv2-listhead-t">${lucideSvg('users',15)} Active Tribes</div>
           <div class="pv2-listhead-s">Groups of travelers planning something together.</div>
         </div>
-        <button class="pv2-viewall">View all ›</button>
+        <button class="pv2-viewall">View all ${lucideSvg('chevron-right',13)}</button>
       </div>
       ${list.map(tribeCardHTML).join('')}
       <div class="pv2-footbanner">
@@ -2098,8 +2099,8 @@ function renderPulseWizard(){
       <div class="pv2-wiz-q">${q}</div>
       ${opts}
       <div class="pv2-wiz-nav">
-        <button class="pv2-wiz-back" onclick="wizBack()" ${wizStep===0?'style="visibility:hidden"':''}>‹ Back</button>
-        <button class="pv2-wiz-next" ${valid?'':'disabled'} onclick="${last?'wizCreate()':'wizNext()'}">${last?'Create Tribe':'Next ›'}</button>
+        <button class="pv2-wiz-back" onclick="wizBack()" ${wizStep===0?'style="visibility:hidden"':''}>${lucideSvg('chevron-left',13)} Back</button>
+        <button class="pv2-wiz-next" ${valid?'':'disabled'} onclick="${last?'wizCreate()':'wizNext()'}">${last?'Create Tribe':'Next '+lucideSvg('chevron-right',13)}</button>
       </div>
     </div>`;
 }
@@ -3847,7 +3848,7 @@ function adminDestRowHtml(d){
   const stats = d.stats || {};
   const bits = [];
   if(d.barangay) bits.push(escapeHtml(d.barangay));
-  if(stats.rating) bits.push('&#9733; ' + escapeHtml(String(stats.rating)));
+  if(stats.rating) bits.push(lucideSvg('star',12) + ' ' + escapeHtml(String(stats.rating)));
   if(stats.travel) bits.push(escapeHtml(String(stats.travel)));
   if(stats.season) bits.push(escapeHtml(String(stats.season)));
   if(extras) bits.push('+' + extras + ' photo' + (extras===1?'':'s'));
@@ -4008,7 +4009,7 @@ function renderAdminDest(){
         <span class="admin-cat-name">${escapeHtml(g.label)}</span>
         <span class="admin-cat-note">${needs?needs+' need details':'all complete'}</span>
         <span class="admin-cat-count">${g.items.length}</span>
-        <span class="admin-cat-chev">${collapsed?'&#9656;':'&#9662;'}</span>
+        <span class="admin-cat-chev">${lucideSvg(collapsed?'chevron-right':'chevron-down',14)}</span>
       </div>
       ${collapsed?'':`<div class="admin-cat-body">${g.items.map(adminDestRowHtml).join('')}</div>`}
     </div>`;
@@ -4939,7 +4940,7 @@ function mediaGalleryHtml(containerId, prefix){
   const imgs = (__mediaGallery || []).map((url, i) => `
     <div class="admin-media-thumb">
       <img src="${escapeHtml(url)}" onerror="this.parentElement.style.display='none'">
-      <button class="admin-media-del" onclick="mediaRemoveImage(${i},'${containerId}')">&times;</button>
+      <button class="admin-media-del" onclick="mediaRemoveImage(${i},'${containerId}')">${lucideSvg('x',14)}</button>
     </div>`).join('');
   return `
     <label>Gallery images (tap + to upload from device, or paste a URL)</label>
@@ -4994,7 +4995,7 @@ function mediaRefreshGrid(containerId){
   const thumbs = (__mediaGallery || []).map((url, i) => `
     <div class="admin-media-thumb">
       <img src="${escapeHtml(url)}" onerror="this.parentElement.style.display='none'">
-      <button class="admin-media-del" onclick="mediaRemoveImage(${i},'${containerId}')">&times;</button>
+      <button class="admin-media-del" onclick="mediaRemoveImage(${i},'${containerId}')">${lucideSvg('x',14)}</button>
     </div>`).join('');
   grid.innerHTML = thumbs + (addBtn ? addBtn.outerHTML : `<label class="admin-media-add"><input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onchange="mediaUploadFile(this,'${containerId}')" hidden><span>+</span></label>`);
 }
@@ -5071,7 +5072,7 @@ function todayItemGalleryHtml(itemId, prefix, galleryMap, itemLabel){
   const imgs = (galleryMap[itemId] || []).map((url, i) => `
     <div class="admin-media-thumb">
       <img src="${escapeHtml(url)}" onerror="this.parentElement.style.display='none'">
-      <button class="admin-media-del" onclick="todayRemoveItemImage('${itemId}',${i},'${prefix}')">&times;</button>
+      <button class="admin-media-del" onclick="todayRemoveItemImage('${itemId}',${i},'${prefix}')">${lucideSvg('x',14)}</button>
     </div>`).join('');
   return `
     <label>Gallery images (tap + to upload from device, or paste a URL)</label>
@@ -5142,7 +5143,7 @@ function todayRefreshItemGallery(itemId, prefix){
   const imgs = (galleryMap[itemId] || []).map((url, i) => `
     <div class="admin-media-thumb">
       <img src="${escapeHtml(url)}" onerror="this.parentElement.style.display='none'">
-      <button class="admin-media-del" onclick="todayRemoveItemImage('${itemId}',${i},'${prefix}')">&times;</button>
+      <button class="admin-media-del" onclick="todayRemoveItemImage('${itemId}',${i},'${prefix}')">${lucideSvg('x',14)}</button>
     </div>`).join('');
   grid.innerHTML = imgs + `
     <label class="admin-media-add">
@@ -5184,7 +5185,7 @@ function todayBuildHappeningCard(id, e){
             <input id="hapVibe_${id}" value="${vibe}" placeholder="Vibe" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
           </div>
         </div>
-        <button class="admin-mini-btn danger" onclick="todayRemoveHappening('${id}')">&times;</button>
+        <button class="admin-mini-btn danger" onclick="todayRemoveHappening('${id}')">${lucideSvg('x',14)}</button>
       </div>
       <div style="padding:0 8px 8px;">${todayItemGalleryHtml(id, 'happening', __todayHappeningGalleries, 'event')}</div>
     </div>`;
@@ -5214,7 +5215,7 @@ function todayBuildLocalCard(id, l){
           <input id="locText_${id}" value="${text}" placeholder="Tip text" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;margin-top:4px;">
           <input id="locMeta_${id}" value="${meta}" placeholder="Meta" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;margin-top:4px;">
         </div>
-        <button class="admin-mini-btn danger" onclick="todayRemoveLocal('${id}')">&times;</button>
+        <button class="admin-mini-btn danger" onclick="todayRemoveLocal('${id}')">${lucideSvg('x',14)}</button>
       </div>
       <div style="padding:0 8px 8px;">${todayItemGalleryHtml(id, 'local', __todayLocalGalleries, 'tip')}</div>
     </div>`;
@@ -6628,7 +6629,7 @@ function renderMySanvic(){
     <div class="mysv-section">
       <div class="mysv-sec-head">
         <div><div class="mysv-sec-title">${lucideSvg('calendar',15)} Upcoming</div><div class="mysv-sec-sub">Things you're going to or interested in.</div></div>
-        <button class="mysv-viewall">View all ›</button>
+        <button class="mysv-viewall">View all ${lucideSvg('chevron-right',13)}</button>
       </div>
       <div class="mysv-hscroll">
         ${MYSV_UPCOMING.map(u=>{
@@ -6658,7 +6659,7 @@ function renderMySanvic(){
     <div class="mysv-section">
       <div class="mysv-sec-head">
         <div><div class="mysv-sec-title">${lucideSvg('luggage',15)} Saved Places</div><div class="mysv-sec-sub">Places you saved from Explore.</div></div>
-        <button class="mysv-viewall">View all ›</button>
+        <button class="mysv-viewall">View all ${lucideSvg('chevron-right',13)}</button>
       </div>
       <div class="mysv-hscroll">
         ${MYSV_SAVED.map(s=>{
@@ -6687,7 +6688,7 @@ function renderMySanvic(){
     <div class="mysv-section">
       <div class="mysv-sec-head">
         <div><div class="mysv-sec-title">${lucideSvg('users',15)} Joined Tribes</div><div class="mysv-sec-sub">Tribes you joined in Pulse.</div></div>
-        <button class="mysv-viewall">View all ›</button>
+        <button class="mysv-viewall">View all ${lucideSvg('chevron-right',13)}</button>
       </div>
       <div>
         ${MYSV_TRIBES.map(t=>{
@@ -6714,7 +6715,7 @@ function renderMySanvic(){
         <div class="mysv-col">
           <div class="mysv-sec-head" style="margin-bottom:6px">
             <div><div class="mysv-sec-title">${lucideSvg('calendar',15)} Events I'm Interested In</div><div class="mysv-sec-sub">You showed interest in these.</div></div>
-            <button class="mysv-viewall">View all ›</button>
+            <button class="mysv-viewall">View all ${lucideSvg('chevron-right',13)}</button>
           </div>
           ${MYSV_EVENTS.map(e=>{
             const evImg = (e.images && e.images.length) ? e.images[0] : '';
@@ -6738,7 +6739,7 @@ function renderMySanvic(){
         <div class="mysv-col">
           <div class="mysv-sec-head" style="margin-bottom:6px">
             <div><div class="mysv-sec-title">${lucideSvg('target',15)} Hunt Progress</div><div class="mysv-sec-sub">Your discoveries and rewards.</div></div>
-            <button class="mysv-viewall">View all ›</button>
+            <button class="mysv-viewall">View all ${lucideSvg('chevron-right',13)}</button>
           </div>
           <div class="mysv-hunt">
             <div class="mysv-hunt-main">
@@ -6774,7 +6775,7 @@ function renderMySanvic(){
     <div class="mysv-section">
       <div class="mysv-sec-head">
         <div><div class="mysv-sec-title">${lucideSvg('clock',15)} Recently Viewed</div><div class="mysv-sec-sub">Places you recently looked at.</div></div>
-        <button class="mysv-viewall">View all ›</button>
+        <button class="mysv-viewall">View all ${lucideSvg('chevron-right',13)}</button>
       </div>
       <div class="mysv-hscroll">
         ${MYSV_RECENT.map(r=>`
@@ -7026,7 +7027,7 @@ function renderHunt(){
         </div>
         <button class="hunt-status" onclick="huntScrollToSplit()" aria-label="Jump to progress">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18 3h-3V1H9v2H6a2 2 0 0 0-2 2v3a5 5 0 0 0 4 4.9V13a4 4 0 0 0 3 3.87V19H8v2h8v-2h-3v-2.13A4 4 0 0 0 16 13v-.1A5 5 0 0 0 20 8V5a2 2 0 0 0-2-2zM6 8V5h2v5.83A3 3 0 0 1 6 8zm12 0a3 3 0 0 1-2 2.83V5h2z"/></svg>
-          <span>${discoveries} discoveries / ${readyRewards} rewards ready ›</span>
+          <span>${discoveries} discoveries / ${readyRewards} rewards ready ${lucideSvg('chevron-right',13)}</span>
         </button>
       </div>
       <div class="hunt-copy">Find hidden spots, unlock stories, collect badges, and earn rewards across San Vicente.</div>
@@ -7044,7 +7045,7 @@ function renderHunt(){
     <div class="hunt-section" id="huntNearby">
       <div class="hunt-sec-head">
         <div><div class="hunt-sec-title">Nearby Discoveries</div><div class="hunt-sec-sub">Hidden spots near you.</div></div>
-        <button class="hunt-viewall" onclick="closeHuntPanel(); dockNav('discover');">View all ›</button>
+        <button class="hunt-viewall" onclick="closeHuntPanel(); dockNav('discover');">View all ${lucideSvg('chevron-right',13)}</button>
       </div>
       <div class="hunt-hscroll">
         ${nearby.length ? nearby.map((c,i)=>{
@@ -7074,7 +7075,7 @@ function renderHunt(){
     <div class="hunt-section" id="huntTrails">
       <div class="hunt-sec-head">
         <div><div class="hunt-sec-title">Trails</div><div class="hunt-sec-sub">Complete trails, unlock badges, earn rewards.</div></div>
-        <button class="hunt-viewall" onclick="closeHuntPanel(); dockNav('discover');">View all ›</button>
+        <button class="hunt-viewall" onclick="closeHuntPanel(); dockNav('discover');">View all ${lucideSvg('chevron-right',13)}</button>
       </div>
       <div class="hunt-hscroll">
         ${trails.length ? trails.map(t=>`

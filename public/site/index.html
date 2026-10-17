@@ -857,7 +857,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
 <div class="discover-panel" id="discoverPanel">
   <div class="discover-head">
     <div class="discover-title">San Vicente spots</div>
-    <button class="discover-close" onclick="closeDiscoverPanel()" aria-label="Close discover">×</button>
+    <button class="discover-close" onclick="closeDiscoverPanel()" aria-label="Close discover"><svg xmlns="http://www.w3.org/2000/svg" class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
   </div>
   <div class="discover-cats" id="discoverCats">
     <button class="discover-cat active" onclick="selectDiscoverCategory('all')" data-cat="all">All</button>
@@ -997,7 +997,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   <div class="today-handle" onclick="toggleTodaySheet()"></div>
   <div class="today-header-expanded">
     <span class="today-title-lg">San Vicente Daily</span>
-    <button class="today-close" onclick="collapseTodaySheet()" aria-label="Collapse">×</button>
+    <button class="today-close" onclick="collapseTodaySheet()" aria-label="Collapse"><svg xmlns="http://www.w3.org/2000/svg" class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
   </div>
   <div class="today-peek" onclick="toggleTodaySheet()">
     <p class="today-greet-kicker" id="todayGreetingKicker">Good afternoon</p>
@@ -1147,7 +1147,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   <div class="es-peek">
     <div class="es-heading">
       <div class="es-heading-copy"><p class="es-eyebrow">PALAWAN, PHILIPPINES</p><h2 class="es-heading-title">Explore San Vicente</h2></div>
-      <button class="es-close" onclick="closeExploreSheet()" aria-label="Collapse Explore panel">×</button>
+      <button class="es-close" onclick="closeExploreSheet()" aria-label="Collapse Explore panel"><svg xmlns="http://www.w3.org/2000/svg" class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
     <div class="es-audience" aria-label="Choose Explore view">
       <button class="es-audience-btn active" data-mode="visitor" aria-pressed="true" onclick="setExploreAudience('visitor')">I'm visiting</button>
@@ -1526,7 +1526,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
 
 <!-- ═══ PULSE IMAGE LIGHTBOX ═══ -->
 <div class="pulse-lightbox" id="pulseLightbox" onclick="closePulseLightbox()">
-  <button class="pulse-lightbox-close" type="button" aria-label="Close" onclick="event.stopPropagation();closePulseLightbox()">×</button>
+  <button class="pulse-lightbox-close" type="button" aria-label="Close" onclick="event.stopPropagation();closePulseLightbox()"><svg xmlns="http://www.w3.org/2000/svg" class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
   <img id="pulseLightboxImg" src="" alt="" onclick="event.stopPropagation()">
 </div>
 
@@ -1991,7 +1991,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-17-lucide-icons';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-17-lucide-icons-r2';
 </script>
 <script src="barangays.geojson.js"></script>
 <script>
@@ -2066,13 +2066,13 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
 
 <!-- Image Carousel Lightbox -->
 <div class="carousel-overlay" id="carouselOverlay" onclick="closeCarousel(event)">
-  <button class="carousel-close" onclick="closeCarousel()">&times;</button>
+  <button class="carousel-close" onclick="closeCarousel()"><svg xmlns="http://www.w3.org/2000/svg" class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
   <span class="carousel-counter" id="carouselCounter"></span>
-  <button class="carousel-nav carousel-prev" onclick="carouselPrev(event)">&#8249;</button>
+  <button class="carousel-nav carousel-prev" onclick="carouselPrev(event)"><svg xmlns="http://www.w3.org/2000/svg" class="lucide" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
   <div class="carousel-container">
     <img id="carouselImg" src="" alt="" onclick="event.stopPropagation()">
   </div>
-  <button class="carousel-nav carousel-next" onclick="carouselNext(event)">&#8250;</button>
+  <button class="carousel-nav carousel-next" onclick="carouselNext(event)"><svg xmlns="http://www.w3.org/2000/svg" class="lucide" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></button>
   <div class="carousel-dots" id="carouselDots"></div>
 </div>
 
