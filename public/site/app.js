@@ -337,10 +337,7 @@ function selectDashSection(section){
   switch(section){
     case 'overview': renderDashOverview(); break;
     case 'saved': renderDashSaved(); break;
-    case 'bookings': body.innerHTML = `<div class="dash-section-title">Bookings</div><div class="dash-empty-state">Booking management is coming in a future update.</div>`; break;
-    case 'trips': body.innerHTML = `<div class="dash-section-title">My Trips</div><div class="dash-empty-state">Trip planning is coming in a future update.</div>`; break;
     case 'activity': renderDashActivity(); break;
-    case 'messages': body.innerHTML = `<div class="dash-section-title">Messages</div><div class="dash-empty-state">Direct messages between travelers are coming soon.</div>`; break;
     case 'settings': renderDashSettings(); break;
   }
 }
@@ -2432,9 +2429,6 @@ function pulseCardHtml(post){
             <button class="pulse-action" onclick="togglePulseThread(${post.id})">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
               <span id="pulseCommentCount-${post.id}">${post.comments}</span>
-            </button>
-            <button class="pulse-more-btn" onclick="alert('Report / hide options coming soon.')">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/><circle cx="5" cy="12" r="1.5"/></svg>
             </button>
           </div>
           <div class="pulse-thread" id="pulseThread-${post.id}" style="display:none;"></div>
