@@ -505,6 +505,7 @@ function destRowToObj(row){
     image: row.image, images: row.images || [], description: row.description, tip: row.tip, color: row.color || '#0ea5e9',
     videoUrl: row.video_url || '', videoType: row.video_type || '', featured: !!row.featured,
     googleBusinessUrl: row.google_business_url || '',
+    imageCredit: row.image_credit || '',
     barangay: row.barangay || '',
     stats: { rating: row.rating, travel: row.travel, temp: row.temp, season: row.season }
   };
@@ -1405,8 +1406,12 @@ function explorePlaceCard(d){
   // Two lines, always: the name (clamped) and one meta line. Keeps every row the
   // same height so the list scans as one uniform column at any width.
   const meta=distance||d.stats?.travel||'';
+  // A listing with no photo yet still has to look intentional, so the empty
+  // tile carries the category colour and the category icon instead of sitting
+  // there as a blank grey box.
+  const catColor=cat.color||'#94b7b8';
   return `<button class="explore-result${selected?' selected':''}" data-place-id="${escT(d.id)}" aria-pressed="${selected}" onclick="selectExplorePlace(this.dataset.placeId)">
-    <span class="explore-result-image">${photo?`<img src="${escT(photo)}" alt="${escT(d.name)}" loading="lazy" onerror="this.hidden=true">`:''}<span class="image-placeholder" aria-hidden="true">${lucideSvg(cat.icon||'map-pin',24)}</span></span>
+    <span class="explore-result-image">${photo?`<img src="${escT(photo)}" alt="${escT(d.name)}" loading="lazy" onerror="this.hidden=true">`:''}<span class="image-placeholder" style="color:${escT(catColor)};background:linear-gradient(145deg,${escT(catColor)}2e,${escT(catColor)}0f)" aria-hidden="true">${lucideSvg(cat.icon||'map-pin',24)}</span></span>
     <span class="explore-result-copy"><strong class="result-name">${escT(d.name)}</strong><span class="result-meta"><span class="result-category">${escT(cat.label)}</span><span class="result-area">${lucideSvg('map-pin',12)} ${escT(d.barangay||'San Vicente')}</span>${meta?`<span class="result-access">${escT(meta)}</span>`:''}</span></span>
     <span class="result-arrow" aria-hidden="true">${lucideSvg('chevron-right',17)}</span>
   </button>`;
@@ -3145,6 +3150,11 @@ function openDest(d,recordHistory=true){
   media.replaceChildren();
   const placeholder=document.createElement('div');placeholder.className='detail-image-placeholder';
   placeholder.innerHTML=lucideSvg(category.icon||'map-pin',36)+'<span>San Vicente</span>';media.appendChild(placeholder);
+  // Attribution is a licence condition for the CC BY / CC BY-SA photos in the
+  // directory, so it is tied to the photo actually being shown: it appears with
+  // the hero image and stays hidden when a video or the placeholder is used.
+  const creditEl=document.getElementById('deCredit');
+  creditEl.hidden=true;creditEl.textContent='';
   const video=SanvicExplore.safeUrl(d.videoUrl);
   // The photo is the fallback whenever the video slot is empty OR fails to
   // load. Every uploaded video currently 404s in Storage, and without this the
@@ -3153,6 +3163,7 @@ function openDest(d,recordHistory=true){
     if(!images[0]||media.querySelector('img')) return;
     const img=document.createElement('img');img.src=images[0];img.alt=d.name;
     img.onerror=()=>{img.hidden=true;photo.classList.remove('has-carousel');};media.appendChild(img);
+    if(d.imageCredit){creditEl.textContent=d.imageCredit;creditEl.hidden=false;}
     if(images.length>1){
       photo.classList.add('has-carousel');photo.setAttribute('role','button');photo.tabIndex=0;photo.setAttribute('aria-label','View '+images.length+' photos of '+d.name);
       photo.onclick=()=>openCarousel(images,0);
@@ -4379,6 +4390,14 @@ function adminDestFormHtml(){
       ${mediaGalleryHtml('adf','dest')}
       ${mediaVideoHtml('adf', d.videoUrl, d.videoType)}
 
+      <div class="admin-field">
+        <label>Photo credit (shown under the photo)</label>
+        <input id="adfCredit" value="${escapeHtml(d.imageCredit||'')}" placeholder="Photo: Jane Doe, Wikimedia Commons, CC BY 4.0">
+        <div style="font-size:.66rem;color:var(--white-dim);margin-top:6px;line-height:1.55">
+          Required when the photo is not yours. Wikimedia Commons photos are almost always CC BY or CC BY-SA, which allow commercial use only if the author and licence are shown. Leave blank for photos you took yourself.
+        </div>
+      </div>
+
       <div class="admin-field"><label>Description *</label><textarea id="adfDesc" rows="3" placeholder="What is this place, and why should someone visit or use it?">${escapeHtml(d.description)}</textarea></div>
       <div class="admin-field"><label>Local tip</label><textarea id="adfTip" rows="2" placeholder="Access, hours, fees, cash, road or weather advice">${escapeHtml(d.tip)}</textarea></div>
       <div class="admin-grid-2">
@@ -4403,39 +4422,11 @@ function adminToggleVideoFields(){
   document.getElementById('adfVideoUploadWrap').style.display = type==='upload' ? '' : 'none';
 }
 
-function adminPreviewImage(){
-  const url = document.getElementById('adfImage').value.trim();
-  const img = document.getElementById('adfImagePreview');
-  if(url){ img.src = url; img.style.display = ''; }
-  else { img.style.display = 'none'; }
-}
-
 async function adminUploadImageNow(){
-  if(!adminRequireWrite()) return;
-  const fileInput = document.getElementById('adfImageFile');
-  const file = fileInput.files[0];
-  const status = document.getElementById('adfImageUploadStatus');
-  if(!file) return;
-
-  status.textContent = 'Uploading...';
-  status.style.color = 'var(--white-dim)';
-  try {
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-    const path = `dest_${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
-    const { error } = await sb.storage.from('destination-images').upload(path, file, {
-      cacheControl: '3600', upsert: false, contentType: file.type || 'image/jpeg'
-    });
-    if(error) throw error;
-
-    const { data } = sb.storage.from('destination-images').getPublicUrl(path);
-    document.getElementById('adfImage').value = data.publicUrl;
-    adminPreviewImage();
-    status.textContent = 'Uploaded.';
-    status.style.color = '#22c55e';
-  } catch(err){
-    status.textContent = 'Upload failed: ' + (err.message || err);
-    status.style.color = '#ef4444';
-  }
+  // Superseded by the media gallery, which uploads, previews and removes
+  // images without leaving the form. Kept only as a no-op guard so any cached
+  // markup referencing it cannot throw.
+  return;
 }
 
 function adminParseMapsLink(){
@@ -4644,19 +4635,62 @@ async function adminWikimediaSuggest(q, results){
   }
 }
 
-function adminPickWikimedia(i){
+async function adminPickWikimedia(i){
   const phs = window.__wmPhotos || [];
   const ph = phs[i];
-  if(!ph) return;
-  const img = document.getElementById('adfImage');
-  if(img) img.value = ph.thumb;
-  adminPreviewImage();
-  const attrEl = document.getElementById('adfImageAttribution');
-  const artist = (ph.artist || '').replace(/<[^>]+>/g,'').trim() || 'unknown author';
-  if(attrEl){
-    attrEl.innerHTML = 'Photo from ' +
-      (ph.url ? '<a href="' + ph.url + '" target="_blank" rel="noreferrer" style="color:var(--ocean-teal-light)">Wikimedia Commons</a>' : 'Wikimedia Commons') +
-      ' — ' + escapeHtml(artist) + (ph.license ? ' (' + escapeHtml(ph.license) + ')' : '') + '. Show this attribution on the live map too.';
+  if(!ph || !ph.thumb) return;
+  if(!adminRequireWrite()) return;
+
+  const status = document.getElementById('adfAutoStatus');
+  if(status){ status.textContent = 'Copying that photo into your own storage…'; status.style.color = 'var(--white-dim)'; }
+
+  // The form has one image list - the media gallery - and its first entry is the
+  // cover. This used to write to a #adfImage field that no longer exists, so
+  // tapping a Commons photo did nothing at all.
+  const artist = (ph.artist || '').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim() || 'unknown author';
+  const credit = 'Photo: ' + artist + ', Wikimedia Commons' + (ph.license ? ', ' + ph.license : '');
+
+  let added = null;
+  try {
+    // Copy it into the owner's own bucket. Hotlinking Commons works but the
+    // owner cannot then manage or replace the file, and the licence credit
+    // would point at somebody else's copy.
+    const res = await fetch(ph.thumb, { mode: 'cors' });
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const ext = (ph.thumb.split('?')[0].split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,4) || 'jpg';
+    const path = __mediaPrefix + '_wm_' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.' + ext;
+    const { error } = await sb.storage.from('destination-images').upload(path, blob, {
+      cacheControl: '3600', upsert: false, contentType: blob.type || 'image/jpeg'
+    });
+    if(error) throw error;
+    const { data } = sb.storage.from('destination-images').getPublicUrl(path);
+    if(!data || !data.publicUrl) throw new Error('no public URL returned');
+    added = data.publicUrl;
+  } catch(e) {
+    // Losing the photo entirely would be worse than a hotlink, so fall back and
+    // say plainly what happened.
+    added = ph.thumb;
+    if(status){
+      status.innerHTML = 'Could not copy it into your storage (' + escapeHtml(e.message || String(e)) + '), so the Commons link was added directly. Replace it with your own upload whenever you like.';
+      status.style.color = '#f59e0b';
+    }
+  }
+
+  if(added){ __mediaGallery.push(added); mediaRefreshGrid('adf'); }
+
+  const creditInput = document.getElementById('adfCredit');
+  if(creditInput){
+    creditInput.value = credit;
+    creditInput.style.borderColor = 'var(--ocean-teal-light)';
+    setTimeout(()=>{ creditInput.style.borderColor = ''; }, 1800);
+  }
+
+  if(status && added && added !== ph.thumb){
+    status.innerHTML = 'Added to the gallery. The photo credit was filled in with <strong>' + escapeHtml(artist) + '</strong>'
+      + (ph.license ? ' (' + escapeHtml(ph.license) + ')' : '')
+      + ' — that credit is a condition of the licence, so please leave it in place.';
+    status.style.color = '#22c55e';
   }
 }
 
@@ -4760,6 +4794,7 @@ async function adminSaveDest(){
       featured: document.getElementById('adfFeatured').checked,
       barangay: document.getElementById('adfBarangay').value.trim(),
       google_business_url: document.getElementById('adfGbp').value.trim() || null,
+      image_credit: document.getElementById('adfCredit').value.trim() || null,
     };
     if(!payload.name || isNaN(payload.lat) || isNaN(payload.lng) || !payload.category || !payload.barangay || !payload.description){
       alert('Complete the required fields: name, map coordinates, category, barangay, and description.');
