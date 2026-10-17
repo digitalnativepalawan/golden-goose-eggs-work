@@ -611,7 +611,8 @@ async function loadDataFromSupabase(){
           id: t.id, title: t.title, where: t.where_text, when: t.when_text,
           sub: t.sub, thumb: t.thumb_url, images: t.images||[], joined: t.joined, extra: t.extra,
           cap: t.cap, tags: t.tags||[], spots: t.spots, seatsOpen: t.seats_open,
-          warn: t.spots>0, videoUrl: t.video_url||'', videoType: t.video_type||''
+          warn: t.spots>0, videoUrl: t.video_url||'', videoType: t.video_type||'',
+          imageCredit: t.image_credit||''
         });
       });
       MYSV_TRIBES.length = 0;
@@ -620,7 +621,7 @@ async function loadDataFromSupabase(){
           id: t.id, title: t.title,
           meta: t.where_text + ' • ' + t.when_text,
           more: t.extra, grad: 'linear-gradient(135deg,#f97316,#7c2d12)',
-          thumb: t.thumb_url, images: t.images||[]
+          thumb: t.thumb_url, images: t.images||[], credit: t.image_credit||''
         });
       });
     }
@@ -632,7 +633,8 @@ async function loadDataFromSupabase(){
         PULSE_EVENTS.push({
           id: ev.id, title: ev.title, org: ev.org, where: ev.where_text,
           when: ev.when_text, price: ev.price, tags: ev.tags||[],
-          images: ev.images||[], videoUrl: ev.video_url||'', videoType: ev.video_type||''
+          images: ev.images||[], videoUrl: ev.video_url||'', videoType: ev.video_type||'',
+          imageCredit: ev.image_credit||''
         });
       });
       MYSV_EVENTS.length = 0;
@@ -641,7 +643,7 @@ async function loadDataFromSupabase(){
           id: ev.id, title: ev.title,
           meta: ev.where_text + ' • ' + ev.when_text,
           more: 0, grad: 'linear-gradient(135deg,#a78bfa,#1e1b4b)',
-          images: ev.images||[]
+          images: ev.images||[], credit: ev.image_credit||''
         });
       });
     }
@@ -2362,7 +2364,7 @@ function tribeCardHTML(t){
         </div>
         <button class="pv2-join${mine?' on':''}" onclick="joinTribe('${t.id}')">${mine ? lucideSvg('check',13)+' Joined' : 'Join Tribe'}</button>
       </div>
-      ${t.image_credit ? `<div class="pv2-creditline">${escT(t.image_credit)}</div>` : ''}
+      ${t.imageCredit ? `<div class="pv2-creditline">${escT(t.imageCredit)}</div>` : ''}
     </div>
   </div>`;
 }
@@ -2378,7 +2380,7 @@ function eventCardHTML(e){
   return `
   <div class="pv2-event">
     ${imageHtml}
-    ${e.image_credit ? `<div class="pv2-creditline">${escT(e.image_credit)}</div>` : ''}
+    ${e.imageCredit ? `<div class="pv2-creditline">${escT(e.imageCredit)}</div>` : ''}
     <div class="pv2-event-t">${e.title}</div>
     <div class="pv2-event-org"><span class="pv2-event-org-dot">${e.org.slice(0,1)}</span>${e.org}</div>
     <div class="pv2-event-meta"><span>${lucideSvg('map-pin',12)} ${e.where}</span><span>${lucideSvg('clock',12)} ${e.when}</span></div>
@@ -7197,6 +7199,7 @@ function renderMySanvic(){
             <div class="mysv-tribe-body">
               <div class="mysv-tribe-title">${escapeHtml(t.title)}</div>
               <div class="mysv-tribe-meta">${escapeHtml(t.meta)}</div>
+              ${t.credit ? `<div class="pv2-creditline">${escapeHtml(t.credit)}</div>` : ''}
             </div>
             ${mysvAvatars(3, t.more)}
             <button class="mysv-cap-btn" onclick="mysvAction('openChat','${t.id}')">Open Chat</button>
@@ -7224,6 +7227,7 @@ function renderMySanvic(){
               <div class="mysv-ev-body">
                 <div class="mysv-ev-title">${escapeHtml(e.title)}</div>
                 <div class="mysv-ev-meta">${escapeHtml(e.meta)}</div>
+                ${e.credit ? `<div class="pv2-creditline">${escapeHtml(e.credit)}</div>` : ''}
                 <div class="mysv-ev-row">
                   ${mysvAvatars(3, e.more)}
                   <button class="mysv-cap-btn" onclick="mysvAction('details','${e.id}')">View Details</button>
