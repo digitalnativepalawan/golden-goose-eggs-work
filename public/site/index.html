@@ -779,7 +779,15 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
 .admin-form-heading{font-family:var(--font-display);font-size:1.25rem;color:var(--white-soft);margin-bottom:4px}
 .admin-form-help{font-size:.7rem;color:var(--white-dim);line-height:1.5;margin-bottom:16px}
 .admin-form-section{font-size:.64rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ocean-teal-light);padding:12px 0 8px;border-top:1px solid var(--glass-border);margin-top:4px}
-@media(max-width:560px){.admin-data-banner{align-items:flex-start;flex-direction:column}.admin-data-banner span{text-align:left}.admin-row-actions{flex-wrap:wrap;justify-content:flex-end}.admin-grid-2{grid-template-columns:1fr}.admin-cat-body{padding-left:0}.admin-cat-note{display:none}.admin-dest-row{gap:9px}.admin-row-thumb{width:46px;height:46px}}
+@media(max-width:560px){.admin-data-banner{align-items:flex-start;flex-direction:column}.admin-data-banner span{text-align:left}.admin-grid-2{grid-template-columns:1fr}.admin-cat-body{padding-left:0}.admin-cat-note{display:none}.admin-dest-row{gap:9px}.admin-row-thumb{width:46px;height:46px}
+  /* The 4 action buttons needed ~213px of a 360px phone, so the name and the
+     facts were squeezed into a 22px column and the name wrapped one letter per
+     line. Stack the text above the buttons instead. */
+  .admin-list-item-head{flex-direction:column;align-items:stretch;gap:9px}
+  .admin-dest-open{flex:none}
+  .admin-row-actions{flex-wrap:wrap;justify-content:flex-start}
+  .admin-row-meta{line-height:1.5}
+  .admin-quality{line-height:1.45}}
 
 .admin-tala-filters{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
 .admin-cat-tab{border:1px solid var(--glass-border);border-radius:var(--radius-pill);padding:6px 12px;background:rgba(255,255,255,.04);color:var(--white-muted);font-size:.7rem;cursor:pointer;display:flex;align-items:center;gap:5px}
@@ -952,8 +960,8 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .today-greet-name{font-family:var(--font-display);font-size:1.9rem;font-weight:400;letter-spacing:.02em;text-transform:uppercase;color:rgba(255,255,255,.98);margin:-2px 0 0;line-height:1}
   .today-greet-sub{display:flex;align-items:center;gap:8px;font-family:var(--font-body);font-size:.86rem;font-weight:400;color:rgba(255,255,255,.82);margin:2px 0 0}
   .today-greet-sub svg{width:18px;height:18px;color:rgba(20,184,166,.85);flex-shrink:0}
-  .today-metrics{display:flex;align-items:center;gap:14px;padding:10px 0 2px;border-top:1px solid rgba(255,255,255,.06);margin-top:6px;flex-wrap:wrap}
-  .today-metric{display:flex;align-items:center;gap:6px;font-family:var(--font-body);font-size:.72rem;color:rgba(255,255,255,.72);min-width:0}
+  .today-metrics{display:flex;align-items:center;gap:12px;row-gap:6px;padding:10px 0 2px;border-top:1px solid rgba(255,255,255,.06);margin-top:6px;flex-wrap:wrap}
+  .today-metric{display:flex;align-items:center;gap:6px;font-family:var(--font-body);font-size:.76rem;color:rgba(255,255,255,.76);min-width:0}
   .today-metric strong{color:rgba(255,255,255,.98);font-weight:600}
   .today-metric svg{width:16px;height:16px;flex-shrink:0}
   .today-chip{display:none}
@@ -961,36 +969,41 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .today-sheet.expanded .today-header-expanded,.today-sheet.mid .today-header-expanded{display:flex}
   .today-sheet.expanded .today-peek,.today-sheet.mid .today-peek{padding-top:2px;padding-bottom:8px;cursor:pointer}
   .today-title-lg{font-size:.72rem;font-weight:700;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.55)}
-  .today-close{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);
+  .today-close{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);
     color:rgba(255,255,255,.85);font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer}
   .today-scroll{display:none;flex-direction:column;gap:12px;padding:6px 16px calc(28px + var(--safe-bottom));overflow-y:auto;overscroll-behavior:contain}
   .today-sheet.expanded .today-scroll,.today-sheet.mid .today-scroll{display:flex}
   .today-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:20px;padding:16px 16px 18px}
   .today-card-muted{background:rgba(255,255,255,.02)}
-  .today-kicker{font-size:.6rem;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.42);margin-bottom:6px}
+  .today-kicker{font-size:.68rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:6px}
   .today-title{font-size:1.05rem;font-weight:600;letter-spacing:-.01em;color:rgba(255,255,255,.94);margin:0 0 12px}
   .today-lede{font-size:.94rem;line-height:1.5;color:rgba(255,255,255,.82);margin:2px 0 14px}
-  .today-snap-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-  @media(min-width:640px){.today-snap-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}
-  .today-snap{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:10px 10px 12px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.05);min-width:0}
-  .tsn-glyph{font-size:1.15rem;line-height:1}
-  .tsn-val{font-size:.86rem;font-weight:600;color:rgba(255,255,255,.94);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
-  .tsn-lbl{font-size:.62rem;letter-spacing:.08em;color:rgba(255,255,255,.5);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
-  .today-path{display:flex;align-items:stretch;gap:6px;flex-wrap:wrap}
-  .today-node{flex:1 1 100px;min-width:100px;padding:10px 12px;border-radius:14px;background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.22)}
+  /* auto-fit instead of a fixed 3 or 6 columns: the tiles are never narrower
+     than 132px, so "Waxing gibbous" and "Happening today" wrap onto a second
+     line instead of being cut off. 2 across on a phone, 4-5 on a tablet, and 2
+     in the 440px desktop sidebar - which used to squeeze them to 53px each. */
+  .today-snap-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:8px}
+  .today-snap{display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:11px 12px 12px;border-radius:14px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.05);min-width:0}
+  .tsn-glyph{font-size:1.15rem;line-height:1;display:flex;align-items:center;min-height:20px}
+  .tsn-val{font-size:.95rem;font-weight:600;color:rgba(255,255,255,.94);line-height:1.25;overflow-wrap:anywhere}
+  .tsn-lbl{font-size:.7rem;letter-spacing:.06em;color:rgba(255,255,255,.55);text-transform:uppercase;line-height:1.3}
+  /* The itinerary stacks at every width. As a row the nodes wrapped into a
+     ragged 2-up block with stray arrows; stacked it reads top-to-bottom. */
+  .today-path{display:flex;flex-direction:column;gap:6px}
+  .today-node{flex:0 0 auto;min-width:0;padding:10px 12px;border-radius:14px;background:rgba(20,184,166,.08);border:1px solid rgba(20,184,166,.22)}
   .tnode-label{font-size:.88rem;font-weight:600;color:rgba(255,255,255,.95)}
-  .tnode-sub{font-size:.7rem;color:rgba(255,255,255,.6);margin-top:2px}
-  .today-arrow{align-self:center;color:rgba(255,255,255,.35);font-size:1rem;padding:0 2px}
+  .tnode-sub{font-size:.75rem;color:rgba(255,255,255,.62);margin-top:2px}
+  .today-arrow{align-self:center;color:rgba(255,255,255,.35);display:flex;transform:rotate(90deg)}
   .today-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
   .today-row{display:flex;flex-direction:column;gap:8px;padding:12px 12px 14px;border-radius:14px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05)}
   .trow-main{min-width:0}
   .trow-title{font-size:.95rem;font-weight:600;color:rgba(255,255,255,.94)}
-  .trow-meta{font-size:.75rem;color:rgba(255,255,255,.58);margin-top:2px}
+  .trow-meta{font-size:.78rem;color:rgba(255,255,255,.6);margin-top:2px}
   .trow-chips{display:flex;gap:6px;flex-wrap:wrap}
-  .tchip{font-size:.66rem;letter-spacing:.06em;font-weight:600;padding:3px 8px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);color:rgba(255,255,255,.78);text-transform:uppercase}
+  .tchip{font-size:.7rem;letter-spacing:.06em;font-weight:600;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);color:rgba(255,255,255,.8);text-transform:uppercase}
   .tchip-accent{background:rgba(20,184,166,.12);border-color:rgba(20,184,166,.28);color:rgba(153,246,228,.95)}
   .trow-actions{display:flex;gap:6px;flex-wrap:wrap}
-  .tbtn{flex:0 0 auto;font-family:var(--font-body);font-size:.78rem;font-weight:600;padding:8px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.88);cursor:pointer}
+  .tbtn{flex:0 0 auto;font-family:var(--font-body);font-size:.82rem;font-weight:600;padding:0 14px;min-height:40px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.88);cursor:pointer}
   .tbtn-primary{background:linear-gradient(135deg,var(--sand,#e8dcc8),var(--limestone,#c4a882));color:var(--charcoal-deep,#020e26);border-color:transparent}
   .tavatars{display:flex}
   .tav{width:22px;height:22px;border-radius:50%;background:linear-gradient(135deg,rgba(20,184,166,.5),rgba(255,255,255,.15));border:2px solid var(--charcoal-deep,#020e26);margin-left:calc(var(--i,0)*-6px + -8px)}
@@ -998,7 +1011,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .today-verdicts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
   .tverdict{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:flex-start;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05)}
   .tv-icon{font-size:1.15rem;line-height:1.2}
-  .tv-label{font-size:.62rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+  .tv-label{font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.6)}
   .tv-text{font-size:.88rem;color:rgba(255,255,255,.88);line-height:1.45;margin-top:2px}
   .today-locals{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
   .tlocal{display:grid;grid-template-columns:auto minmax(0,1fr);gap:12px;align-items:flex-start;padding:10px 12px;border-radius:14px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.05)}
@@ -2010,7 +2023,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-17-mobile-layout-r1';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-17-stacked-data-r1';
 </script>
 <script src="barangays.geojson.js"></script>
 <script>
@@ -2095,7 +2108,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   <div class="carousel-dots" id="carouselDots"></div>
 </div>
 
-<link rel="stylesheet" href="explore-ux.css?v=2026-10-17-mobile-layout-r1">
+<link rel="stylesheet" href="explore-ux.css?v=2026-10-17-stacked-data-r1">
 <style id="sanvicNoHScroll">
   /* ── Nothing in the product scrolls sideways. ─────────────────────────────
      Chip rows wrap; card strips wrap into uniform full-width rows. The same
@@ -2133,6 +2146,9 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
      tablet, so they keep a wider basis than the image cards. */
   .mysv-hscroll>.mysv-up-card,
   .hunt-hscroll>.hunt-trail-card{flex-basis:300px}
+  /* Pills must never be shrunk: "Private Boat Experience" was cut to 154px of
+     its 170px and spilled over its neighbour. */
+  .mysv-hscroll>.mysv-pill{flex:0 0 auto;max-width:100%;white-space:normal}
   .sv-carousel{margin:0;padding:2px 0 8px}
   .discover-card-name{white-space:normal}
 

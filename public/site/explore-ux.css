@@ -21,8 +21,11 @@
 .es-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0;margin:0;touch-action:none}
 .es-heading-title{font-family:var(--font-display,Georgia,serif);font-size:20px;line-height:1.2;letter-spacing:-.02em;margin:0;font-weight:500;color:#f4f5f0}
 .es-close{width:40px;height:40px;flex:none;border:0;border-radius:50%;background:#ffffff08;color:#b5c6d0;font-size:26px!important}
-.es-audience{display:flex;gap:4px;padding:3px;border:1px solid rgba(255,255,255,.08);background:#091522;border-radius:10px;margin:0}
-.es-audience-btn{flex:1;border:0;border-radius:7px;background:none;color:var(--explore-muted);height:36px;font-size:14px!important}
+/* index.html sets align-self:flex-start, which stopped the toggle stretching: the
+   two buttons were squeezed to 82px and "I'm visiting" wrapped to two lines.
+   align-self:stretch makes both halves equal width and the label always fits. */
+.es-audience{display:flex;gap:4px;padding:3px;border:1px solid rgba(255,255,255,.08);background:#091522;border-radius:10px;margin:0;align-self:stretch;width:100%}
+.es-audience-btn{flex:1 1 0;border:0;border-radius:7px;background:none;color:var(--explore-muted);height:36px;font-size:14px!important;white-space:nowrap;min-width:0;padding:0 8px}
 .es-audience-btn[aria-pressed=true]{background:#25413f;color:#a4f0e2}
 .es-search{display:flex;align-items:center;gap:10px;height:42px;padding:0 13px;border:1px solid #52626c;background:#0b1722;border-radius:10px;margin:0}
 .es-search svg{width:19px;height:19px;flex:none;color:#a8c2c9}
@@ -43,17 +46,23 @@
 .es-results-heading button{border:0;background:none;color:#a4e6d9;min-height:34px;font-size:12px}.es-fit{margin-left:auto}
 .es-data-status{font-size:12px;line-height:1.5;color:#edc68c;margin:0}.es-data-status:empty{display:none}
 .es-body,.explore-sheet.l2 .es-body,.explore-sheet.l3 .es-body{display:flex;flex-direction:column;gap:0;min-height:0;overflow:auto;overscroll-behavior:contain;padding:0 18px 16px;flex:1;scrollbar-width:thin}
-/* One uniform card per place: fixed-height thumbnail, name clamped to two
-   lines, then a single meta line. Every row is the same height at every width. */
-.explore-result{position:relative;display:flex;align-items:center;gap:11px;width:100%;flex:none;text-align:left;background:none;border:0;border-bottom:1px solid var(--explore-line);border-radius:0;padding:10px 0;color:var(--explore-ink)}
+/* One uniform card per place: fixed-height thumbnail, name clamped to two lines,
+   then a meta line that wraps rather than truncates. Every row is at least 83px
+   and rows only grow when the barangay and the travel time genuinely need a
+   second line - nothing is ever cut off with an ellipsis. */
+.explore-result{position:relative;display:flex;align-items:center;gap:11px;width:100%;flex:none;min-height:83px;text-align:left;background:none;border:0;border-bottom:1px solid var(--explore-line);border-radius:0;padding:10px 0;color:var(--explore-ink)}
 .explore-result:hover{background:#ffffff05}.explore-result.selected{background:#22423e;box-shadow:inset 3px 0 #9ce5d5}
 .explore-result img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
 .explore-result-image{position:relative;overflow:hidden;width:82px;height:62px;flex:none;border-radius:11px;background:#213947}
 .explore-result-copy{display:flex;flex-direction:column;gap:4px;flex:1;min-width:0}
 .explore-result-copy strong{font-size:15px;line-height:1.3;font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.6em}
-.result-meta{display:flex;align-items:center;gap:7px;min-width:0;white-space:nowrap;overflow:hidden}
+/* Wrap, never truncate. .result-access used to be flex:none, so on a 360px phone
+   it ate the whole line and squeezed the barangay down to 14-22px of visible
+   text. With wrapping the category+barangay keep line one and the travel time
+   drops to line two only when it really does not fit. */
+.result-meta{display:flex;align-items:center;gap:7px;row-gap:3px;min-width:0;flex-wrap:wrap;white-space:normal;overflow:visible}
 .result-category{font-size:11px;color:#a1d9cf;flex:none}
-.result-area{font-size:12px;color:#aabac6;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.result-area{font-size:12px;color:#aabac6;min-width:0;flex:0 1 auto;white-space:nowrap}
 .result-area svg{vertical-align:-2px}
 .result-access{font-size:11px;color:#8fb0b8;flex:none}
 .result-arrow{color:#89a7ae;flex:none;display:flex}

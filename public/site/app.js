@@ -1649,8 +1649,8 @@ function renderTodayContent(){
         <div class="today-snap"><span class="tsn-glyph">${lucideSvg('waves',20)}</span><span class="tsn-val">${escT(d.snapshot.sea)}</span><span class="tsn-lbl">Sea</span></div>
         <div class="today-snap"><span class="tsn-glyph">${lucideSvg('sunset',20)}</span><span class="tsn-val">${escT(d.snapshot.sunset)}</span><span class="tsn-lbl">Sunset</span></div>
         <div class="today-snap"><span class="tsn-glyph">${iconOrText(d.snapshot.moon.glyph,20)}</span><span class="tsn-val">${escT(d.snapshot.moon.label)}</span><span class="tsn-lbl">Moon</span></div>
-        <div class="today-snap"><span class="tsn-glyph">${lucideSvg('users',20)}</span><span class="tsn-val">${tribeCount}</span><span class="tsn-lbl">Tribes forming</span></div>
-        <div class="today-snap"><span class="tsn-glyph">${lucideSvg('sparkles',20)}</span><span class="tsn-val">${happenCount}</span><span class="tsn-lbl">Happening today</span></div>
+        <div class="today-snap"><span class="tsn-glyph">${lucideSvg('users',20)}</span><span class="tsn-val">${tribeCount}</span><span class="tsn-lbl">Tribes</span></div>
+        <div class="today-snap"><span class="tsn-glyph">${lucideSvg('sparkles',20)}</span><span class="tsn-val">${happenCount}</span><span class="tsn-lbl">Happening</span></div>
       </div>
     </article>`;
   const pick = `
