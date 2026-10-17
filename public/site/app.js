@@ -2556,8 +2556,9 @@ async function renderPulseFeed(){
   if(!body) return;
 
   if(pulseTab !== 'feed'){
-    body.innerHTML = `<div class="pulse-empty">This view is coming soon.</div>`;
-    return;
+    // Only the feed exists today. Anything else falls through to it rather
+    // than printing a placeholder, so a stray pulseTab value can never leave
+    // the visitor looking at an empty panel.
   }
 
   body.innerHTML = `<div class="pulse-empty">Loading…</div>`;
@@ -6788,7 +6789,7 @@ function mysvSignIn(){
   if(typeof openAuthPanel==='function') return openAuthPanel();
   if(typeof openLoginModal==='function') return openLoginModal();
   if(typeof openDashboard==='function') return openDashboard('account');
-  alert('Sign-in coming soon.');
+  return openDashboard('account');
 }
 
 // Load saved places from Supabase (requires signed-in user).
