@@ -1,0 +1,33 @@
+﻿Reconcile migration history so the repo is the source of truth
+
+The database's migration history and supabase/migrations/ had drifted apart,
+which is what made "connect Supabase to GitHub" unsafe: the migrate step
+fails when a history version has no matching file, and replays every file
+that has no history entry.
+
+Measured before this commit:
+  6 history rows  -> 3 of them had no file at all
+  15 repo files   -> 12 of them had no history row
+                  -> 3 of them used a different version than history for the
+                     same logical migration (hand-applied, then re-applied
+                     through the dashboard with a fresh timestamp)
+
+Changes:
+  - Rename 3 migrations to the version the database actually recorded, so
+    file and history agree on the same version for the same change:
+      20260820000000_add_destinations_google_business_url
+        -> 20261016063423_add_destinations_google_business_url
+      20261014000000_lock_down_content_writes
+        -> 20261016063448_lock_down_content_writes
+      20261016000000_resync_identity_sequences
+        -> 20261016063641_resync_identity_sequences
+  - Add the 3 migrations that existed only inside the database, rebuilt to
+    match the live schema and made idempotent:
+      20261016075138_remove_dreamlit_tooling
+      20261016081336_create_pulse_media_bucket
+      20261016081647_guard_pulse_image_url
+  - Baseline the 12 hand-applied migrations into
+    supabase_migrations.schema_migrations (already applied directly).
+
+Verified after: 18 files and 18 history rows, identical versions, in the
+same order. No schema or data change - the live site is untouched.
