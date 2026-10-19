@@ -7356,9 +7356,12 @@ function huntTrailGroups(){
     const done = items.filter(d=>state.unlocked.includes(String(d.id))).length;
     const label = (window.catStyle && catStyle[k] && catStyle[k].label) || (k.charAt(0).toUpperCase()+k.slice(1));
     const firstImg = items.find(d=>d.image)?.image || '';
+    // Category labels are plural ("Islands", "Stays"), so dropping them into
+    // "Explore N ___ spots" read as "2 islands spots". Use a singular noun.
+    const noun = { beaches:'beach', islands:'island', stays:'stay' }[k] || label.toLowerCase();
     return {
       id:k, title:`${label} Trail`,
-      desc:`Explore ${items.length} ${label.toLowerCase()} spot${items.length===1?'':'s'} across San Vicente.`,
+      desc:`Explore ${items.length} ${noun} spot${items.length===1?'':'s'} across San Vicente.`,
       done, total:items.length,
       image: firstImg,
       grad: huntGradientFor((items[0]&&items[0].color), i)
@@ -7431,7 +7434,7 @@ function huntAvatars(count, more){
 
 function huntSelectTab(tab){
   document.querySelectorAll('.hunt-vtab').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
-  const map = { today:'huntToday', nearby:'huntNearby', trails:'huntTrails', collections:'huntTrails', rewards:'huntSplit', progress:'huntSplit' };
+  const map = { today:'huntToday', trails:'huntTrails', rewards:'huntSplit', progress:'huntSplit' };
   const target = document.getElementById(map[tab] || 'huntToday');
   if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
 }
@@ -7495,7 +7498,6 @@ function renderHunt(){
   if(!body) return;
   const state = huntLoadState();
   const today = huntTodayDest();
-  const nearby = huntNearbyItems();
   const trails = huntTrailGroups();
   const rewards = huntRewardItems();
   const totalDest = (Array.isArray(destinations)?destinations.length:0);
@@ -7505,9 +7507,7 @@ function renderHunt(){
 
   const tabs = [
     { k:'today', label:"Today's Hunt", svg:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="currentColor"/>' },
-    { k:'nearby', label:'Nearby', svg:'<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>' },
     { k:'trails', label:'Trails', svg:'<path d="M3 20l4-8 4 4 4-10 6 14"/>' },
-    { k:'collections', label:'Collections', svg:'<path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2V4z"/><line x1="8" y1="8" x2="15" y2="8"/><line x1="8" y1="12" x2="15" y2="12"/>' },
     { k:'rewards', label:'Rewards', svg:'<polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>' },
     { k:'progress', label:'My Progress', svg:'<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/>' }
   ];
@@ -7560,36 +7560,6 @@ function renderHunt(){
     </div>
 
     ${todayBlock}
-
-    <div class="hunt-section" id="huntNearby">
-      <div class="hunt-sec-head">
-        <div><div class="hunt-sec-title">Nearby Discoveries</div><div class="hunt-sec-sub">Hidden spots near you.</div></div>
-        <button class="hunt-viewall" onclick="closeHuntPanel(); dockNav('discover');">View all ${lucideSvg('chevron-right',13)}</button>
-      </div>
-      <div class="hunt-hscroll">
-        ${nearby.length ? nearby.map((c,i)=>{
-          const huntNearbyImages = [
-            'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=75',
-            'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=75',
-            'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&q=75',
-            'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=400&q=75',
-            'https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?w=400&q=75',
-            'https://images.unsplash.com/photo-1526367790999-0150786686a2?w=400&q=75'
-          ];
-          const matchDest = (Array.isArray(destinations)?destinations:[]).find(d=>d.name&&c.name&&d.name.toLowerCase().includes(c.name.toLowerCase().split(' ')[0]));
-          const imgSrc = matchDest?.image || huntNearbyImages[i%huntNearbyImages.length];
-          return `
-          <div class="hunt-near-card" style="background-image:url('${imgSrc}');background-size:cover;background-position:center" onclick="huntNearbyTap(${i})">
-            ${c.dist ? `<span class="hunt-chip-dist">${lucideSvg('navigation',12)} ${escapeHtml(c.dist)}</span>` : ''}
-            <div class="hunt-near-info">
-              <div class="hunt-near-title">${iconOrText(c.icon||'map-pin',14)} ${escapeHtml(c.name)}</div>
-              <div class="hunt-near-desc">${escapeHtml(c.desc||'')}</div>
-              <div class="hunt-near-meta">${escapeHtml(c.barangay||'')} • ${escapeHtml(c.cat||'')}</div>
-            </div>
-          </div>`;
-        }).join('') : '<div class="hunt-empty">No nearby places yet. Add some from the SANVIC Admin panel.</div>'}
-      </div>
-    </div>
 
     <div class="hunt-section" id="huntTrails">
       <div class="hunt-sec-head">
