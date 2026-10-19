@@ -1423,6 +1423,15 @@ function explorePlaceCard(d){
 function renderExploreContent(){
   const body=document.getElementById('exploreContent');
   if(!body) return;
+  // The visiting/local question is asked once, in the first-visit questions.
+  // Once answered there, the Explore sheet stays clean. If it was skipped the
+  // toggle remains, so the choice is never unavailable.
+  const audienceBlock=document.getElementById('esAudience');
+  if(audienceBlock){
+    let answered=false;
+    try{ const prof=JSON.parse(localStorage.getItem('sanvic_entry_v1')||'null'); answered=!!(prof&&prof.audience); }catch(e){}
+    audienceBlock.hidden=answered;
+  }
   document.querySelectorAll('.es-audience-btn').forEach(b=>{
     const active=b.dataset.mode===exploreAudience;
     b.classList.toggle('active',active); b.setAttribute('aria-pressed',String(active));
@@ -3713,7 +3722,7 @@ window.addEventListener('scroll',()=>{
 
 // ─── INIT ───
 window.addEventListener('load',()=>{
-  setTimeout(()=>{document.getElementById('splash').classList.add('hidden');},650);
+  setTimeout(()=>{document.getElementById('splash').classList.add('hidden');},Number(window.SANVIC_SPLASH_HOLD)||650);
   setTimeout(animPlaceholder,1200);
   setTimeout(loadVoices,800);
   initAuth();

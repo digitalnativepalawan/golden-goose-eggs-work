@@ -1214,7 +1214,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
       <h2 class="es-heading-title">Explore San Vicente</h2>
       <button class="es-close" onclick="closeExploreSheet()" aria-label="Collapse Explore panel"><svg xmlns="http://www.w3.org/2000/svg" class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
-    <div class="es-audience" aria-label="Choose Explore view">
+    <div class="es-audience" id="esAudience" aria-label="Choose Explore view">
       <button class="es-audience-btn active" data-mode="visitor" aria-pressed="true" onclick="setExploreAudience('visitor')">I'm visiting</button>
       <button class="es-audience-btn" data-mode="local" aria-pressed="false" onclick="setExploreAudience('local')">I'm local</button>
     </div>
@@ -2057,6 +2057,10 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
   window.SANVIC_DEPLOY_VERSION = '2026-10-19-partner-r1';
+  // How long the SANVIC splash holds before the app (and the first-visit
+  // questions) appear. Shared by app.js and entry-flow.js so the two timers
+  // cannot drift apart. Raise it to hold the first page longer.
+  window.SANVIC_SPLASH_HOLD = 2000;
 </script>
 <script src="barangays.geojson.js"></script>
 <script>
