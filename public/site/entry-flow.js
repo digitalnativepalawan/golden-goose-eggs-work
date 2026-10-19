@@ -4,28 +4,39 @@
   const KEY = 'sanvic_entry_v1';
   const MAX = 4;
   const DELAY = 5200;
+  // [label, personalisation tags, Lucide icon]
+  // Icons are real Lucide SVG via the app's shared icon set (see lucideSvg in
+  // app.js). No emoji: they render inconsistently across devices and read as
+  // dated next to the rest of the interface.
   const VIBES = [
-    ['🍹 Mojito by the beach',['beach','drink','social']],
-    ['🍔 Smashed burger after swimming',['food','beach']],
-    ['🤝 Meeting someone new',['social','pulse']],
-    ['📖 Reading in a hammock',['quiet','slow']],
-    ['🥾 Trekking into the jungle',['explore','nature']],
-    ['💛 Beach bed with my love',['quiet','couples','private']],
-    ['🐢 Watching turtle hatchlings',['nature','wildlife']],
-    ['🛵 Lost somewhere on a scooter',['explore','routes']],
-    ['🏄 Surfing badly but proudly',['surf','adventure']],
-    ['🐟 Eating fish caught this morning',['food','local']],
-    ['🥴 Trying to kill the hangover',['food','recovery']],
-    ['🌅 Chasing sunset',['sunset','photo']],
-    ['🧭 Finding the place nobody told me about',['hidden','explore']],
-    ['🎤 Singing videoke with friendly locals',['social','local','pulse']],
-    ['🚤 Joining island hopping with new friends',['island','social','pulse']],
-    ['🏝️ Finding a wild beach with almost nobody around',['quiet','hidden','beach']],
-    ['📸 Hunting for the perfect photo',['photo','viewpoints','sunset']],
-    ['🍾 Cold Chardonnay on a private boat',['private','curated','boat']],
-    ['💆 Massage, brunch, and pretending emails don’t exist',['slow','wellness','food']],
-    ['🧺 Wandering through the local market',['food','local','market']]
+    ['Mojito by the beach',['beach','drink','social'],'martini'],
+    ['Smashed burger after swimming',['food','beach'],'hamburger'],
+    ['Meeting someone new',['social','pulse'],'users'],
+    ['Reading in a hammock',['quiet','slow'],'book-open'],
+    ['Trekking into the jungle',['explore','nature'],'footprints'],
+    ['Beach bed with my love',['quiet','couples','private'],'heart'],
+    ['Watching turtle hatchlings',['nature','wildlife'],'turtle'],
+    ['Lost somewhere on a scooter',['explore','routes'],'scooter'],
+    ['Surfing badly but proudly',['surf','adventure'],'waves'],
+    ['Eating fish caught this morning',['food','local'],'fish'],
+    ['Trying to kill the hangover',['food','recovery'],'coffee'],
+    ['Chasing sunset',['sunset','photo'],'sunset'],
+    ['Finding the place nobody told me about',['hidden','explore'],'compass'],
+    ['Singing videoke with friendly locals',['social','local','pulse'],'mic'],
+    ['Joining island hopping with new friends',['island','social','pulse'],'sailboat'],
+    ['Finding a wild beach with almost nobody around',['quiet','hidden','beach'],'palmtree'],
+    ['Hunting for the perfect photo',['photo','viewpoints','sunset'],'camera'],
+    ['Cold Chardonnay on a private boat',['private','curated','boat'],'wine'],
+    ['Massage, brunch, and pretending emails don’t exist',['slow','wellness','food'],'flower-2'],
+    ['Wandering through the local market',['food','local','market'],'shopping-basket']
   ];
+  // The shared icon set lives in app.js, which is parsed before this panel is
+  // opened. Guarded so a load-order surprise leaves a readable list, not blank
+  // buttons.
+  function icon(name, size){
+    try{ if(typeof lucideSvg === 'function') return lucideSvg(name, size || 18); }catch(e){}
+    return '';
+  }
   const PLACEHOLDERS = ['Marco','Luna','IslandCat','The Dutch Guy','SandyFeet','Still Hungover'];
   const state = { step:1, audience:'', nickname:'', vibes:[] };
   let completed = false;
@@ -65,9 +76,11 @@
       .sanvic-entry-input{width:100%;height:54px;border-radius:18px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.055);color:rgba(255,255,255,.92);font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);font-size:1rem;font-weight:400;padding:0 15px;outline:0;user-select:text;-webkit-user-select:text}
       .sanvic-entry-input::placeholder{color:rgba(255,255,255,.32)}
       .sanvic-entry-actions{display:flex;flex-direction:column;gap:8px;flex-shrink:0}.sanvic-entry-primary,.sanvic-entry-secondary{border:0;border-radius:999px;font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}.sanvic-entry-primary{min-height:50px;background:linear-gradient(135deg,var(--sand,#e8dcc8),var(--limestone,#c4a882));color:var(--charcoal-deep,#020e26);font-weight:700;letter-spacing:-.01em}.sanvic-entry-secondary{height:34px;background:transparent;color:rgba(255,255,255,.48);font-weight:600}
-      .sanvic-entry-count{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.34);font-weight:600;flex-shrink:0}.sanvic-vibe-grid{display:grid;grid-template-columns:1fr;gap:8px;overflow-y:auto;max-height:34dvh;min-height:0;padding:1px 2px 8px;overscroll-behavior:contain}.sanvic-vibe-option{border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.045);color:rgba(255,255,255,.84);font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);font-size:.88rem;font-weight:400;line-height:1.25;text-align:left;padding:12px 14px;letter-spacing:-.01em}.sanvic-vibe-option.selected{border-color:rgba(20,184,166,.42);background:rgba(20,184,166,.13);color:rgba(255,255,255,.95);box-shadow:inset 0 0 0 1px rgba(20,184,166,.08)}.sanvic-vibe-option.disabled{opacity:.45}.sanvic-entry-smile{font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);font-size:2.7rem;color:var(--limestone,#c4a882);line-height:1;font-weight:300}
+      .sanvic-entry-count{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.34);font-weight:600;flex-shrink:0}.sanvic-vibe-grid{display:grid;grid-template-columns:1fr;gap:8px;overflow-y:auto;max-height:34dvh;min-height:0;padding:1px 2px 8px;overscroll-behavior:contain}.sanvic-vibe-option{display:flex;align-items:center;gap:11px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.045);color:rgba(255,255,255,.84);font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);font-size:.88rem;font-weight:400;line-height:1.25;text-align:left;padding:9px 13px 9px 11px;letter-spacing:-.01em}.sanvic-vibe-ico{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:30px;height:30px;border-radius:11px;background:rgba(255,255,255,.06);color:rgba(232,220,200,.78);transition:background .18s ease,color .18s ease}.sanvic-vibe-label{min-width:0}.sanvic-vibe-option.selected{border-color:rgba(20,184,166,.42);background:rgba(20,184,166,.13);color:rgba(255,255,255,.95);box-shadow:inset 0 0 0 1px rgba(20,184,166,.08)}.sanvic-vibe-option.selected .sanvic-vibe-ico{background:rgba(20,184,166,.22);color:#7fe7dc}.sanvic-vibe-option.disabled{opacity:.45}.sanvic-entry-smile{display:flex;color:var(--limestone,#c4a882)}
       .sanvic-entry-choices{display:flex;gap:10px;flex-shrink:0}
-      .sanvic-entry-choice{flex:1;min-height:50px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.05);color:rgba(255,255,255,.9);font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);font-size:.95rem;font-weight:600;cursor:pointer;padding:0 10px;-webkit-tap-highlight-color:transparent}
+      .sanvic-entry-choice{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.05);color:rgba(255,255,255,.9);font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);font-size:.95rem;font-weight:600;cursor:pointer;padding:0 10px;-webkit-tap-highlight-color:transparent}
+      .sanvic-entry-choice svg{flex-shrink:0;opacity:.72}
+      .sanvic-entry-choice:hover svg,.sanvic-entry-choice:focus-visible svg{opacity:1}
       .sanvic-entry-choice:hover{border-color:rgba(20,184,166,.5)}
       .sanvic-entry-choice:focus-visible{outline:2px solid #65e1d1;outline-offset:2px}
       @media(min-width:700px){.sanvic-entry{justify-content:flex-start;padding-left:max(6vw,70px)}.sanvic-entry-card{width:min(46vw,560px);max-height:min(86vh,720px)}.sanvic-entry-inner{padding:32px 28px 24px}.sanvic-entry-title{font-size:clamp(2.1rem,3.2vw,3rem)}.sanvic-vibe-grid{grid-template-columns:1fr 1fr;max-height:40vh}}
@@ -104,7 +117,7 @@
   function render(){
     const w=document.getElementById('sanvicEntryContent'); if(!w) return;
     if(state.step===1){
-      w.innerHTML=`<div class="sanvic-entry-kicker">SANVIC</div><h1 class="sanvic-entry-title">Do you live here, or are you visiting?</h1><p class="sanvic-entry-sub">It changes what the map puts in front of you first.<br>You can change this later.</p><div class="sanvic-entry-choices"><button type="button" class="sanvic-entry-choice" id="entryResident">I live here</button><button type="button" class="sanvic-entry-choice" id="entryVisitor">I'm visiting</button></div><button type="button" class="sanvic-entry-secondary" id="entrySkip">Skip</button>`;
+      w.innerHTML=`<div class="sanvic-entry-kicker">SANVIC</div><h1 class="sanvic-entry-title">Do you live here, or are you visiting?</h1><p class="sanvic-entry-sub">It changes what the map puts in front of you first.<br>You can change this later.</p><div class="sanvic-entry-choices"><button type="button" class="sanvic-entry-choice" id="entryResident">${icon('house',17)}<span>I live here</span></button><button type="button" class="sanvic-entry-choice" id="entryVisitor">${icon('luggage',17)}<span>I'm visiting</span></button></div><button type="button" class="sanvic-entry-secondary" id="entrySkip">Skip</button>`;
       bindAction('entryResident', ()=>chooseAudience('local'));
       bindAction('entryVisitor', ()=>chooseAudience('visitor'));
       bindAction('entrySkip', ()=>{state.step=2;render();});
@@ -123,13 +136,13 @@
     }
     if(state.step===3){
       const count=state.vibes.length;
-      w.innerHTML=`<div class="sanvic-entry-kicker">Your San Vicente mood</div><h1 class="sanvic-entry-title">Tomorrow at 3 PM, where do you see yourself?</h1><p class="sanvic-entry-sub">Choose up to 4.</p><div class="sanvic-entry-count">${count}/${MAX} chosen</div><div class="sanvic-vibe-grid">${VIBES.map((v,i)=>{const sel=state.vibes.includes(v[0]);const dis=!sel&&count>=MAX;return `<button type="button" class="sanvic-vibe-option ${sel?'selected':''} ${dis?'disabled':''}" data-i="${i}">${esc(v[0])}</button>`;}).join('')}</div><div class="sanvic-entry-actions"><button type="button" class="sanvic-entry-primary" id="entryNext">Continue</button></div>`;
+      w.innerHTML=`<div class="sanvic-entry-kicker">Your San Vicente mood</div><h1 class="sanvic-entry-title">Tomorrow at 3 PM, where do you see yourself?</h1><p class="sanvic-entry-sub">Choose up to 4.</p><div class="sanvic-entry-count">${count}/${MAX} chosen</div><div class="sanvic-vibe-grid">${VIBES.map((v,i)=>{const sel=state.vibes.includes(v[0]);const dis=!sel&&count>=MAX;const ic=icon(v[2],18);return `<button type="button" class="sanvic-vibe-option ${sel?'selected':''} ${dis?'disabled':''}" data-i="${i}" aria-pressed="${sel?'true':'false'}">${ic?`<span class="sanvic-vibe-ico">${ic}</span>`:''}<span class="sanvic-vibe-label">${esc(v[0])}</span></button>`;}).join('')}</div><div class="sanvic-entry-actions"><button type="button" class="sanvic-entry-primary" id="entryNext">Continue</button></div>`;
       document.querySelectorAll('.sanvic-vibe-option').forEach(b=>b.onclick=()=>toggle(Number(b.dataset.i)));
       bindAction('entryNext', next);
       return;
     }
     const name=state.nickname.trim()||'Traveler';
-    w.innerHTML=`<div class="sanvic-entry-kicker">The map is open</div><div class="sanvic-entry-smile">:)</div><h1 class="sanvic-entry-title">${esc(name)}, welcome to San Vicente :)</h1><p class="sanvic-entry-sub">The map is open.<br>The day is still unwritten.</p><p class="sanvic-entry-note">A few things are already happening today.</p><div class="sanvic-entry-actions"><button type="button" class="sanvic-entry-primary" id="entryEnter">Enter San Vicente</button></div>`;
+    w.innerHTML=`<div class="sanvic-entry-kicker">The map is open</div><div class="sanvic-entry-smile">${icon('smile',30)}</div><h1 class="sanvic-entry-title">${esc(name)}, welcome to San Vicente</h1><p class="sanvic-entry-sub">The map is open.<br>The day is still unwritten.</p><p class="sanvic-entry-note">A few things are already happening today.</p><div class="sanvic-entry-actions"><button type="button" class="sanvic-entry-primary" id="entryEnter">Enter San Vicente</button></div>`;
     bindAction('entryEnter', complete);
   }
 
