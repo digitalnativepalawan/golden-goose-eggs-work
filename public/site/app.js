@@ -1155,8 +1155,11 @@ async function initMap(){
     layer.on('tileload',()=>{errors=0;});
   });
   window._mView=null;
-  let preferred='street';
-  try{preferred=sessionStorage.getItem('sanvic_basemap')||'street';barangayVisible=sessionStorage.getItem('sanvic_boundaries')!=='off';}catch(e){}
+  // Satellite first: this is a destination map, and the coastline, reefs and
+  // tree cover are the thing people are actually looking at. Anyone who picks
+  // another layer keeps it for the rest of their session.
+  let preferred='satellite';
+  try{preferred=sessionStorage.getItem('sanvic_basemap')||'satellite';barangayVisible=sessionStorage.getItem('sanvic_boundaries')!=='off';}catch(e){}
   switchMapLayer(preferred);
   L.control.zoom({position:'topright'}).addTo(map);
   document.getElementById('mapLayerToggle').classList.add('visible');
@@ -1715,7 +1718,6 @@ function renderTodayContent(){
             ${names.length ? `<div class="trow-names">With ${escT(names.slice(0,3).join(', '))}${names.length>3 ? ' +'+(names.length-3) : ''}</div>` : ''}
             <div class="trow-actions">
               <button class="tbtn tbtn-primary${going?' is-on':''}" onclick="todayJoinHappening(${i})" aria-pressed="${going?'true':'false'}">${going ? 'Going' : 'Join'}</button>
-              <button class="tbtn" onclick="todaySaveHappening(${i}, this)">Save</button>
               <button class="tbtn" onclick="todayDirectionsHappening(${i})">Directions</button>
             </div>
           </li>`;
@@ -1990,6 +1992,20 @@ function openPulsePanel(){
   renderPulseCatRibbon();
   selectPulseView(pulseView || 'tribes');
   updateLiveCounts();
+  pulseRibbonOnScroll();
+}
+// The filter row used to be pinned above the scrolling area for good, so on a
+// phone it ate the height an event card needed and a single card could not fit.
+// Now it collapses away as the list scrolls and returns at the top.
+function pulseRibbonOnScroll(){
+  const body = document.getElementById('pulseBody');
+  const rib  = document.getElementById('pv2CatRibbon');
+  if(!body || !rib || rib.dataset.scrollBound) return;
+  rib.dataset.scrollBound = '1';
+  body.addEventListener('scroll', ()=>{
+    if(rib.style.display === 'none') return;
+    rib.classList.toggle('is-away', body.scrollTop > 28);
+  }, {passive:true});
 }
 function closePulsePanel(){
   const panel = document.getElementById('pulsePanel');
@@ -2014,12 +2030,21 @@ function selectPulseView(view){
   // Hide ribbon on lounge/form
   const rib = document.getElementById('pv2CatRibbon');
   if(rib) rib.style.display = (view==='lounge'||view==='form') ? 'none' : '';
+  if(rib) rib.classList.remove('is-away');
+  const body = document.getElementById('pulseBody');
+  if(body) body.scrollTop = 0;
   renderPulseBody();
 }
 function selectPulseCategoryV2(cat){
   pulseCategory = cat;
   document.querySelectorAll('.pv2-cat').forEach(b=>b.classList.toggle('active', b.dataset.cat===cat));
   renderPulseBody();
+  // Bring the row back and start the filtered list from the top, so the first
+  // card is the first thing you see after tapping a filter.
+  const rib = document.getElementById('pv2CatRibbon');
+  if(rib) rib.classList.remove('is-away');
+  const body = document.getElementById('pulseBody');
+  if(body) body.scrollTop = 0;
 }
 function renderPulseCatRibbon(){
   const el = document.getElementById('pv2CatScroll');
@@ -2241,13 +2266,13 @@ function findDestinationByPlace(place){
       || list.find(d=>norm(d.barangay) === needle)
       || null;
 }
-function todaySaveHappening(i, btnEl){
-  const e = todayHappeningItem(i);
-  if(!e) return;
-  const d = findDestinationByPlace(e.place);
-  if(!d){ toast('No directory entry for ' + (e.place || 'that spot') + ' yet.'); return; }
-  toggleSavePlace(d.id, btnEl);
-}
+// There is deliberately no "Save" action on a Today row any more. It used to
+// fuzzy-match the row's free-text place ("Long Beach Sunset Fiesta" matched
+// "Long Beach") and save that directory entry instead, so a visitor tapped
+// Save on one thing and found a different thing in My Journey. A Today row now
+// has one action, Going, which records the row itself and appears under its own
+// name. Saved Places in My Journey is still for places saved from Explore,
+// where the place is the thing you tapped.
 function todayDirectionsHappening(i){
   const e = todayHappeningItem(i);
   if(!e) return;
@@ -2498,42 +2523,43 @@ function sendLoungeMsg(){
 // ── WIZARD ──
 const WIZ_STEPS = 5;
 let wizStep = 0;
-let formDraft = { plan:'', when:'', whenCustom:'', wherePick:'', whereText:'', size:'', note:'' };
-function selectPulseView_reset(){ wizStep=0; formDraft={plan:'',when:'',whenCustom:'',wherePick:'',whereText:'',size:'',note:''}; }
+let formDraft = { name:'', plan:'', when:'', whenCustom:'', wherePick:'', whereText:'', size:'', note:'' };
+function selectPulseView_reset(){ wizStep=0; formDraft={name:'',plan:'',when:'',whenCustom:'',wherePick:'',whereText:'',size:'',note:''}; }
+let wizHintMsg = '';
 function renderPulseWizard(){
   const body = document.getElementById('pulseBody');
   const progress = Array.from({length:WIZ_STEPS}).map((_,i)=>`<span class="${i<=wizStep?'done':''}"></span>`).join('');
-  let q='', opts='', valid=false;
+  let q='', opts='', hint='';
   if(wizStep===0){
     q="What are you planning?";
     const plans = ['Island Hopping','Sunset','Drinks','Surf','Dinner','Shared Ride','Explore'];
-    opts = `<div class="pv2-wiz-opts">${plans.map(p=>`<button class="pv2-wiz-chip${formDraft.plan===p?' on':''}" onclick="wizSet('plan','${p}')">${p}</button>`).join('')}</div>`;
-    valid = !!formDraft.plan;
+    opts = `<div class="pv2-wiz-opts">${plans.map(p=>`<button class="pv2-wiz-chip${formDraft.plan===p?' on':''}" onclick="wizPick(this,'plan','${p}')">${p}</button>`).join('')}</div>`;
+    hint = formDraft.plan ? '' : 'Choose what you have in mind to continue.';
   } else if(wizStep===1){
     q="When?";
     opts = `<div class="pv2-wiz-opts">
-      <button class="pv2-wiz-chip${formDraft.when==='Today'?' on':''}" onclick="wizSet('when','Today')">Today</button>
-      <button class="pv2-wiz-chip${formDraft.when==='Tomorrow'?' on':''}" onclick="wizSet('when','Tomorrow')">Tomorrow</button>
-      <button class="pv2-wiz-chip${formDraft.when==='custom'?' on':''}" onclick="wizSet('when','custom')">Pick date/time</button>
-    </div>${formDraft.when==='custom'?`<input class="pv2-wiz-input" type="datetime-local" value="${formDraft.whenCustom}" onchange="formDraft.whenCustom=this.value;wizRender()"/>`:''}`;
-    valid = formDraft.when && (formDraft.when!=='custom' || formDraft.whenCustom);
+      <button class="pv2-wiz-chip${formDraft.when==='Today'?' on':''}" onclick="wizPick(this,'when','Today')">Today</button>
+      <button class="pv2-wiz-chip${formDraft.when==='Tomorrow'?' on':''}" onclick="wizPick(this,'when','Tomorrow')">Tomorrow</button>
+      <button class="pv2-wiz-chip${formDraft.when==='custom'?' on':''}" onclick="wizPick(this,'when','custom',true)">Pick date/time</button>
+    </div>${formDraft.when==='custom'?`<input class="pv2-wiz-input" type="datetime-local" value="${formDraft.whenCustom}" oninput="formDraft.whenCustom=this.value">`:''}`;
+    hint = (formDraft.when && (formDraft.when!=='custom' || formDraft.whenCustom)) ? '' : (formDraft.when==='custom' ? 'Pick the date and time.' : 'Pick when it happens.');
   } else if(wizStep===2){
     q="Where?";
     opts = `<div class="pv2-wiz-opts">
-      <button class="pv2-wiz-chip${formDraft.wherePick==='choose'?' on':''}" onclick="wizSet('wherePick','choose')">Choose Place</button>
-      <button class="pv2-wiz-chip${formDraft.wherePick==='current'?' on':''}" onclick="wizSet('wherePick','current')">Use Current Map Location</button>
-      <button class="pv2-wiz-chip${formDraft.wherePick==='type'?' on':''}" onclick="wizSet('wherePick','type')">Type Location</button>
-    </div>${formDraft.wherePick==='type'?`<input class="pv2-wiz-input" placeholder="Type a place…" value="${formDraft.whereText}" oninput="formDraft.whereText=this.value"/>`:''}`;
-    valid = formDraft.wherePick && (formDraft.wherePick!=='type' || formDraft.whereText.trim());
+      <button class="pv2-wiz-chip${formDraft.wherePick==='choose'?' on':''}" onclick="wizPick(this,'wherePick','choose')">Choose Place</button>
+      <button class="pv2-wiz-chip${formDraft.wherePick==='current'?' on':''}" onclick="wizPick(this,'wherePick','current')">Use Current Map Location</button>
+      <button class="pv2-wiz-chip${formDraft.wherePick==='type'?' on':''}" onclick="wizPick(this,'wherePick','type',true)">Type Location</button>
+    </div>${formDraft.wherePick==='type'?`<input class="pv2-wiz-input" placeholder="Type a place…" value="${escT(formDraft.whereText)}" oninput="formDraft.whereText=this.value">`:''}`;
+    hint = (formDraft.wherePick && (formDraft.wherePick!=='type' || formDraft.whereText.trim())) ? '' : (formDraft.wherePick==='type' ? 'Type where you want to meet.' : 'Pick a meeting point.');
   } else if(wizStep===3){
     q="How many people?";
     const sizes = ['2–4','5–10','10+'];
-    opts = `<div class="pv2-wiz-opts">${sizes.map(s=>`<button class="pv2-wiz-chip${formDraft.size===s?' on':''}" onclick="wizSet('size','${s}')">${s}</button>`).join('')}</div>`;
-    valid = !!formDraft.size;
+    opts = `<div class="pv2-wiz-opts">${sizes.map(s=>`<button class="pv2-wiz-chip${formDraft.size===s?' on':''}" onclick="wizPick(this,'size','${s}')">${s}</button>`).join('')}</div>`;
+    hint = formDraft.size ? '' : 'Roughly how many are you?';
   } else {
-    q="Short note";
-    opts = `<textarea class="pv2-wiz-textarea" placeholder="Looking for 2 more people to split a boat tomorrow morning." oninput="formDraft.note=this.value">${formDraft.note}</textarea>`;
-    valid = formDraft.note.trim().length>0;
+    q="Name your tribe";
+    opts = `<input class="pv2-wiz-input" id="wizName" maxlength="60" placeholder="${escT(formDraft.plan || 'Sunrise surf crew')}" value="${escT(formDraft.name)}" oninput="formDraft.name=this.value">
+      <textarea class="pv2-wiz-textarea" placeholder="Looking for 2 more people to split a boat tomorrow morning." oninput="formDraft.note=this.value">${escT(formDraft.note)}</textarea>`;
   }
   const last = wizStep===WIZ_STEPS-1;
   body.innerHTML = `
@@ -2541,13 +2567,39 @@ function renderPulseWizard(){
       <div class="pv2-wiz-progress">${progress}</div>
       <div class="pv2-wiz-q">${q}</div>
       ${opts}
+      ${hint?`<div class="pv2-wiz-hint">${hint}</div>`:''}
       <div class="pv2-wiz-nav">
         <button class="pv2-wiz-back" onclick="wizBack()" ${wizStep===0?'style="visibility:hidden"':''}>${lucideSvg('chevron-left',13)} Back</button>
-        <button class="pv2-wiz-next" ${valid?'':'disabled'} onclick="${last?'wizCreate()':'wizNext()'}">${last?'Create Tribe':'Next '+lucideSvg('chevron-right',13)}</button>
+        <button class="pv2-wiz-next" onclick="wizAdvance()">${last?'Create Tribe':'Next '+lucideSvg('chevron-right',13)}</button>
       </div>
     </div>`;
+  wizHintMsg = hint;
 }
+
+// Next is never a dead button. It used to render `disabled` until the step was
+// valid, with nothing on screen saying why — that is the "it gets stuck" report.
+// It always responds now: it advances, or it says what is still missing.
+function wizAdvance(){
+  if(wizHintMsg){ toast(wizHintMsg); return; }
+  if(wizStep<WIZ_STEPS-1){ wizStep++; renderPulseWizard(); }
+  else wizCreate();
+}
+
 function wizRender(){ renderPulseWizard(); }
+
+// A plain choice updates the chips in place instead of re-rendering the whole
+// step, so the buttons can never move out from under the tap. `reveal` re-renders
+// only when choosing opens an extra field.
+function wizPick(btn, key, val, reveal){
+  formDraft[key]=val;
+  if(reveal){ renderPulseWizard(); return; }
+  const box = (btn && btn.closest) ? btn.closest('.pv2-wiz-opts') : null;
+  if(box) box.querySelectorAll('.pv2-wiz-chip').forEach(b=>b.classList.toggle('on', b===btn));
+  const hint = document.querySelector('.pv2-wiz-hint');
+  if(hint) hint.style.display='none';
+  wizHintMsg='';
+}
+
 function wizSet(k,v){ formDraft[k]=v; renderPulseWizard(); }
 function wizNext(){ if(wizStep<WIZ_STEPS-1) wizStep++; renderPulseWizard(); }
 function wizBack(){ if(wizStep>0) wizStep--; renderPulseWizard(); }
@@ -2556,10 +2608,13 @@ function wizCreate(){
     const whereLabel = formDraft.wherePick==='current' ? 'Current map area' : (formDraft.wherePick==='type' ? formDraft.whereText : 'Chosen place');
     const whenLabel = formDraft.when==='custom' ? formDraft.whenCustom.replace('T',', ') : formDraft.when;
     const localId = 't_'+Date.now();
+    // The organiser names their own tribe now; the plan they picked becomes the
+    // tag instead of the title. No stock photo is attached either — a tribe with
+    // no photo of its own shows the placeholder rather than somebody else's beach.
+    const title = (formDraft.name || '').trim() || formDraft.plan;
     PULSE_TRIBES.unshift({
-      id:localId, title:formDraft.plan, where:whereLabel, when:whenLabel, sub:formDraft.note||'Just formed.',
-      cap:formDraft.size, joined:1, extra:0, by:person.name, tags:[formDraft.plan],
-      thumb:'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=200&h=260&fit=crop&q=70'
+      id:localId, title, where:whereLabel, when:whenLabel, sub:formDraft.note||'Just formed.',
+      cap:formDraft.size, joined:1, extra:0, by:person.name, tags:[formDraft.plan]
     });
     myTribes.add(localId);
     selectPulseView_reset();
@@ -7143,6 +7198,23 @@ function mysvHuntStats(){
   };
 }
 
+// What the visitor actually put on their list from Today. Resolved back to the
+// rows themselves, so My Journey shows the item by its own name — the panel
+// used to show the admin-curated my_sanvic_upcoming cards here instead, which
+// is half of why saving "Fiesta day" appeared to show up as something else.
+function mysvTodayGoing(){
+  const out = [];
+  const seen = new Set();
+  const push = (key, title, meta) => {
+    if(!myToday.has(key) || seen.has(key)) return;
+    seen.add(key);
+    out.push({ id:key, title:title || 'Saved', meta:meta || '' });
+  };
+  (TODAY_DATA.happening || []).forEach((e,i)=>push(todayItemKey(e,i), e.title, [e.place, e.time].filter(Boolean).join(' · ')));
+  (TODAY_DATA.joinable || []).forEach((j,i)=>push(todayJoinableKey(j), j.title, j.detail || ''));
+  return out;
+}
+
 function renderMySanvic(){
   const body = document.getElementById('mysvBody');
   if(!body) return;
@@ -7153,9 +7225,10 @@ function renderMySanvic(){
   const recent = mysvRecentList();
   const joinedTribes = MYSV_TRIBES.filter(t=>(typeof myTribes !== 'undefined' && myTribes) ? myTribes.has(String(t.id)) : false);
   const joinedEvents = MYSV_EVENTS.filter(e=>(typeof myEvents !== 'undefined' && myEvents) ? myEvents.has(String(e.id)) : false);
+  const goingItems = mysvTodayGoing();
 
   const hasContent = MYSV_SAVED.length || joinedTribes.length || joinedEvents.length ||
-                     MYSV_UPCOMING.length || recent.length || hunt.found > 0;
+                     goingItems.length || recent.length || hunt.found > 0;
 
   const header = `
     <div class="mysv-head">
@@ -7196,35 +7269,25 @@ function renderMySanvic(){
     return;
   }
 
-  const upcoming = `
+  // Only what the visitor put on their own list. The admin-curated
+  // my_sanvic_upcoming cards used to render here as though they were the
+  // visitor's own saves, which is the other half of the "I saved Fiesta day and
+  // it shows me something different" report.
+  const going = goingItems.length ? `
     <div class="mysv-section">
       <div class="mysv-sec-head">
-        <div><div class="mysv-sec-title">${lucideSvg('calendar',15)} Upcoming</div><div class="mysv-sec-sub">Things you're going to or interested in.</div></div>
-        
+        <div><div class="mysv-sec-title">${lucideSvg('calendar',15)} You're going</div><div class="mysv-sec-sub">Saved from Today.</div></div>
       </div>
       <div class="mysv-hscroll">
-        ${MYSV_UPCOMING.map(u=>{
-          const allImgs = [];
-          if(u.images && Array.isArray(u.images)) allImgs.push(...u.images);
-          const hasImages = allImgs.length > 0;
-          const cardBg = hasImages
-            ? `background-image:url('${escapeHtml(allImgs[0])}');background-size:cover;background-position:center;`
-            : `background:${u.grad};`;
-          return `
-          <div class="mysv-up-card" style="${cardBg}">
-            <span class="mysv-badge ${u.badgeStyle==='soft'?'soft':''}">${escapeHtml(u.badge)}</span>
+        ${goingItems.map(g=>`
+          <div class="mysv-up-card" style="background:linear-gradient(135deg,#0ea5e9,#0c4a6e)">
             <div class="mysv-up-info">
-              <div class="mysv-up-title">${escapeHtml(u.title)}</div>
-              <div class="mysv-up-meta">${escapeHtml(u.meta)}</div>
-              <div class="mysv-up-row">
-                ${mysvAvatars(u.avatars||0, u.more||0)}
-                <button class="mysv-cap-btn" onclick="mysvAction('${u.action}','${u.id}')">${escapeHtml(u.cta)}</button>
-              </div>
+              <div class="mysv-up-title">${escapeHtml(g.title)}</div>
+              <div class="mysv-up-meta">${escapeHtml(g.meta)}</div>
             </div>
-          </div>`;
-        }).join('')}
+          </div>`).join('')}
       </div>
-    </div>`;
+    </div>` : '';
 
   const saved = `
     <div class="mysv-section">
@@ -7367,7 +7430,7 @@ function renderMySanvic(){
   // Empty sections are omitted rather than shown blank. Hunt progress is the
   // one block that always renders, because a zero state there is information.
   body.innerHTML = header + sync +
-    (MYSV_UPCOMING.length ? upcoming : '') +
+    going +
     (MYSV_SAVED.length ? saved : '') +
     (joinedTribes.length ? tribes : '') +
     split +
