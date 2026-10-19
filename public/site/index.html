@@ -1279,9 +1279,9 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
         Directions
       </button>
-      <button class="dest-exp-btn" id="deAskTala">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 5-7 13-7 13S5 14 5 9a7 7 0 0 1 7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
-        Ask tala
+      <button class="dest-exp-btn" id="deTips" onclick="togglePlaceTips()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        Leave a tip
       </button>
       <button class="dest-exp-btn wide" id="deGbp" style="display:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
@@ -1292,6 +1292,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
         What's around me
       </button>
     </div>
+    <div class="dest-exp-tips" id="deTipsBox" hidden></div>
     <button class="dest-exp-back" onclick="closeDestSheet()">Back to map</button>
   </div>
 </div>
@@ -2069,6 +2070,24 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
     .info-sheet.open{transform:translateX(0)}
     .info-handle{display:none}
   }
+  /* ── TALA IS RETIRED FROM THE INTERFACE ────────────────────────────────
+     The concierge orb, its sheet and its suggestion chips are switched off
+     until the 2.0 build. The markup and its handlers are still in the file, so
+     this is the single switch that takes the whole feature out of the product
+     without leaving dead buttons or broken handlers behind. The "Ask tala"
+     entry point on a place became "Leave a tip". */
+  .tala-orb-wrap,
+  .tala-sheet,
+  .tala-overlay{display:none !important}
+  /* Visitor tips on a place — what replaced "Ask tala". */  .dest-exp-tips{display:flex;flex-direction:column;gap:9px;margin-top:12px}
+  .dept-head{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.42);font-weight:700}
+  .dept-note{font-size:.78rem;line-height:1.45;color:rgba(255,255,255,.5)}
+  .dept-tip{padding:9px 12px;border-radius:13px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06)}
+  .dept-tip-name{font-size:.66rem;font-weight:600;color:rgba(94,234,212,.9);margin-bottom:3px}
+  .dept-tip-body{font-size:.82rem;line-height:1.5;color:rgba(255,255,255,.85);white-space:pre-wrap}
+  .dept-form{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+  .dept-form textarea{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;font-size:.84rem;line-height:1.5;font-family:var(--font-body);outline:0;resize:vertical}
+  .dept-form button{align-self:flex-start}
   .hunt-reward-badge{align-self:flex-start;background:#fbbf24;color:#78350f;padding:4px 10px;border-radius:999px;font-size:.65rem;font-weight:800;letter-spacing:.5px}
   .hunt-reward-t{color:#fff;font-size:1.05rem;font-weight:700;margin-top:8px}
   .hunt-reward-s{color:rgba(255,255,255,.75);font-size:.75rem;line-height:1.5;margin-top:4px}

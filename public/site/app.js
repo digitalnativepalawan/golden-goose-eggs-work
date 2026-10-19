@@ -1661,6 +1661,34 @@ const TODAY_DATA = {
 
 function escT(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+// What the visitor told us in the entry questionnaire, turned into a day. TALA
+// used to write this line. It is now built from the vibes the visitor actually
+// picked, matched against real directory places — no answers, no guess, and no
+// invented itinerary.
+function todayPersonalPick(){
+  let prof = null;
+  try{ prof = JSON.parse(localStorage.getItem('sanvic_entry_v1') || 'null'); }catch(e){ return null; }
+  const tags = (prof && Array.isArray(prof.vibeTags)) ? prof.vibeTags.map(t=>String(t||'').toLowerCase()).filter(Boolean) : [];
+  const list = (Array.isArray(destinations) ? destinations : []).filter(d=>d.lat!=null && d.lng!=null);
+  if(!tags.length || !list.length) return null;
+  const scored = list.map(d=>{
+    const hay = [d.name, d.category, d.barangay, d.description, d.tip].filter(Boolean).join(' ').toLowerCase();
+    let score = 0;
+    tags.forEach(t=>{ if(t.length > 2 && hay.indexOf(t) >= 0) score += 1; });
+    if(tags.indexOf(String(d.category||'').toLowerCase()) >= 0) score += 2;   // the category itself counts double
+    return { d, score };
+  }).filter(x=>x.score > 0).sort((a,b)=>b.score - a.score);
+  if(!scored.length) return null;
+  // A resort is somewhere you sleep, not somewhere the day takes you, so it only
+  // gets suggested if nothing else matched at all.
+  const out = scored.filter(x=>x.d.category !== 'stays');
+  const final = out.length ? out : scored;
+  return final.slice(0,3).map(x=>x.d);
+}
+function catLabelFor(cat){
+  return (catStyle && catStyle[cat] && catStyle[cat].label) || cat || '';
+}
+
 function renderTodayContent(){
   const host = document.getElementById('todayScroll');
   if(!host) return;
@@ -1683,20 +1711,37 @@ function renderTodayContent(){
         <div class="today-snap"><span class="tsn-glyph">${lucideSvg('sparkles',20)}</span><span class="tsn-val">${happenCount}</span><span class="tsn-lbl">Happening</span></div>
       </div>
     </article>`;
-  const pick = `
+  // Personalised suggestions, built from the vibes the visitor chose in the
+  // questionnaire. This replaces the old "TALA's pick of the day".
+  const picks = todayPersonalPick();
+  const pick = picks ? `
     <article class="today-card">
-      <div class="today-kicker">TALA’s pick of the day</div>
-      <p class="today-lede">${escT(d.talaPick.intro)}</p>
+      <div class="today-kicker">Picked for you</div>
+      <p class="today-lede">${picks.length === 1 ? 'A place' : picks.length + ' places'} that match what you told us you are into.</p>
       <div class="today-path">
-        ${d.talaPick.path.map((n,i)=>`
-          <div class="today-node">
-            <div class="tnode-label">${escT(n.label)}</div>
-            <div class="tnode-sub">${escT(n.sub)}</div>
+        ${picks.map((p,i)=>`
+          <div class="today-node" role="button" tabindex="0" style="cursor:pointer" onclick="openDestinationById(${p.id})">
+            <div class="tnode-label">${escT(p.name)}</div>
+            <div class="tnode-sub">${escT([p.barangay, catLabelFor(p.category)].filter(Boolean).join(' · '))}</div>
           </div>
-          ${i<d.talaPick.path.length-1?'<div class="today-arrow">'+lucideSvg('arrow-right',16)+'</div>':''}
+          ${i<picks.length-1?'<div class="today-arrow">'+lucideSvg('arrow-right',16)+'</div>':''}
         `).join('')}
       </div>
+    </article>` : `
+    <article class="today-card">
+      <div class="today-kicker">Your day</div>
+      <p class="today-lede">Tell us what you are into and this fills with places chosen for you.</p>
+      <div class="today-path">
+        <div class="today-node" role="button" tabindex="0" style="cursor:pointer" onclick="openMyVibes()">
+          <div class="tnode-label">Choose your vibes</div>
+          <div class="tnode-sub">A few quick taps — then this is yours</div>
+        </div>
+      </div>
     </article>`;
+  // The questionnaire is the source, so let the visitor reopen it from here.
+  window.openMyVibes = function(){
+    if(typeof window.openSanvicWelcome === 'function') window.openSanvicWelcome();
+  };
   const happening = `
     <article class="today-card">
       <div class="today-kicker">Happening today</div>
@@ -2613,6 +2658,74 @@ function sendTribeMessage(tribeId){
     }catch(err){
       console.warn('[SANVIC] Tribe message failed:', err);
       toast('Could not send that just now.');
+    }
+  });
+}
+
+// ── VISITOR TIPS ON A PLACE ───────────────────────────────────────────────
+// "Ask tala" sat on this button. What is actually useful when you are standing
+// in front of a place is not a machine's answer but what the last visitor
+// learned, so this is where they leave it. Tips are public by design — the point
+// is the next traveller reading them.
+function placeTipKey(d){
+  return (d && d.id != null) ? ('d:' + d.id) : '';
+}
+function togglePlaceTips(){
+  const box = document.getElementById('deTipsBox');
+  if(!box) return;
+  if(box.hidden){ box.hidden = false; renderPlaceTips(); }
+  else { box.hidden = true; }
+}
+async function renderPlaceTips(){
+  const box = document.getElementById('deTipsBox');
+  if(!box) return;
+  const key = placeTipKey(currentDest);
+  if(!key) return;
+  box.innerHTML = `<div class="dept-head">Visitor tips</div><div class="dept-note">Loading…</div>`;
+  let rows = [];
+  try{
+    const { data, error } = await sb.from('place_tips')
+      .select('id,device_id,display_name,body,created_at')
+      .eq('place_key', key)
+      .order('created_at', { ascending:false })
+      .limit(50);
+    if(error) throw error;
+    rows = data || [];
+  }catch(err){
+    console.warn('[SANVIC] Tips load failed:', err);
+    box.innerHTML = `<div class="dept-head">Visitor tips</div><div class="dept-note">Could not load tips just now.</div>`;
+    return;
+  }
+  box.innerHTML = `
+    <div class="dept-head">Visitor tips · ${rows.length}</div>
+    ${rows.length ? rows.map(t=>`
+      <div class="dept-tip">
+        <div class="dept-tip-name">${escapeHtml(t.display_name || 'A traveller')}</div>
+        <div class="dept-tip-body">${escapeHtml(t.body)}</div>
+      </div>`).join('') : '<div class="dept-note">No tips yet. If you learned something here, leave it for the next person.</div>'}
+    <div class="dept-form">
+      <textarea id="deptInput" rows="3" maxlength="600" placeholder="What should the next visitor know? Sea conditions, a price, where to stand for the light…"></textarea>
+      <button class="info-cta" onclick="postPlaceTip()">Post tip</button>
+    </div>`;
+}
+function postPlaceTip(){
+  const key = placeTipKey(currentDest);
+  const input = document.getElementById('deptInput');
+  const typed = (input && input.value ? input.value : '').trim();
+  if(!key) return;
+  if(typed.length < 3){ toast('Write a little more than that.'); return; }
+  ensurePerson(async person=>{
+    const el = document.getElementById('deptInput');
+    const body = (el && el.value ? el.value : typed).trim();
+    if(body.length < 3) return;
+    try{
+      const { error } = await sb.from('place_tips').insert({ place_key:key, device_id:person.id, display_name:person.name, body });
+      if(error) throw error;
+      toast('Thanks — your tip is up.');
+      await renderPlaceTips();
+    }catch(err){
+      console.warn('[SANVIC] Tip failed:', err);
+      toast('Could not post that just now.');
     }
   });
 }
@@ -3614,10 +3727,10 @@ function openDest(d,recordHistory=true){
   save.disabled=destinationsSource!=='supabase';
   save.title=save.disabled?'Sample places cannot be saved':'Save this place';
   refreshDestSaveButton(d.id);
-  document.getElementById('deAskTala').onclick=()=>{
-    closeDestSheet(false);openTalaSheet();
-    const input=document.getElementById('talaInput');input.value='Tell me about '+d.name+(d.barangay?' in '+d.barangay:'')+'. What should I know before visiting?';input.focus();
-  };
+  // "Ask tala" used to sit on this button. It is "Leave a tip" now, so the
+  // panel is reset for each place rather than carrying the last one over.
+  const tipsBox = document.getElementById('deTipsBox');
+  if(tipsBox){ tipsBox.hidden = true; tipsBox.innerHTML = ''; }
   closeTalaSheet(false);
   const sheet=document.getElementById('destSheet');sheet.className='dest-sheet expanded';sheet.removeAttribute('inert');
   sheet.setAttribute('role','region');sheet.setAttribute('aria-labelledby','deTitle');sheet.style.transform='';
@@ -3795,6 +3908,9 @@ loadVoices();
 if(synth.onvoiceschanged) synth.onvoiceschanged=loadVoices;
 
 function openTalaSheet() {
+  // TALA is off until the 2.0 build (see the kill switch in index.html). Guarded
+  // so no stray caller can bring the sheet back or lock the page behind it.
+  if(!document.getElementById('talaSheet')) return;
   talaOpen=true;
   document.getElementById('talaSheet').classList.add('open');
   document.getElementById('talaOverlay').classList.add('active');
@@ -3881,7 +3997,7 @@ function toggleMute(){
 }
 
 // ─── SEARCH ───
-const placeholders=["Ask tala about beaches...","Best time to visit San Vicente?","How to get to San Vicente?","Hidden gems locals love...","Budget travel tips...","Best surf spots in Alimanguan...","What to eat in San Vicente..."];
+const placeholders=["Search beaches, stays, restaurants...","Best time to visit San Vicente?","How to get to San Vicente?","Hidden gems locals love...","Budget travel tips...","Best surf spots in Alimanguan...","What to eat in San Vicente..."];
 let phIdx=0,phChar=0,phDir=1;
 const heroInput=document.getElementById('heroInput');
 
@@ -6044,12 +6160,10 @@ async function renderAdminToday(){
 
   body.innerHTML = `
     <div class="admin-field">
-      <label>TALA's pick intro</label>
-      <textarea id="atPickIntro" rows="2">${escapeHtml((d.talaPick||{}).intro||'')}</textarea>
-    </div>
-    <div class="admin-field">
-      <label>TALA's pick path (one per line: Label | Sub)</label>
-      <textarea id="atPickPath" rows="3">${path.map(p=> p.label+' | '+p.sub).join('\n')}</textarea>
+      <label>Suggested day</label>
+      <div style="font-size:.72rem;color:var(--white-dim);line-height:1.5;">
+        The old TALA pick is gone. This block is now built for each visitor from the vibes they chose in the entry questionnaire, matched against the directory, so there is nothing to write here.
+      </div>
     </div>
     <div class="admin-field">
       <label>Happening today</label>
@@ -6134,8 +6248,6 @@ async function adminSaveToday(){
   const status = document.getElementById('atStatus');
   status.textContent = 'Saving…';
   try {
-    const pickIntro = document.getElementById('atPickIntro').value.trim();
-    const pickPath = parseLines(document.getElementById('atPickPath').value, 2).map(p=>({ label:p[0], sub:p[1] }));
     const happening = collectTodayHappeningItems();
     const joinable = parseLines(document.getElementById('atJoinable').value, 3).map(p=>({ title:p[0], detail:p[1], crowd:parseInt(p[2])||0 }));
     const weather = parseLines(document.getElementById('atWeather').value, 3).map(p=>({ icon:p[0], label:p[1], verdict:p[2] }));
@@ -6143,7 +6255,6 @@ async function adminSaveToday(){
     const notices = parseLines(document.getElementById('atNotices').value, 1).map(p=>({ text:p[0] }));
 
     const rows = [
-      { key:'tala_pick', data:{ intro: pickIntro, path: pickPath } },
       { key:'happening', data: happening },
       { key:'joinable', data: joinable },
       { key:'weather', data: weather },
@@ -6153,7 +6264,6 @@ async function adminSaveToday(){
     const { error } = await sb.from('today_content').upsert(rows, { onConflict:'key' });
     if(error) throw error;
     status.innerHTML = '<span style="color:#5eead4;display:inline-flex;align-items:center;gap:4px">' + lucideSvg('check',12) + ' Saved</span>';
-    TODAY_DATA.talaPick = { intro: pickIntro, path: pickPath };
     TODAY_DATA.happening = happening;
     TODAY_DATA.joinable = joinable;
     TODAY_DATA.weather = weather;
