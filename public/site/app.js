@@ -3288,6 +3288,7 @@ function openDest(d,recordHistory=true){
     exploreReturnView={center:map?.getCenter(),zoom:map?.getZoom(),snap:exploreState.snap,scroll:document.getElementById('exploreContent').scrollTop};
   }
   currentDest=d;
+  mysvTrackRecent(d);
   highlightExplorePlace(d.id);
   if(recordHistory){
     const state={sanvic:true,tab:'discover',place:String(d.id)};
@@ -3665,6 +3666,7 @@ function dockNav(tab){
     case 'tala': closeAllPanels(); closeDiscoverPanel(); openTalaSheet(); break;
     case 'pulse': closeAllPanels(); closeDiscoverPanel(); openPulsePanel(); break;
     case 'saved': closeAllPanels(); closeDiscoverPanel(); openMySanvicPanel(); break;
+    case 'journey': closeAllPanels(); closeDiscoverPanel(); openMySanvicPanel(); break;
     case 'hunt': closeAllPanels(); closeDiscoverPanel(); openHuntPanel(); break;
   }
 }
@@ -6960,7 +6962,7 @@ async function adminPulseToggleMute(userId, muted){
 
 async function adminPulseToggleBan(userId, banned){
   if(!adminRequireWrite()) return;
-  if(banned && !confirm('Ban this traveler? They will be unable to post or comment in Pulse.')) return;
+  if(banned && !confirm('Ban this traveler? They will be unable to post or comment in Tribes.')) return;
   try {
     const { error } = await sb.rpc('admin_set_user_moderation', { target_user_id: userId, muted: false, banned, note: null });
     if(error) throw error;
@@ -6983,34 +6985,33 @@ let HUNT_REWARDS = [
 // ═══════════════════════════════════════════════════════
 // MY SANVIC — private pocket panel
 // ═══════════════════════════════════════════════════════
-let MYSV_UPCOMING = [
-  { id:'u1', title:'Sunset Chasers', meta:'5:30 PM • Long Beach', badge:'Today', badgeStyle:'solid', avatars:4, more:3, cta:'Open Tribe Chat', action:'openChat', images:['https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=75','https://images.unsplash.com/photo-1518509562904-e7ef99cdcc86?w=400&q=75'], grad:'linear-gradient(135deg,#f97316,#7c2d12)' },
-  { id:'u2', title:'Lechon by the Beach', meta:'6:00 PM • Sunset Resort', badge:'Today', badgeStyle:'solid', cta:'View Details', action:'details', images:['https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=75','https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=75'], grad:'linear-gradient(135deg,#d97706,#78350f)' },
-  { id:'u3', title:'Island Hopping Tribe', meta:'8:00 AM • Port Barton', badge:'Tomorrow', badgeStyle:'solid', avatars:4, more:2, cta:'Open Tribe Chat', action:'openChat', images:['https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=75','https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&q=75'], grad:'linear-gradient(135deg,#0ea5e9,#0c4a6e)' },
-  { id:'u4', title:'Acoustic Night', meta:'7:30 PM • Poblacion', badge:'May 18', badgeStyle:'soft', cta:"I'm Interested", action:'interested', images:['https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&q=75'], grad:'linear-gradient(135deg,#7c3aed,#1e1b4b)' }
-];
-let MYSV_SAVED = [
-  { id:'s1', title:'Long Beach', cat:'Beach · San Vicente', km:12, image:'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=75', grad:'linear-gradient(135deg,#38bdf8,#0c4a6e)' },
-  { id:'s2', title:'Boayan Island', cat:'Island · Port Barton', km:18, image:'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=75', grad:'linear-gradient(135deg,#22d3ee,#164e63)' },
-  { id:'s3', title:'Pamuayan Falls', cat:'Waterfall · Alimanguan', km:18, image:'https://images.unsplash.com/photo-1432405972618-c6b0cfba8b0f?w=400&q=75', grad:'linear-gradient(135deg,#34d399,#064e3b)' },
-  { id:'s4', title:'Poblacion Market', cat:'Local Life · Poblacion', km:2, image:'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=400&q=75', grad:'linear-gradient(135deg,#f59e0b,#78350f)' },
-  { id:'s5', title:'Alimanguan Beach', cat:'Beach · Alimanguan', km:25, image:'https://images.unsplash.com/photo-1506953823976-52e1fdc0149a?w=400&q=75', grad:'linear-gradient(135deg,#60a5fa,#1e3a8a)' }
-];
-let MYSV_TRIBES = [
-  { id:'t1', title:'Sunset Chasers', meta:'Long Beach • Today, 5:30 PM', more:3, thumb:'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=75', grad:'linear-gradient(135deg,#f97316,#7c2d12)' },
-  { id:'t2', title:'Island Hopping Tomorrow', meta:'Port Barton • Tomorrow, 8:00 AM', more:2, thumb:'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=75', grad:'linear-gradient(135deg,#0ea5e9,#0c4a6e)' },
-  { id:'t3', title:'Shared Ride to Port Barton', meta:'Poblacion • May 18, 10:00 AM', more:1, thumb:'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&q=75', grad:'linear-gradient(135deg,#10b981,#064e3b)' }
-];
-const MYSV_EVENTS = [
-  { id:'e1', title:'Full Moon Party', meta:'Baybay • Tonight, 9:00 PM', more:12, images:['https://images.unsplash.com/photo-1533174072545-7a4b6ad7a6c3?w=400&q=75','https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=400&q=75'], grad:'linear-gradient(135deg,#a78bfa,#1e1b4b)' },
-  { id:'e2', title:'Acoustic Night', meta:'Poblacion • May 18, 7:30 PM', more:8, images:['https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&q=75'], grad:'linear-gradient(135deg,#f472b6,#831843)' }
-];
-const MYSV_RECENT = [
-  { id:'r1', label:'Port Barton Village', image:'https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=200&q=75', grad:'linear-gradient(135deg,#38bdf8,#0c4a6e)' },
-  { id:'r2', label:'Private Boat Experience', image:'https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=200&q=75', grad:'linear-gradient(135deg,#22d3ee,#164e63)' },
-  { id:'r3', label:'Wild Beach North', image:'https://images.unsplash.com/photo-1506953823976-52e1fdc0149a?w=200&q=75', grad:'linear-gradient(135deg,#60a5fa,#1e3a8a)' },
-  { id:'r4', label:'Sunset Drinks Tribe', image:'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=200&q=75', grad:'linear-gradient(135deg,#f97316,#7c2d12)' }
-];
+// My Journey buffers. Every one of these is filled from Supabase — tribes,
+// events and the admin-curated upcoming items at boot, saved places on open —
+// and then filtered to what this visitor actually did. There is deliberately
+// no demo content here: the panel must never show a place, tribe or event that
+// nobody collected.
+let MYSV_UPCOMING = [];   // my_sanvic_upcoming, admin-curated
+let MYSV_SAVED = [];      // saved_places, this device or this account
+let MYSV_TRIBES = [];     // tribes, filtered to the ones this visitor joined
+let MYSV_EVENTS = [];     // events, filtered to the ones this visitor joined
+
+// ── RECENTLY VIEWED ───────────────────────────────────────────────────────
+// The only section of My Journey with no server-side record, so we keep a
+// short local trail of places actually opened. Same device-bound pattern as
+// the hunt's points: real on the phone you used, and lost with the browser.
+const MYSV_RECENT_KEY = 'sanvic_recent_places';
+function mysvTrackRecent(d){
+  if(!d || d.id == null) return;
+  try{
+    const list = JSON.parse(localStorage.getItem(MYSV_RECENT_KEY) || '[]');
+    const entry = { id: d.id, label: d.name || 'Place', image: d.image || '' };
+    const next = [entry, ...list.filter(r=>String(r.id) !== String(d.id))].slice(0, 8);
+    localStorage.setItem(MYSV_RECENT_KEY, JSON.stringify(next));
+  }catch(_){}
+}
+function mysvRecentList(){
+  try{ return JSON.parse(localStorage.getItem(MYSV_RECENT_KEY) || '[]'); }catch(_){ return []; }
+}
 
 function mysvIsSignedIn(){
   try{
@@ -7028,37 +7029,39 @@ function mysvSignIn(){
   return openDashboard('account');
 }
 
-// Load saved places from Supabase (requires signed-in user).
-// Falls back to demo data if not signed in or query fails.
+// Load saved places for whoever is holding the device: the account when signed
+// in, otherwise the same anonymous device id the save button already writes
+// with. Signed-in saves follow the traveller; device saves stay on the phone.
+// Never demo content — if nothing was saved, the section is simply empty.
 async function loadMySanvicSaved(){
-  if(!currentUser) return;
   try {
+    const owner = saveOwner();
     const { data: saved, error } = await sb.from('saved_places')
       .select('id, destination_id')
-      .eq('user_id', currentUser.id);
+      .eq(owner.col, owner.val);
     if(error) throw error;
-    if(!saved || !saved.length) return;
+    const rows = saved || [];
+    const destIds = rows.map(s=>s.destination_id).filter(Boolean);
+    if(!destIds.length){ MYSV_SAVED = []; return; }
     // Fetch destination details for each saved place
-    const destIds = saved.map(s=>s.destination_id).filter(Boolean);
-    if(!destIds.length) return;
     const { data: dests } = await sb.from('destinations')
       .select('id, name, category, barangay, image')
       .in('id', destIds);
-    if(!dests || !dests.length) return;
-    const destMap = new Map(dests.map(d=>[d.id, d]));
-    // Replace demo data with real saved places
-    MYSV_SAVED = saved.map(s=>{
+    const destMap = new Map((dests || []).map(d=>[d.id, d]));
+    MYSV_SAVED = rows.map(s=>{
       const d = destMap.get(s.destination_id);
+      if(!d) return null;
       const catLabel = (catStyle[d.category] && catStyle[d.category].label) || d.category || '';
       return {
         id: 'sp_' + s.id,
+        destId: d.id,
         title: d.name || 'Saved place',
         cat: catLabel + (d.barangay ? ' • ' + d.barangay : ''),
         km: '',
         image: d.image || '',
         grad: 'linear-gradient(135deg,#38bdf8,#0c4a6e)'
       };
-    });
+    }).filter(Boolean);
   } catch(e){
     console.warn('[MYSV] Could not load saved places:', e);
   }
@@ -7069,7 +7072,13 @@ function openMySanvicPanel(){
   if(!p) return;
   p.classList.add('open');
   p.setAttribute('aria-hidden','false');
-  loadMySanvicSaved().then(()=> renderMySanvic());
+  // Joins normally arrive in the boot payload; re-fetch only when that came
+  // back empty, so a tribe someone really joined is never missing here.
+  const needsJoins = !(typeof myTribes !== 'undefined' && myTribes && myTribes.size) && typeof loadJoinData === 'function';
+  Promise.all([
+    loadMySanvicSaved(),
+    needsJoins ? loadJoinData() : Promise.resolve()
+  ]).then(()=> renderMySanvic()).catch(()=> renderMySanvic());
 }
 function closeMySanvicPanel(){
   const p = document.getElementById('mySanvicPanel');
@@ -7085,21 +7094,45 @@ function mysvAvatars(count, more){
   return `<div class="mysv-avatars">${dots}${moreEl}</div>`;
 }
 
+// Real hunt numbers, from the same localStorage state the Hunt panel reads.
+// Device-bound, exactly like the Hunt itself — no invented progress here.
+function mysvHuntStats(){
+  const state = huntLoadState();
+  const total = (Array.isArray(destinations) ? destinations.length : 0);
+  const found = state.unlocked.length;
+  const rewards = (typeof huntRewardItems === 'function') ? huntRewardItems() : [];
+  const nextReward = rewards.find(r=>!state.claimed.includes(String(r.id))) || null;
+  return {
+    total,
+    found,
+    pct: total ? Math.round((found / total) * 100) : 0,
+    points: state.points,
+    claimed: state.claimed.length,
+    nextReward
+  };
+}
+
 function renderMySanvic(){
   const body = document.getElementById('mysvBody');
   if(!body) return;
   const signedIn = mysvIsSignedIn();
   const showSync = !signedIn && !mysvSyncDismissed();
 
-  const hasContent = MYSV_SAVED.length || MYSV_TRIBES.length || MYSV_UPCOMING.length || MYSV_EVENTS.length;
+  const hunt = mysvHuntStats();
+  const recent = mysvRecentList();
+  const joinedTribes = MYSV_TRIBES.filter(t=>(typeof myTribes !== 'undefined' && myTribes) ? myTribes.has(String(t.id)) : false);
+  const joinedEvents = MYSV_EVENTS.filter(e=>(typeof myEvents !== 'undefined' && myEvents) ? myEvents.has(String(e.id)) : false);
+
+  const hasContent = MYSV_SAVED.length || joinedTribes.length || joinedEvents.length ||
+                     MYSV_UPCOMING.length || recent.length || hunt.found > 0;
 
   const header = `
     <div class="mysv-head">
       <div class="mysv-title-row">
-        <h1 class="mysv-title">My Sanvic</h1>
+        <h1 class="mysv-title">My Journey</h1>
         <svg class="mysv-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
       </div>
-      <div class="mysv-sub">Your saved places, joined tribes, plans, and discoveries.</div>
+      <div class="mysv-sub">Your saves, tribes, plans and discoveries.</div>
       <div class="mysv-tag">Your San Vicente, quietly collected.</div>
     </div>`;
 
@@ -7121,12 +7154,12 @@ function renderMySanvic(){
   if(!hasContent){
     body.innerHTML = header + sync + `
       <div class="mysv-empty">
-        <div class="mysv-empty-t">Your trip is still empty.</div>
+        <div class="mysv-empty-t">Your journey is still empty.</div>
         <div class="mysv-empty-s">Save places, join tribes, follow events, or unlock discoveries. They'll appear here.</div>
         <div class="mysv-empty-actions">
           <button class="mysv-cap-btn" onclick="closeMySanvicPanel();dockNav('discover')">Explore San Vicente</button>
-          <button class="mysv-cap-btn" onclick="closeMySanvicPanel();dockNav('pulse')">Open Pulse</button>
-          <button class="mysv-cap-btn" onclick="closeMySanvicPanel();dockNav('map')">See Today</button>
+          <button class="mysv-cap-btn" onclick="closeMySanvicPanel();dockNav('pulse')">Open Tribes</button>
+          <button class="mysv-cap-btn" onclick="closeMySanvicPanel();dockNav('hunt')">Try The Hunt</button>
         </div>
       </div>`;
     return;
@@ -7136,7 +7169,7 @@ function renderMySanvic(){
     <div class="mysv-section">
       <div class="mysv-sec-head">
         <div><div class="mysv-sec-title">${lucideSvg('calendar',15)} Upcoming</div><div class="mysv-sec-sub">Things you're going to or interested in.</div></div>
-        <button class="mysv-viewall">View all ${lucideSvg('chevron-right',13)}</button>
+        
       </div>
       <div class="mysv-hscroll">
         ${MYSV_UPCOMING.map(u=>{
@@ -7166,7 +7199,7 @@ function renderMySanvic(){
     <div class="mysv-section">
       <div class="mysv-sec-head">
         <div><div class="mysv-sec-title">${lucideSvg('luggage',15)} Saved Places</div><div class="mysv-sec-sub">Places you saved from Explore.</div></div>
-        <button class="mysv-viewall">View all ${lucideSvg('chevron-right',13)}</button>
+        
       </div>
       <div class="mysv-hscroll">
         ${MYSV_SAVED.map(s=>{
@@ -7175,15 +7208,14 @@ function renderMySanvic(){
             : `background:${s.grad};`;
           return `
           <div class="mysv-sv-card" style="${cardBg}">
-            <button class="mysv-sv-heart" onclick="mysvToggleSaved('${s.id}')" aria-label="Saved">
+            <button class="mysv-sv-heart" onclick="mysvToggleSaved('${s.id}')" aria-label="Remove from saved">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff" stroke="none"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
             </button>
-            <div class="mysv-sv-info">
+            <div class="mysv-sv-info" onclick="mysvAction('view','${s.destId}')" role="button" tabindex="0" style="cursor:pointer">
               <div class="mysv-sv-title">${escapeHtml(s.title)}</div>
               <div class="mysv-sv-cat">${escapeHtml(s.cat)}</div>
               <div class="mysv-sv-row">
-                <span class="mysv-km">${lucideSvg('map-pin',12)} ${s.km} km</span>
-                <button class="mysv-dot" onclick="mysvAction('menu','${s.id}')">⋯</button>
+                <span class="mysv-km">${lucideSvg('map-pin',12)} Open place</span>
               </div>
             </div>
           </div>`;
@@ -7194,11 +7226,11 @@ function renderMySanvic(){
   const tribes = `
     <div class="mysv-section">
       <div class="mysv-sec-head">
-        <div><div class="mysv-sec-title">${lucideSvg('users',15)} Joined Tribes</div><div class="mysv-sec-sub">Tribes you joined in Pulse.</div></div>
-        <button class="mysv-viewall">View all ${lucideSvg('chevron-right',13)}</button>
+        <div><div class="mysv-sec-title">${lucideSvg('users',15)} Joined Tribes</div><div class="mysv-sec-sub">Tribes you joined on this device.</div></div>
+        
       </div>
       <div>
-        ${MYSV_TRIBES.map(t=>{
+        ${joinedTribes.map(t=>{
           const thumbBg = t.thumb
             ? `background-image:url('${escapeHtml(t.thumb)}');background-size:cover;background-position:center;`
             : `background:${t.grad};`;
@@ -7217,15 +7249,20 @@ function renderMySanvic(){
       </div>
     </div>`;
 
+  const rewardThumb = hunt.nextReward
+    ? ((hunt.nextReward.images && hunt.nextReward.images[0])
+        ? `background-image:url('${escapeHtml(hunt.nextReward.images[0])}');background-size:cover;background-position:center;`
+        : `background:${hunt.nextReward.grad || 'linear-gradient(135deg,#0ea5e9,#0c4a6e)'};`)
+    : '';
+
   const split = `
     <div class="mysv-section">
-      <div class="mysv-split">
-        <div class="mysv-col">
+      <div class="mysv-split${joinedEvents.length ? '' : ' single'}">
+        ${joinedEvents.length ? `<div class="mysv-col">
           <div class="mysv-sec-head" style="margin-bottom:6px">
             <div><div class="mysv-sec-title">${lucideSvg('calendar',15)} Events I'm Interested In</div><div class="mysv-sec-sub">You showed interest in these.</div></div>
-            <button class="mysv-viewall">View all ${lucideSvg('chevron-right',13)}</button>
           </div>
-          ${MYSV_EVENTS.map(e=>{
+          ${joinedEvents.map(e=>{
             const evImg = (e.images && e.images.length) ? e.images[0] : '';
             const evBg = evImg
               ? `background-image:url('${escapeHtml(evImg)}');background-size:cover;background-position:center;`
@@ -7244,65 +7281,74 @@ function renderMySanvic(){
               </div>
             </div>`;
           }).join('')}
-        </div>
+        </div>` : ''}
         <div class="mysv-col">
           <div class="mysv-sec-head" style="margin-bottom:6px">
             <div><div class="mysv-sec-title">${lucideSvg('target',15)} Hunt Progress</div><div class="mysv-sec-sub">Your discoveries and rewards.</div></div>
-            <button class="mysv-viewall">View all ${lucideSvg('chevron-right',13)}</button>
+            
           </div>
           <div class="mysv-hunt">
             <div class="mysv-hunt-main">
               <div class="mysv-ring">
                 <svg width="74" height="74" viewBox="0 0 74 74">
                   <circle cx="37" cy="37" r="32" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="6"/>
-                  <circle cx="37" cy="37" r="32" fill="none" stroke="#3fd6d6" stroke-width="6" stroke-linecap="round" stroke-dasharray="${2*Math.PI*32}" stroke-dashoffset="${2*Math.PI*32*(1-0.4)}"/>
+                  <circle cx="37" cy="37" r="32" fill="none" stroke="#3fd6d6" stroke-width="6" stroke-linecap="round" stroke-dasharray="${2*Math.PI*32}" stroke-dashoffset="${2*Math.PI*32*(1-hunt.pct/100)}"/>
                 </svg>
-                <div class="mysv-ring-label">40%</div>
+                <div class="mysv-ring-label">${hunt.pct}%</div>
               </div>
               <div class="mysv-hunt-info">
-                <div class="mysv-hunt-title">Long Beach Explorer</div>
-                <div class="mysv-hunt-meta">4 / 10 discoveries<br>Next reward: 2 more</div>
+                <div class="mysv-hunt-title">${hunt.points} points</div>
+                <div class="mysv-hunt-meta">${hunt.found} of ${hunt.total} discoveries<br>${hunt.nextReward ? 'Next: ' + escapeHtml(hunt.nextReward.title) : (hunt.total ? 'All rewards unlocked' : 'No spots published yet')}</div>
               </div>
-              <div class="mysv-gift">
+              <div class="mysv-gift" onclick="mysvAction('reward','')" role="button" tabindex="0" style="cursor:pointer">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
               </div>
             </div>
+            ${hunt.nextReward ? `
             <div class="mysv-reward">
-              <div class="mysv-reward-thumb" style="background-image:url('https://images.unsplash.com/photo-1519046904884-53103b34b206?w=200&q=75');background-size:cover;background-position:center;"></div>
+              <div class="mysv-reward-thumb" style="${rewardThumb}"></div>
               <div class="mysv-reward-body">
-                <div class="mysv-reward-lab">Recent reward</div>
-                <div class="mysv-reward-t">Hidden Beach Access</div>
+                <div class="mysv-reward-lab">Next reward</div>
+                <div class="mysv-reward-t">${escapeHtml(hunt.nextReward.title)}</div>
               </div>
-              <button class="mysv-cap-btn" onclick="mysvAction('reward','hidden-beach')">View Reward</button>
-            </div>
+              <button class="mysv-cap-btn" onclick="mysvAction('reward','${escapeHtml(String(hunt.nextReward.id))}')">View Reward</button>
+            </div>` : ''}
           </div>
         </div>
       </div>
     </div>`;
 
-  const recent = `
+  const recentHtml = `
     <div class="mysv-section">
       <div class="mysv-sec-head">
         <div><div class="mysv-sec-title">${lucideSvg('clock',15)} Recently Viewed</div><div class="mysv-sec-sub">Places you recently looked at.</div></div>
-        <button class="mysv-viewall">View all ${lucideSvg('chevron-right',13)}</button>
+        
       </div>
       <div class="mysv-hscroll">
-        ${MYSV_RECENT.map(r=>`
-          <button class="mysv-pill" onclick="mysvAction('view','${r.id}')">
-            <span class="mysv-pill-thumb" style="background-image:url('${r.image||''}');background-size:cover;background-position:center;background-color:#2a3247"></span>
+        ${recent.map(r=>`
+          <button class="mysv-pill" onclick="mysvAction('view','${r.id}')" title="${escapeHtml(r.label)}">
+            <span class="mysv-pill-thumb" style="background-image:url('${escapeHtml(r.image||'')}');background-size:cover;background-position:center;background-color:#2a3247"></span>
             ${escapeHtml(r.label)}
           </button>`).join('')}
       </div>
     </div>`;
 
-  body.innerHTML = header + sync + upcoming + saved + tribes + split + recent;
+  // Empty sections are omitted rather than shown blank. Hunt progress is the
+  // one block that always renders, because a zero state there is information.
+  body.innerHTML = header + sync +
+    (MYSV_UPCOMING.length ? upcoming : '') +
+    (MYSV_SAVED.length ? saved : '') +
+    (joinedTribes.length ? tribes : '') +
+    split +
+    (recent.length ? recentHtml : '');
 }
 
 async function mysvToggleSaved(id){
   const i = MYSV_SAVED.findIndex(s=>s.id===id);
   if(i<0) return;
-  // If it's a real Supabase-saved place (id starts with 'sp_'), delete from DB
-  if(id.startsWith('sp_') && currentUser){
+  // 'sp_' ids are real saved_places rows — remove the row too, not just the
+  // card, so Explore's heart and this list cannot drift apart.
+  if(id.startsWith('sp_')){
     const realId = id.replace('sp_','');
     try { await sb.from('saved_places').delete().eq('id', realId); } catch(e){ console.warn('[MYSV] delete failed:', e); }
   }
@@ -7313,14 +7359,20 @@ function mysvAction(kind, id){
   if(!mysvIsSignedIn() && (kind==='openChat' || kind==='interested')){
     return mysvSignIn();
   }
-  // Best-effort routing to existing surfaces
+  if(kind==='view' && id){
+    // Open the place itself rather than a copy of it inside this panel.
+    const dest = (Array.isArray(destinations)?destinations:[]).find(d=>String(d.id)===String(id));
+    if(dest){ closeMySanvicPanel(); openDest(dest); return; }
+  }
+  if(kind==='reward'){
+    closeMySanvicPanel();
+    dockNav('hunt');
+    return;
+  }
   if(kind==='openChat' || kind==='details' || kind==='interested'){
     closeMySanvicPanel();
     if(typeof openPulsePanel==='function') openPulsePanel();
     return;
-  }
-  if(kind==='view' || kind==='menu' || kind==='reward'){
-    // no-op placeholder for now
   }
 }
 
