@@ -340,7 +340,7 @@ async function renderDashOverview(){
         </div>
         <div class="dash-empty-state" style="padding:18px;">
           <div style="font-size:1.4rem;color:var(--ocean-teal-light);font-weight:600;">${(posts||[]).length}</div>
-          <div style="font-size:.7rem;margin-top:4px;">Pulse posts</div>
+          <div style="font-size:.7rem;margin-top:4px;">Tribes posts</div>
         </div>
       </div>
       ${isLoggedIn()
@@ -391,7 +391,7 @@ async function renderDashSaved(){
 async function renderDashActivity(){
   const body = document.getElementById('dashSectionBody');
   if(!currentUser){
-    body.innerHTML = `<div class="dash-section-title">Activity</div><div class="dash-empty-state">Sign in to see your Pulse posts and saves here.<br><button class="login-provider-btn" style="margin-top:12px;" onclick="openLoginModal()">Sign in</button></div>`;
+    body.innerHTML = `<div class="dash-section-title">Activity</div><div class="dash-empty-state">Sign in to see your Tribes posts and saves here.<br><button class="login-provider-btn" style="margin-top:12px;" onclick="openLoginModal()">Sign in</button></div>`;
     return;
   }
   try {
@@ -403,7 +403,7 @@ async function renderDashActivity(){
     if(error) throw error;
 
     if(!data || !data.length){
-      body.innerHTML = `<div class="dash-section-title">Activity</div><div class="dash-empty-state">Your Pulse posts and saves will show up here.</div>`;
+      body.innerHTML = `<div class="dash-section-title">Activity</div><div class="dash-empty-state">Your Tribes posts and saves will show up here.</div>`;
       return;
     }
 
@@ -1880,7 +1880,7 @@ function renderAroundList(){
 // ═══════════════════════════════════════════════════════
 
 let PULSE_CATEGORIES = {
-  all:    { label: 'Pulse',          subtitle: 'Live community in San Vicente' },
+  all:    { label: 'All posts',      subtitle: 'Live community in San Vicente' },
   hidden: { label: 'Hidden Spots',   subtitle: 'Secret places, shared by locals.' },
   island: { label: 'Island Hopping', subtitle: 'Plan. Connect. Explore together.' },
   food:   { label: 'Food & Nightlife', subtitle: 'Where to eat, drink, and dance tonight.' },
@@ -6733,7 +6733,7 @@ async function renderAdminPulsePosts(){
     if(error) throw error;
 
     if(!posts || !posts.length){
-      body.innerHTML = `<div class="admin-empty">No Pulse posts yet.</div>`;
+      body.innerHTML = `<div class="admin-empty">No Tribes posts yet.</div>`;
       return;
     }
 

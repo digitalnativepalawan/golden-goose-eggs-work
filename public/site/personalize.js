@@ -9,7 +9,7 @@
   function greeting(){ const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
 
   function mood(tags){
-    if(has(tags, ['social','pulse','local','island'])) return { line:'A few people are already moving around today.', search:'Island hopping, videoke, people nearby...', nudge:'Pulse is warm today.' };
+    if(has(tags, ['social','pulse','local','island'])) return { line:'A few people are already moving around today.', search:'Island hopping, videoke, people nearby...', nudge:'Tribes is warm today.' };
     if(has(tags, ['quiet','private','slow','wellness'])) return { line:'Quiet beaches and slower corners are close by.', search:'Quiet beaches, hammocks, slow mornings...', nudge:'Look for calm spots.' };
     if(has(tags, ['food','market','recovery'])) return { line:'Fresh plates, market stops, and beach snacks are close by.', search:'Seafood, burgers, markets, coffee...', nudge:'Food is a good first stop.' };
     if(has(tags, ['explore','hidden','routes','surf','adventure'])) return { line:'Scooter roads, hidden places, and wild edges are calling.', search:'Waterfalls, scooter routes, hidden beaches...', nudge:'Explore is open.' };
