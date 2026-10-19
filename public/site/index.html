@@ -1296,6 +1296,23 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   </div>
 </div>
 
+<!-- ═══ INFO SHEET: event and tribe detail, plus a tribe's own chat ═══ -->
+<div class="info-overlay" id="infoOverlay" onclick="closeInfoSheet()"></div>
+<div class="info-sheet" id="infoSheet" role="dialog" aria-modal="true" aria-labelledby="infoTitle" aria-hidden="true">
+  <div class="info-handle" onclick="closeInfoSheet()"></div>
+  <div class="info-head">
+    <div style="min-width:0">
+      <div class="info-kicker" id="infoKicker"></div>
+      <h3 class="info-title" id="infoTitle"></h3>
+      <div class="info-meta" id="infoMeta"></div>
+    </div>
+    <button class="info-close" onclick="closeInfoSheet()" aria-label="Close">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    </button>
+  </div>
+  <div class="info-body" id="infoBody"></div>
+</div>
+
 <!-- ═══ TALA SHEET ═══ -->
 <div class="tala-overlay" id="talaOverlay" onclick="closeTalaSheet()"></div>
 <div class="tala-sheet" id="talaSheet">
@@ -1415,6 +1432,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .pv2-join{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:999px;background:transparent;border:1px solid rgba(20,184,166,.55);color:#5eead4;font-size:.78rem;font-weight:600;cursor:pointer}
   .pv2-join:hover{background:rgba(20,184,166,.1)}
   .pv2-join.on{background:rgba(20,184,166,.16);border-color:rgba(20,184,166,.75);color:#a7f3d0}
+  .pv2-join.ghost{border-color:rgba(255,255,255,.14);color:rgba(255,255,255,.72);background:rgba(255,255,255,.04)}
   .pv2-join .lucide{flex-shrink:0}
   .pv2-event-left{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
   .pv2-interested-count{font-size:.72rem;color:rgba(94,234,212,.85)}
@@ -2001,6 +2019,56 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .hunt-reward-card{position:relative;border-radius:18px;overflow:hidden;background:linear-gradient(135deg,#f59e0b,#7c2d12);border:1px solid rgba(255,255,255,.08);padding:16px;min-height:180px;display:flex;flex-direction:column;justify-content:space-between}
   .hunt-reward-card::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.7));z-index:0}
   .hunt-reward-card > *{position:relative;z-index:1}
+  /* ── Hunting spots ─────────────────────────────────────────────────── */
+  .hunt-sec-count{font-size:.68rem;font-weight:700;color:rgba(94,234,212,.9);letter-spacing:.04em}
+  .hunt-spots{display:grid;grid-template-columns:1fr;gap:10px}
+  .hunt-spot{display:flex;gap:12px;padding:12px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07)}
+  .hunt-spot.is-done{border-color:rgba(20,184,166,.35);background:rgba(20,184,166,.06)}
+  .hunt-spot-media{position:relative;width:92px;height:92px;flex-shrink:0;border-radius:14px;overflow:hidden;background:rgba(255,255,255,.05)}
+  /* A tight crop on purpose, not the wide shot: the clue should hint at the
+     place without giving it away. */
+  .hunt-spot-thumb{position:absolute;inset:0;background-size:cover;background-position:center;transform:scale(2.1);filter:saturate(.85)}
+  .hunt-spot-thumb-none{display:flex;align-items:center;justify-content:center;transform:none;color:rgba(255,255,255,.25)}
+  .hunt-spot-chip{position:absolute;left:6px;bottom:6px;display:inline-flex;align-items:center;gap:4px;font-size:.56rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:999px;background:rgba(2,14,38,.72);color:rgba(255,255,255,.88);backdrop-filter:blur(6px)}
+  .hunt-spot.is-done .hunt-spot-chip{background:rgba(20,184,166,.9);color:#02121b}
+  .hunt-spot-body{display:flex;flex-direction:column;gap:6px;min-width:0;justify-content:space-between}
+  .hunt-spot-clue{font-size:.84rem;line-height:1.45;color:rgba(255,255,255,.9)}
+  .hunt-spot-name{display:inline-flex;align-items:center;gap:5px;font-size:.72rem;color:rgba(255,255,255,.5)}
+  @media(min-width:700px){ .hunt-spots{grid-template-columns:1fr 1fr} }
+  /* ── INFO SHEET: event and tribe detail + tribe chat ───────────────── */
+  .info-overlay{position:fixed;inset:0;z-index:120;background:rgba(2,14,38,.5);backdrop-filter:blur(2px);opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
+  .info-overlay.active{opacity:1;visibility:visible}
+  .info-sheet{position:fixed;left:0;right:0;bottom:0;z-index:121;max-height:84vh;display:flex;flex-direction:column;background:var(--charcoal-surface,#0d1526);border-radius:22px 22px 0 0;transform:translateY(100%);transition:transform .45s var(--ease-out-expo);box-shadow:0 -12px 60px rgba(0,0,0,.5);overflow:hidden}
+  .info-sheet.open{transform:translateY(0)}
+  .info-handle{width:30px;height:4px;border-radius:4px;background:rgba(255,255,255,.14);margin:10px auto 0;flex-shrink:0;cursor:pointer}
+  .info-head{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:12px 18px 10px;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}
+  .info-kicker{font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(94,234,212,.9);font-weight:700}
+  .info-title{font-size:1.08rem;font-weight:600;color:#fff;margin:2px 0 0;line-height:1.3}
+  .info-meta{font-size:.74rem;color:rgba(255,255,255,.5);margin-top:3px;line-height:1.4}
+  .info-close{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+  .info-body{flex:1;min-height:0;overflow-y:auto;padding:14px 18px calc(18px + var(--safe-bottom,0px));display:flex;flex-direction:column;gap:12px}
+  .info-media{height:170px;border-radius:16px;background-size:cover;background-position:center;flex-shrink:0}
+  .info-copy{font-size:.88rem;line-height:1.6;color:rgba(255,255,255,.82);white-space:pre-wrap}
+  .info-muted{color:rgba(255,255,255,.4)}
+  .info-credit{font-size:.62rem;color:rgba(255,255,255,.34)}
+  .info-actions{display:flex;gap:8px;flex-wrap:wrap}
+  .info-cta{padding:11px 16px;border-radius:999px;border:0;background:rgba(20,184,166,.9);color:#02121b;font-weight:700;font-size:.84rem;cursor:pointer}
+  .info-cta.ghost{background:rgba(255,255,255,.06);color:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.12)}
+  .info-chat{display:flex;flex-direction:column;gap:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06)}
+  .info-chat-head{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.4);font-weight:700}
+  .info-note{font-size:.76rem;line-height:1.45;color:rgba(255,255,255,.42)}
+  .info-msg{max-width:88%;padding:8px 12px;border-radius:14px;background:rgba(255,255,255,.05);font-size:.82rem;line-height:1.45;color:rgba(255,255,255,.88);word-break:break-word}
+  .info-msg.me{align-self:flex-end;background:rgba(20,184,166,.16);border:1px solid rgba(20,184,166,.3)}
+  .info-msg-name{font-size:.64rem;color:rgba(255,255,255,.45);margin-bottom:2px;font-weight:600}
+  .info-chat-input{display:flex;gap:8px;padding-top:8px}
+  .info-chat-input input{flex:1;padding:11px 14px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;font-size:.86rem;outline:0;min-width:0}
+  .info-chat-input button{padding:0 16px;border-radius:999px;background:rgba(20,184,166,.9);color:#02121b;border:0;font-weight:700;cursor:pointer}
+  /* Tablet and up: the sheet becomes a side panel instead of a bottom sheet. */
+  @media(min-width:760px){
+    .info-sheet{left:auto;right:0;top:0;bottom:0;width:440px;max-height:none;border-radius:22px 0 0 22px;transform:translateX(110%)}
+    .info-sheet.open{transform:translateX(0)}
+    .info-handle{display:none}
+  }
   .hunt-reward-badge{align-self:flex-start;background:#fbbf24;color:#78350f;padding:4px 10px;border-radius:999px;font-size:.65rem;font-weight:800;letter-spacing:.5px}
   .hunt-reward-t{color:#fff;font-size:1.05rem;font-weight:700;margin-top:8px}
   .hunt-reward-s{color:rgba(255,255,255,.75);font-size:.75rem;line-height:1.5;margin-top:4px}

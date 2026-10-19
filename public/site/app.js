@@ -506,6 +506,8 @@ function destRowToObj(row){
     videoUrl: row.video_url || '', videoType: row.video_type || '', featured: !!row.featured,
     googleBusinessUrl: row.google_business_url || '',
     imageCredit: row.image_credit || '',
+    clue: row.clue || '',
+    huntSpot: !!row.hunt_spot,
     barangay: row.barangay || '',
     stats: { rating: row.rating, travel: row.travel, temp: row.temp, season: row.season }
   };
@@ -612,7 +614,8 @@ async function loadDataFromSupabase(){
           sub: t.sub, thumb: t.thumb_url, images: t.images||[], joined: t.joined, extra: t.extra,
           cap: t.cap, tags: t.tags||[], spots: t.spots, seatsOpen: t.seats_open,
           warn: t.spots>0, videoUrl: t.video_url||'', videoType: t.video_type||'',
-          imageCredit: t.image_credit||''
+          imageCredit: t.image_credit||'',
+          description: t.description || '', by: t.display_name || ''
         });
       });
       MYSV_TRIBES.length = 0;
@@ -634,7 +637,8 @@ async function loadDataFromSupabase(){
           id: ev.id, title: ev.title, org: ev.org, where: ev.where_text,
           when: ev.when_text, price: ev.price, tags: ev.tags||[],
           images: ev.images||[], videoUrl: ev.video_url||'', videoType: ev.video_type||'',
-          imageCredit: ev.image_credit||''
+          imageCredit: ev.image_credit||'',
+          description: ev.description || ''
         });
       });
       MYSV_EVENTS.length = 0;
@@ -2059,9 +2063,11 @@ function matchesCat(item){
   if(!pulseCategory || pulseCategory==='all') return true;
   return Array.isArray(item.tags) && item.tags.includes(pulseCategory);
 }
+// This stack used to be filled with stock portrait photos of people who have
+// nothing to do with the tribe. Real per-tribe member rows are not loaded, so it
+// now shows nothing at all rather than faces of strangers.
 function avStackHTML(count){
-  const n = Math.min(4, count||4);
-  return `<div class="pv2-avstack">${Array.from({length:n}).map((_,i)=>`<div class="pv2-av" style="background-image:url('${PV2_AV[i%PV2_AV.length]}')"></div>`).join('')}</div>`;
+  return '';
 }
 // ── PERSON ID ─────────────────────────────────────────────────────────────
 // Joining a tribe or an event must not cost an email round-trip. A "person" is
@@ -2400,7 +2406,7 @@ function tribeCardHTML(t){
   <div class="pv2-tribe">
     <div class="pv2-tribe-thumb${hasThumb ? '' : ' is-empty'}" style="${thumbStyle}" ${thumbClick}>${hasThumb ? '' : lucideSvg('palmtree',26)}</div>
     <div class="pv2-tribe-body">
-      <div class="pv2-tribe-title">${t.title}</div>
+      <div class="pv2-tribe-title" role="button" tabindex="0" style="cursor:pointer" onclick="openTribeDetail('${t.id}')">${t.title}</div>
       <div class="pv2-tribe-meta">
         <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${t.where}</span>
         <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${t.when}</span>
@@ -2408,11 +2414,14 @@ function tribeCardHTML(t){
       <div class="pv2-tribe-sub">${t.sub}</div>
       <div class="pv2-tribe-foot">
         <div>
-          <div style="display:flex;align-items:center">${avStackHTML(total)}<span class="pv2-av-count">+${total}</span></div>
+          <div style="display:flex;align-items:center">${total ? `<span class="pv2-av-count">${total} joined</span>` : ''}</div>
           ${metaExtra}
           ${namesLine}
         </div>
-        <button class="pv2-join${mine?' on':''}" onclick="joinTribe('${t.id}')">${mine ? lucideSvg('check',13)+' Joined' : 'Join Tribe'}</button>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="pv2-join ghost" onclick="openTribeDetail('${t.id}')">Plan</button>
+          <button class="pv2-join${mine?' on':''}" onclick="joinTribe('${t.id}')">${mine ? lucideSvg('check',13)+' Joined' : 'Join Tribe'}</button>
+        </div>
       </div>
       ${t.imageCredit ? `<div class="pv2-creditline">${escT(t.imageCredit)}</div>` : ''}
     </div>
@@ -2439,7 +2448,10 @@ function eventCardHTML(e){
         ${e.price ? `<span class="pv2-pricechip">${e.price}</span>` : ''}
         ${interested ? `<span class="pv2-interested-count">${interested} interested</span>` : ''}
       </div>
-      <button class="pv2-join${mine?' on':''}" onclick="interestedEvent('${e.id}')">${mine ? lucideSvg('check',13)+' Interested' : "I'm Interested"}</button>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="pv2-join ghost" onclick="openEventDetail('${e.id}')">Details</button>
+        <button class="pv2-join${mine?' on':''}" onclick="interestedEvent('${e.id}')">${mine ? lucideSvg('check',13)+' Interested' : "I'm Interested"}</button>
+      </div>
     </div>
   </div>`;
 }
@@ -2450,6 +2462,159 @@ function emptyStateHTML(){
     <div>Quiet for now. Start the first tribe and see who joins!</div>
     <button class="pv2-cta" onclick="selectPulseView('form')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Form Your Tribe</button>
   </div>`;
+}
+
+// ── INFO SHEET ────────────────────────────────────────────────────────────
+// One sheet for the two things that needed a page of their own: an event, so
+// the organiser's own description can build interest, and a tribe, so the plan
+// is readable and its members have somewhere to talk. Cards stay short; this is
+// where the detail lives.
+let infoContext = null;
+
+function openInfoSheet(opts){
+  const sheet = document.getElementById('infoSheet');
+  if(!sheet) return;
+  document.getElementById('infoKicker').textContent = opts.kicker || '';
+  document.getElementById('infoTitle').textContent = opts.title || '';
+  document.getElementById('infoMeta').textContent = opts.meta || '';
+  document.getElementById('infoBody').innerHTML = opts.body || '';
+  sheet.classList.add('open');
+  sheet.setAttribute('aria-hidden','false');
+  document.getElementById('infoOverlay').classList.add('active');
+  schedulePanelOpen();
+}
+function closeInfoSheet(){
+  const sheet = document.getElementById('infoSheet');
+  if(!sheet) return;
+  sheet.classList.remove('open');
+  sheet.setAttribute('aria-hidden','true');
+  document.getElementById('infoOverlay').classList.remove('active');
+  infoContext = null;
+  schedulePanelOpen();
+}
+function infoDirections(place){
+  const d = findDestinationByPlace(place);
+  const target = (d && d.lat && d.lng) ? (d.lat + ',' + d.lng) : (place + ', San Vicente, Palawan');
+  window.open('https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(target), '_blank', 'noopener,noreferrer');
+}
+
+// An event card could only ever say one line. The organiser's own description is
+// what builds the interest, so it gets room here.
+function openEventDetail(id){
+  const list = (typeof PULSE_EVENTS !== 'undefined' && PULSE_EVENTS) ? PULSE_EVENTS : [];
+  const e = list.find(x=>String(x.id)===String(id));
+  if(!e){ toast('That event is no longer listed.'); return; }
+  infoContext = { kind:'event', id:String(id) };
+  const imgs = (e.images||[]).filter(Boolean);
+  const mine = (typeof myEvents !== 'undefined' && myEvents) ? myEvents.has(String(e.id)) : false;
+  openInfoSheet({
+    kicker:'Event',
+    title:e.title,
+    meta:[e.org, [e.where, e.when].filter(Boolean).join(' · '), e.price].filter(Boolean).join('   ·   '),
+    body:`
+      ${imgs.length ? `<div class="info-media" style="background-image:url('${escapeHtml(imgs[0])}')"></div>` : ''}
+      <div class="info-copy">${e.description ? escapeHtml(e.description) : '<span class="info-muted">The organiser has not written the details yet.</span>'}</div>
+      ${e.imageCredit ? `<div class="info-credit">Photo: ${escapeHtml(e.imageCredit)}</div>` : ''}
+      <div class="info-actions">
+        <button class="info-cta" onclick="infoInterested('${escT(String(e.id))}')">${mine ? 'On my list' : "I'm interested"}</button>
+        ${e.where ? `<button class="info-cta ghost" onclick="infoDirections('${escT(e.where)}')">Directions</button>` : ''}
+      </div>`
+  });
+}
+function infoInterested(id){
+  interestedEvent(id);   // records the row; asks for a name first if needed
+  // Reflect the tap immediately. The row itself lands behind ensurePerson.
+  setTimeout(()=>{ if(infoContext && infoContext.kind==='event') openEventDetail(id); }, 700);
+}
+
+function openTribeDetail(id){
+  const list = (typeof PULSE_TRIBES !== 'undefined' && PULSE_TRIBES) ? PULSE_TRIBES : [];
+  const t = list.find(x=>String(x.id)===String(id));
+  if(!t){ toast('That tribe is no longer listed.'); return; }
+  infoContext = { kind:'tribe', id:String(id) };
+  const imgs = (t.images||[]).filter(Boolean);
+  const mine = (typeof myTribes !== 'undefined' && myTribes) ? myTribes.has(String(t.id)) : false;
+  const desc = t.description || t.extra || t.sub || '';
+  openInfoSheet({
+    kicker:'Tribe',
+    title:t.title,
+    meta:[t.where, t.when, t.by ? 'Started by ' + t.by : ''].filter(Boolean).join('   ·   '),
+    body:`
+      ${imgs.length ? `<div class="info-media" style="background-image:url('${escapeHtml(imgs[0])}')"></div>` : ''}
+      <div class="info-copy">${desc ? escapeHtml(desc) : '<span class="info-muted">No plan written yet.</span>'}</div>
+      <div class="info-actions">
+        <button class="info-cta" onclick="infoJoinTribe('${escT(String(t.id))}')">${mine ? 'Leave this tribe' : 'Join this tribe'}</button>
+      </div>
+      <div class="info-chat" id="infoChat"></div>`
+  });
+  loadTribeChat(String(t.id));
+}
+function infoJoinTribe(id){
+  joinTribe(id);
+  setTimeout(()=>{ if(infoContext && infoContext.kind==='tribe') openTribeDetail(id); }, 700);
+}
+
+// ── TRIBE CHAT ────────────────────────────────────────────────────────────
+// One room per tribe. Rows are visitor-written, so the only guards are the same
+// length checks the other visitor tables use.
+function infoIsUuid(id){
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id||''));
+}
+async function loadTribeChat(tribeId){
+  const host = document.getElementById('infoChat');
+  if(!host) return;
+  if(!infoIsUuid(tribeId)){
+    host.innerHTML = `<div class="info-chat-head">Tribe chat</div>
+      <div class="info-note">This tribe was made before tribes were saved for everyone, so it has no chat room. Form a new tribe to get one.</div>`;
+    return;
+  }
+  host.innerHTML = `<div class="info-chat-head">Tribe chat</div><div class="info-note">Loading…</div>`;
+  let rows = [];
+  try{
+    const { data, error } = await sb.from('tribe_messages')
+      .select('id,device_id,display_name,body,created_at')
+      .eq('tribe_id', tribeId)
+      .order('created_at', { ascending:true })
+      .limit(200);
+    if(error) throw error;
+    rows = data || [];
+  }catch(err){
+    console.warn('[SANVIC] Tribe chat load failed:', err);
+    host.innerHTML = `<div class="info-chat-head">Tribe chat</div><div class="info-note">The chat could not be loaded just now.</div>`;
+    return;
+  }
+  const me = personId();
+  host.innerHTML = `
+    <div class="info-chat-head">Tribe chat · ${rows.length} message${rows.length===1?'':'s'}</div>
+    ${rows.length ? rows.map(m=>`
+      <div class="info-msg${m.device_id===me ? ' me' : ''}">
+        ${m.device_id===me ? '' : `<div class="info-msg-name">${escapeHtml(m.display_name || 'Traveller')}</div>`}
+        ${escapeHtml(m.body)}
+      </div>`).join('') : '<div class="info-note">Nobody has said anything yet. Start it.</div>'}
+    <div class="info-chat-input">
+      <input id="infoChatInput" type="text" maxlength="600" placeholder="Say something to this tribe…" onkeydown="if(event.key==='Enter')sendTribeMessage('${tribeId}')">
+      <button onclick="sendTribeMessage('${tribeId}')">Send</button>
+    </div>`;
+  const scroller = document.getElementById('infoBody');
+  if(scroller) scroller.scrollTop = scroller.scrollHeight;
+}
+function sendTribeMessage(tribeId){
+  const input = document.getElementById('infoChatInput');
+  const typed = (input && input.value ? input.value : '').trim();
+  if(!typed) return;
+  ensurePerson(async person=>{
+    const el = document.getElementById('infoChatInput');
+    const body = (el && el.value ? el.value : typed).trim();
+    if(!body) return;
+    try{
+      const { error } = await sb.from('tribe_messages').insert({ tribe_id:tribeId, device_id:person.id, display_name:person.name, body });
+      if(error) throw error;
+      await loadTribeChat(tribeId);
+    }catch(err){
+      console.warn('[SANVIC] Tribe message failed:', err);
+      toast('Could not send that just now.');
+    }
+  });
 }
 
 function renderPulseBody(){
@@ -2604,22 +2769,45 @@ function wizSet(k,v){ formDraft[k]=v; renderPulseWizard(); }
 function wizNext(){ if(wizStep<WIZ_STEPS-1) wizStep++; renderPulseWizard(); }
 function wizBack(){ if(wizStep>0) wizStep--; renderPulseWizard(); }
 function wizCreate(){
-  ensurePerson(person=>{
+  ensurePerson(async person=>{
     const whereLabel = formDraft.wherePick==='current' ? 'Current map area' : (formDraft.wherePick==='type' ? formDraft.whereText : 'Chosen place');
     const whenLabel = formDraft.when==='custom' ? formDraft.whenCustom.replace('T',', ') : formDraft.when;
-    const localId = 't_'+Date.now();
-    // The organiser names their own tribe now; the plan they picked becomes the
-    // tag instead of the title. No stock photo is attached either — a tribe with
-    // no photo of its own shows the placeholder rather than somebody else's beach.
+    // The organiser names their own tribe; the plan they picked becomes the tag
+    // instead of the title. No stock photo is attached either.
     const title = (formDraft.name || '').trim() || formDraft.plan;
-    PULSE_TRIBES.unshift({
-      id:localId, title, where:whereLabel, when:whenLabel, sub:formDraft.note||'Just formed.',
-      cap:formDraft.size, joined:1, extra:0, by:person.name, tags:[formDraft.plan]
-    });
-    myTribes.add(localId);
-    selectPulseView_reset();
-    selectPulseView('tribes');
-    toast('Tribe formed, ' + person.name + '. It lives on this device for now.');
+    const note = (formDraft.note || '').trim();
+    const capNum = formDraft.size === '2–4' ? 4 : (formDraft.size === '5–10' ? 10 : 0);
+    // A created tribe is a real shared row now. It used to exist only on the
+    // phone that made it, which made a plan description and a tribe chat
+    // meaningless: nobody else could ever see either.
+    try{
+      const { data, error } = await sb.from('tribes').insert({
+        title, where_text:whereLabel, when_text:whenLabel,
+        sub:note || 'Just formed.', description:note || '',
+        tags:[formDraft.plan], cap:capNum, joined:1, extra:0,
+        device_id:person.id, display_name:person.name
+      }).select().single();
+      if(error) throw error;
+      PULSE_TRIBES.unshift({
+        id:data.id, title:data.title, where:data.where_text, when:data.when_text,
+        sub:data.sub, description:data.description, by:person.name,
+        cap:data.cap, joined:1, extra:0, tags:data.tags||[]
+      });
+      MYSV_TRIBES.unshift({
+        id:data.id, title:data.title,
+        meta:(data.where_text||'') + ' • ' + (data.when_text||''),
+        more:data.sub, grad:'linear-gradient(135deg,#f97316,#7c2d12)',
+        thumb:'', images:[], credit:''
+      });
+      myTribes.add(String(data.id));
+      selectPulseView_reset();
+      selectPulseView('tribes');
+      toast('Tribe formed, ' + person.name + '. Anyone can find it in Tribes now.');
+      openTribeDetail(String(data.id));
+    }catch(err){
+      console.warn('[SANVIC] Tribe create failed:', err);
+      toast('Could not create that tribe just now. Try again.');
+    }
   });
 }
 
@@ -4612,6 +4800,17 @@ function adminDestFormHtml(){
           Paste the "Share" link from the business's Google profile. If coordinates can be read from it, they're filled in below.
         </div>
       </div>
+      <div class="admin-field">
+        <label>The Hunt — clue for this spot</label>
+        <textarea id="adfClue" rows="3" placeholder="A riddle that hints at this place without naming it. Shown in place of the name until the visitor unlocks it on location.">${escapeHtml(d.clue||'')}</textarea>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:400">
+          <input type="checkbox" id="adfHuntSpot" ${d.huntSpot?'checked':''} style="width:auto;min-height:0">
+          <span>Make this one of the hunting spots</span>
+        </label>
+        <div style="font-size:.68rem;color:var(--white-dim);margin-top:6px;">
+          Hunting spots appear in The Hunt with their clue and unlock by GPS when the visitor is within 200&nbsp;m. Write the clue before switching this on.
+        </div>
+      </div>
       <div class="admin-field" style="margin-top:10px">
         <button type="button" class="admin-save-btn" id="adfAutoFillBtn" onclick="adminAutoFill()" style="min-height:44px">Auto-fill from OpenStreetMap &amp; Wikimedia (no API keys)</button>
         <div id="adfAutoStatus" style="font-size:.68rem;color:var(--white-dim);margin-top:8px;line-height:1.5"></div>
@@ -5043,6 +5242,8 @@ async function adminSaveDest(){
       barangay: document.getElementById('adfBarangay').value.trim(),
       google_business_url: document.getElementById('adfGbp').value.trim() || null,
       image_credit: document.getElementById('adfCredit').value.trim() || null,
+      clue: document.getElementById('adfClue').value.trim() || null,
+      hunt_spot: document.getElementById('adfHuntSpot').checked,
     };
     if(!payload.name || isNaN(payload.lat) || isNaN(payload.lng) || !payload.category || !payload.barangay || !payload.description){
       alert('Complete the required fields: name, map coordinates, category, barangay, and description.');
@@ -6024,6 +6225,10 @@ async function adminEditTribe(id){
         <div class="admin-field"><label>When</label><input id="atbfWhen" value="${escapeHtml(t.when_text||'')}"></div>
       </div>
       <div class="admin-field"><label>Subtitle</label><input id="atbfSub" value="${escapeHtml(t.sub||'')}"></div>
+      <div class="admin-field">
+        <label>Full plan — this is what opens the tribe window</label>
+        <textarea id="atbfDesc" rows="4" placeholder="What this tribe is doing, who should join, what to bring. Shown on the tribe window above its chat.">${escapeHtml(t.description||'')}</textarea>
+      </div>
       <div class="admin-grid-2">
         <div class="admin-field"><label>Joined</label><input type="number" id="atbfJoined" value="${t.joined||0}"></div>
         <div class="admin-field"><label>Extra (+N)</label><input type="number" id="atbfExtra" value="${t.extra||0}"></div>
@@ -6056,6 +6261,7 @@ async function adminSaveTribe(id){
       where_text: document.getElementById('atbfWhere').value.trim(),
       when_text: document.getElementById('atbfWhen').value.trim(),
       sub: document.getElementById('atbfSub').value.trim(),
+      description: document.getElementById('atbfDesc').value.trim() || null,
       thumb_url: thumbUrl,
       images: images,
       image_credit: document.getElementById('atbfCredit').value.trim() || null,
@@ -6147,6 +6353,10 @@ async function adminEditEvent(id){
         <div class="admin-field"><label>When</label><input id="aevfWhen" value="${escapeHtml(ev.when_text||'')}"></div>
       </div>
       <div class="admin-field"><label>Price</label><input id="aevfPrice" value="${escapeHtml(ev.price||'')}"></div>
+      <div class="admin-field">
+        <label>Full description — this is what opens the event window</label>
+        <textarea id="aevfDesc" rows="5" placeholder="What happens, who it is for, what to bring, why someone should come. The card only shows one line; this is the part that builds interest.">${escapeHtml(ev.description||'')}</textarea>
+      </div>
       <div class="admin-field"><label>Tags (comma-separated)</label><input id="aevfTags" value="${(ev.tags||[]).join(', ')}"></div>
       ${mediaGalleryHtml('aevf','event')}
       <div class="admin-field"><label>Photo credit</label><input id="aevfCredit" value="${escapeHtml(ev.image_credit||'')}" placeholder="Photo: Name, Wikimedia Commons, CC BY 4.0"></div>
@@ -6170,6 +6380,7 @@ async function adminSaveEvent(id){
       where_text: document.getElementById('aevfWhere').value.trim(),
       when_text: document.getElementById('aevfWhen').value.trim(),
       price: document.getElementById('aevfPrice').value.trim(),
+      description: document.getElementById('aevfDesc').value.trim() || null,
       tags: document.getElementById('aevfTags').value.split(',').map(s=>s.trim()).filter(Boolean),
       images: __mediaGallery.slice(),
       image_credit: document.getElementById('aevfCredit').value.trim() || null,
@@ -7172,11 +7383,12 @@ function closeMySanvicPanel(){
   p.setAttribute('aria-hidden','true');
 }
 
+// No avatars are invented here. The panel used to draw three gradient dots for
+// every joined tribe and event whether or not anyone else had joined, which read
+// as real members. Only the known count is shown.
 function mysvAvatars(count, more){
-  if(!count) return '';
-  const dots = Array.from({length:Math.min(count,4)}).map((_,i)=>`<div class="mysv-avatar" style="background:linear-gradient(135deg,hsl(${i*70},60%,55%),hsl(${i*70+40},55%,25%))"></div>`).join('');
-  const moreEl = more ? `<div class="mysv-avatar-more">+${more}</div>` : '';
-  return `<div class="mysv-avatars">${dots}${moreEl}</div>`;
+  if(!more) return '';
+  return `<div class="mysv-avatars"><div class="mysv-avatar-more">+${escapeHtml(String(more))}</div></div>`;
 }
 
 // Real hunt numbers, from the same localStorage state the Hunt panel reads.
@@ -7491,6 +7703,40 @@ function huntTodayDest(){
   const list = Array.isArray(destinations) ? destinations : [];
   return list.find(d=>d.featured && d.lat!=null) || list.find(d=>d.lat!=null) || list[0] || null;
 }
+
+// ── HUNTING SPOTS ─────────────────────────────────────────────────────────
+// A hunting spot is a place the team flagged for the Hunt. Each one carries the
+// clue the visitor has to work out, and unlocks by GPS when they actually reach
+// it — no QR code, no scanning. Until somewhere is flagged there is nothing to
+// hunt, and the panel says so instead of inventing spots.
+function huntSpotList(){
+  return (Array.isArray(destinations) ? destinations : [])
+    .filter(d=>d.huntSpot && d.lat!=null && d.lng!=null);
+}
+// The photo on a spot card is deliberately a tight crop, not the wide shot: the
+// old panorama gave the place away instantly, which defeats a clue. It hints
+// without confirming.
+function huntSpotCard(d, i){
+  const state = huntLoadState();
+  const done = state.unlocked.includes(String(d.id));
+  const img = d.image || (Array.isArray(d.images) ? (d.images[0] || '') : '');
+  return `
+    <div class="hunt-spot${done?' is-done':''}">
+      <div class="hunt-spot-media">
+        ${img
+          ? `<div class="hunt-spot-thumb" style="background-image:url('${escapeHtml(img)}')"></div>`
+          : `<div class="hunt-spot-thumb hunt-spot-thumb-none">${lucideSvg('camera',20)}</div>`}
+        <span class="hunt-spot-chip">${done ? lucideSvg('circle-check',12)+' Found' : 'Spot ' + (i+1)}</span>
+      </div>
+      <div class="hunt-spot-body">
+        <div class="hunt-spot-clue">${escapeHtml(d.clue || 'No clue written for this spot yet.')}</div>
+        <div class="hunt-spot-name">${done
+          ? lucideSvg('map-pin',13) + ' ' + escapeHtml(d.name)
+          : lucideSvg('eye-off',13) + ' Find it to reveal'}</div>
+        <button class="hunt-glass-btn" onclick="huntStart('${d.id}')">${done ? 'Visit again' : 'Unlock at the spot'}</button>
+      </div>
+    </div>`;
+}
 function huntNearbyItems(){
   const flat = [];
   Object.keys(nearbyPlacesByBarangay||{}).forEach(b=>{
@@ -7677,12 +7923,24 @@ function renderHunt(){
           <div class="hunt-reward-strip">REWARD: 100 pts • ${lucideSvg('medal',13)} Explorer Badge</div>
         </div>
         <div class="hunt-today-side">
-          ${huntAvatars(4, 12)}
-          <div class="hunt-avatar-label">+12 travelers active today</div>
           <button class="hunt-cta-teal" onclick="huntStart('${today.id}')">Start Hunt</button>
         </div>
       </div>
     </div>` : '';
+
+  // Hunting spots: each one a clue plus a GPS unlock at the place itself.
+  const spots = huntSpotList();
+  const spotsFound = spots.filter(d=>huntLoadState().unlocked.includes(String(d.id))).length;
+  const spotsBlock = `
+    <div class="hunt-section" id="huntSpots">
+      <div class="hunt-sec-head">
+        <div><div class="hunt-sec-title">${lucideSvg('compass',15)} Hunting spots</div><div class="hunt-sec-sub">Read the clue, get to the place, unlock it there.</div></div>
+        ${spots.length ? `<div class="hunt-sec-count">${spotsFound} / ${spots.length}</div>` : ''}
+      </div>
+      ${spots.length
+        ? `<div class="hunt-spots">${spots.map(huntSpotCard).join('')}</div>`
+        : `<div class="hunt-empty">No hunting spots published yet. The team flags places for the Hunt and writes a clue for each one.</div>`}
+    </div>`;
 
   body.innerHTML = `
     <div class="hunt-head">
@@ -7710,6 +7968,8 @@ function renderHunt(){
     </div>
 
     ${todayBlock}
+
+    ${spotsBlock}
 
     <div class="hunt-section" id="huntTrails">
       <div class="hunt-sec-head">
