@@ -38,7 +38,7 @@ const DEFAULT_DESTINATIONS = [
     description:"A scenic viewpoint above San Vicente where the coast, green hills, and Long Beach reveal the scale of the municipality from above.",
     tip:"Go late afternoon for softer light. Use a motorbike or tricycle and allow extra time for the uphill route.",
     stats:{rating:"4.6",travel:"35m from Poblacion",temp:"28°C",season:"Nov–May"}, color:"#22c55e" },
-  { id:7, name:"San Vicente - Poblacion", lat:10.5318, lng:119.2822, category:"culture",
+  { id:7, name:"San Vicente - Poblacion", lat:10.5318, lng:119.2822, category:"services",
     image:"assets/san-vicente-long-beach.jpg",
     description:"The practical center of San Vicente, with access to Long Beach, transport, small eateries, municipal services, and local life away from the island-hopping crowds.",
     tip:"Use Poblacion for arrivals, supplies, and Long Beach access. Confirm van and boat schedules one day ahead.",
@@ -719,13 +719,21 @@ function applySplashText(){
   if(footEl) footEl.innerHTML = splashFooter;
 }
 
+// The built-in taxonomy, in the order visitors meet it in Explore and in the
+// Trails. Kept in step with the destination_categories rows in Supabase, which
+// win at runtime. Culture is retired: its only place, San Vicente Poblacion,
+// now sits under Services, and Resto-bar replaces the old Food label.
 const DEFAULT_CAT_STYLE = {
   beaches:{label:"Beaches",color:"#0ea5e9",icon:"waves"},
   islands:{label:"Islands",color:"#8b5cf6",icon:"palmtree"},
   nature:{label:"Nature",color:"#22c55e",icon:"trees"},
   adventure:{label:"Adventure",color:"#ef4444",icon:"compass"},
-  culture:{label:"Culture",color:"#f59e0b",icon:"landmark"},
-  stays:{label:"Stays",color:"#ec4899",icon:"bed-double"}
+  stays:{label:"Stays",color:"#ec4899",icon:"bed-double"},
+  waterfalls:{label:"Waterfalls",color:"#06b6d4",icon:"droplets"},
+  food:{label:"Resto-bar",color:"#f97316",icon:"utensils-crossed"},
+  services:{label:"Services",color:"#64748b",icon:"landmark"},
+  sport:{label:"Sport",color:"#10b981",icon:"medal"},
+  nightlife:{label:"Nightlife",color:"#d946ef",icon:"music"}
 };
 
 // Inlined Lucide SVG inner-content for the curated icon set admins can
@@ -1957,11 +1965,11 @@ const PULSE_EVENTS = [
   { id:'e2', title:'Lechon by the Beach', org:'Sunset Resort', where:'Sunset Resort', when:'Today, 6:00 PM', price:'₱650 / plate', tags:['Food & Drinks'] },
   { id:'e3', title:'Acoustic Night in Poblacion', org:'The Deck', where:'Poblacion', when:'Tonight, 7:30 PM', price:'No cover', tags:['Nightlife','Food & Drinks'] },
 ];
-const PULSE_LOUNGE = [
-  { id:'l1', name:'Marco', text:'Hey! Anyone at Long Beach right now? Weather is unreal.' },
-  { id:'l2', name:'Tara', text:'Just got to Port Barton — where should I grab lunch?' },
-  { id:'l3', name:'Kai', text:'Board rental at Alimanguan is 400/day fyi.' },
-];
+// The lounge starts empty on purpose. It used to be seeded with three invented
+// travellers — one of them quoting a real-looking boat rental price — which a
+// visitor would take for real people. Messages are not stored server-side yet,
+// so an honest empty room beats inventing company.
+const PULSE_LOUNGE = [];
 
 // Real email accounts still exist for the Backoffice and for syncing saves.
 // Nothing a visitor does in Pulse requires one.
@@ -2465,7 +2473,7 @@ function renderPulseLounge(){
       ${m.me?'':`<div class="pv2-lmsg-name">${m.name}</div>`}${m.text}
     </div>
     ${m.helper?`<div class="pv2-helper"><span>Want to turn this into a Tribe?</span><button onclick="selectPulseView('form')">Form Your Tribe</button></div>`:''}
-  `).join('');
+  `).join('') || `<div class="pv2-lounge-empty">${lucideSvg('users',20)}<div class="pv2-lounge-empty-t">The lounge is quiet.</div><div class="pv2-lounge-empty-s">Say hello and see who's around San Vicente right now.</div></div>`;
   body.innerHTML = `<div class="pv2-lounge" id="pv2LoungeScroll">${chat}</div>
     <div class="pv2-linput">
       <input id="pv2LoungeInput" type="text" placeholder="Say something to the lounge…" onkeydown="if(event.key==='Enter')sendLoungeMsg()"/>
@@ -3449,13 +3457,27 @@ function renderDiscoverList(cat='all'){
     </button>`).join('');
 }
 
+// Built from the live taxonomy, so this row can never drift out of step with
+// Explore again. It used to be hardcoded markup and still offered Culture long
+// after Culture was retired, while missing Adventure entirely.
+function renderDiscoverCats(active){
+  const box=document.getElementById('discoverCats');
+  if(!box) return;
+  const cat=active||'all';
+  const keys=Object.keys(catStyle).filter(k=>destinations.some(d=>d.category===k));
+  box.innerHTML=`<button class="discover-cat${cat==='all'?' active':''}" data-cat="all" onclick="selectDiscoverCategory('all')">All</button>`+
+    keys.map(k=>`<button class="discover-cat${cat===k?' active':''}" data-cat="${escT(k)}" onclick="selectDiscoverCategory(this.dataset.cat)">${escT(catStyle[k].label)}</button>`).join('');
+}
+
 function openDiscoverPanel(){
   closeDestSheet(false);
   closeTalaSheet(false);
+  const cat=document.querySelector('.discover-cat.active')?.dataset.cat||'all';
+  renderDiscoverCats(cat);
   document.getElementById('discoverPanel').classList.add('open');
   document.getElementById('heroOverlay').classList.add('hidden');
   document.getElementById('heroFade').classList.add('hidden');
-  renderDiscoverList(document.querySelector('.discover-cat.active')?.dataset.cat || 'all');
+  renderDiscoverList(cat);
 }
 
 function closeDiscoverPanel(){
@@ -4699,8 +4721,8 @@ const OSM_CATEGORY_HINTS = [
   ['shop', ['travel_agency'], ['activity','tours','adventure']],
   ['office', ['travel_agent','travel_agency'], ['activity','tours','adventure']],
   ['tourism', ['hotel','guest_house','hostel','resort','chalet','motel','apartment'], ['stays','lodging','hotel']],
-  ['tourism', ['attraction','viewpoint'], ['adventure','nature','culture']],
-  ['tourism', ['museum','gallery','artwork'], ['culture']],
+  ['tourism', ['attraction','viewpoint'], ['adventure','nature','services']],
+  ['tourism', ['museum','gallery','artwork'], ['services']],
   ['leisure', ['beach_resort','water_park'], ['stays','adventure']],
   ['natural', ['beach','bay'], ['beaches','nature']],
   ['natural', ['island'], ['islands','nature']],
@@ -6984,11 +7006,11 @@ async function adminPulseToggleBan(userId, banned){
 // THE HUNT — admin-managed data
 // ═══════════════════════════════════════════════════════
 let HUNT_SETTINGS = {};
-let HUNT_REWARDS = [
-  { id:'hr1', title:'Long Beach Explorer', subtitle:'Unlock Long Beach to earn this reward.', badge:'NEW', destId:'', pointsRequired:100, images:['https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=75','https://images.unsplash.com/photo-1519046904884-53103b34b206?w=400&q=75'], videoUrl:'', videoType:'', grad:'linear-gradient(135deg,#0ea5e9,#0c4a6e)' },
-  { id:'hr2', title:'Island Hopper', subtitle:'Discover all islands near Port Barton.', badge:'SOON', destId:'', pointsRequired:200, images:['https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&q=75','https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&q=75'], videoUrl:'', videoType:'', grad:'linear-gradient(135deg,#22d3ee,#164e63)' },
-  { id:'hr3', title:'Waterfall Hunter', subtitle:'Find Pamuayan Falls.', badge:'', destId:'', pointsRequired:150, images:['https://images.unsplash.com/photo-1432405972618-c6b0cfba8b0f?w=400&q=75'], videoUrl:'', videoType:'', grad:'linear-gradient(135deg,#34d399,#064e3b)' }
-];
+// Rewards are only ever what the SANVIC team publishes in the hunt_rewards
+// table. This list starts empty on purpose: it used to hold three invented
+// rewards with stock photos, which read to a visitor as real offers that
+// nobody created. An empty table now means an honest empty panel.
+let HUNT_REWARDS = [];
 
 // ═══════════════════════════════════════════════════════
 // MY SANVIC — private pocket panel
@@ -7116,7 +7138,8 @@ function mysvHuntStats(){
     pct: total ? Math.round((found / total) * 100) : 0,
     points: state.points,
     claimed: state.claimed.length,
-    nextReward
+    nextReward,
+    rewardCount: rewards.length
   };
 }
 
@@ -7306,7 +7329,7 @@ function renderMySanvic(){
               </div>
               <div class="mysv-hunt-info">
                 <div class="mysv-hunt-title">${hunt.points} points</div>
-                <div class="mysv-hunt-meta">${hunt.found} of ${hunt.total} discoveries<br>${hunt.nextReward ? 'Next: ' + escapeHtml(hunt.nextReward.title) : (hunt.total ? 'All rewards unlocked' : 'No spots published yet')}</div>
+                <div class="mysv-hunt-meta">${hunt.found} of ${hunt.total} discoveries<br>${hunt.nextReward ? 'Next: ' + escapeHtml(hunt.nextReward.title) : (hunt.rewardCount ? 'All rewards unlocked' : 'No rewards published yet')}</div>
               </div>
               <div class="mysv-gift" onclick="mysvAction('reward','')" role="button" tabindex="0" style="cursor:pointer">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
@@ -7437,16 +7460,11 @@ function huntTrailGroups(){
     };
   });
 }
+// Admin-published rewards only. This used to fall back to "X Explorer" cards
+// generated from whatever destinations were marked featured, which invented a
+// reward for every featured place. No rewards published means no rewards.
 function huntRewardItems(){
-  if(HUNT_REWARDS.length) return HUNT_REWARDS;
-  const list = (Array.isArray(destinations)?destinations:[]).filter(d=>d.featured).slice(0,3);
-  return list.map((d,i)=>({
-    id:String(d.id),
-    title:`${d.name} Explorer`,
-    sub:`Unlock ${d.name} on the map to earn this reward.`,
-    badge: i===0 ? 'NEW' : 'SOON',
-    grad: huntGradientFor(d.color, i)
-  }));
+  return HUNT_REWARDS;
 }
 
 function huntLoadState(){
@@ -7681,7 +7699,7 @@ function renderHunt(){
                 <button class="hunt-glass-btn" onclick="huntRedeem('${r.id}')">Redeem</button>
               </div>
             </div>`;
-          }).join('') : '<div class="hunt-empty">Feature destinations in the SANVIC Admin panel to publish rewards.</div>'}
+          }).join('') : '<div class="hunt-empty">No rewards published yet.</div>'}
         </div>
         <div class="hunt-col">
           <div class="hunt-sec-head" style="margin-bottom:6px">

@@ -918,11 +918,6 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   </div>
   <div class="discover-cats" id="discoverCats">
     <button class="discover-cat active" onclick="selectDiscoverCategory('all')" data-cat="all">All</button>
-    <button class="discover-cat" onclick="selectDiscoverCategory('beaches')" data-cat="beaches">Beaches</button>
-    <button class="discover-cat" onclick="selectDiscoverCategory('islands')" data-cat="islands">Islands</button>
-    <button class="discover-cat" onclick="selectDiscoverCategory('nature')" data-cat="nature">Nature</button>
-    <button class="discover-cat" onclick="selectDiscoverCategory('culture')" data-cat="culture">Culture</button>
-    <button class="discover-cat" onclick="selectDiscoverCategory('stays')" data-cat="stays">Stays</button>
   </div>
   <div class="discover-list" id="discoverList"></div>
 </div>
@@ -1446,6 +1441,10 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .pv2-event .pulse-card-image{margin-top:0}
   /* Lounge */
   .pv2-lounge{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0}
+  .pv2-lounge-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;flex:1;min-height:140px;text-align:center;padding:22px 18px;color:rgba(255,255,255,.34)}
+  .pv2-lounge-empty svg{opacity:.5}
+  .pv2-lounge-empty-t{font-size:.92rem;color:rgba(255,255,255,.68);font-weight:600}
+  .pv2-lounge-empty-s{font-size:.78rem;line-height:1.45;max-width:250px}
   .pv2-lmsg{max-width:82%;padding:9px 12px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.05);font-size:.86rem;color:rgba(255,255,255,.9);line-height:1.4}
   .pv2-lmsg.me{align-self:flex-end;background:rgba(20,184,166,.14);border-color:rgba(20,184,166,.28);color:#e0fbfc}
   .pv2-lmsg-name{font-size:.68rem;color:rgba(255,255,255,.5);margin-bottom:2px;font-weight:600}
