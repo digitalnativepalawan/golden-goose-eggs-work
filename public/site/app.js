@@ -2589,6 +2589,7 @@ function openTribeDetail(id){
       <div class="info-copy">${desc ? escapeHtml(desc) : '<span class="info-muted">No plan written yet.</span>'}</div>
       <div class="info-actions">
         <button class="info-cta" onclick="infoJoinTribe('${escT(String(t.id))}')">${mine ? 'Leave this tribe' : 'Join this tribe'}</button>
+        ${tribeIsMine(t.id) ? `<button class="info-cta ghost" onclick="cancelMyTribe('${escT(String(t.id))}')">Cancel this tribe</button>` : ''}
       </div>
       <div class="info-chat" id="infoChat"></div>`
   });
@@ -2801,8 +2802,8 @@ function sendLoungeMsg(){
 // ── WIZARD ──
 const WIZ_STEPS = 5;
 let wizStep = 0;
-let formDraft = { name:'', plan:'', when:'', whenCustom:'', wherePick:'', whereText:'', size:'', note:'' };
-function selectPulseView_reset(){ wizStep=0; formDraft={name:'',plan:'',when:'',whenCustom:'',wherePick:'',whereText:'',size:'',note:''}; }
+let formDraft = { name:'', plan:'', when:'', whenCustom:'', wherePick:'', whereText:'', size:'', note:'', imageFile:null, imagePreview:'' };
+function selectPulseView_reset(){ wizStep=0; formDraft={name:'',plan:'',when:'',whenCustom:'',wherePick:'',whereText:'',size:'',note:'',imageFile:null,imagePreview:''}; }
 let wizHintMsg = '';
 function renderPulseWizard(){
   const body = document.getElementById('pulseBody');
@@ -2836,7 +2837,13 @@ function renderPulseWizard(){
     hint = formDraft.size ? '' : 'Roughly how many are you?';
   } else {
     q="Name your tribe";
-    opts = `<input class="pv2-wiz-input" id="wizName" maxlength="60" placeholder="${escT(formDraft.plan || 'Sunrise surf crew')}" value="${escT(formDraft.name)}" oninput="formDraft.name=this.value">
+    opts = `
+      <input class="pv2-wiz-input" id="wizName" maxlength="60" placeholder="${escT(formDraft.plan || 'Sunrise surf crew')}" value="${escT(formDraft.name)}" oninput="formDraft.name=this.value">
+      <div class="pv2-wiz-photo">
+        <label class="pv2-wiz-photobtn" for="wizImage">${lucideSvg('camera',14)} <span>${formDraft.imagePreview ? 'Change photo' : 'Add a photo'}</span></label>
+        <input type="file" id="wizImage" accept="image/*" onchange="wizPickImage(this)" hidden>
+        <div class="pv2-wiz-photoprev${formDraft.imagePreview ? ' has' : ''}" id="wizImagePrev" style="${formDraft.imagePreview ? `background-image:url('${escT(formDraft.imagePreview)}')` : ''}">${formDraft.imagePreview ? '' : lucideSvg('image',22)}</div>
+      </div>
       <textarea class="pv2-wiz-textarea" placeholder="Looking for 2 more people to split a boat tomorrow morning." oninput="formDraft.note=this.value">${escT(formDraft.note)}</textarea>`;
   }
   const last = wizStep===WIZ_STEPS-1;
@@ -2879,38 +2886,113 @@ function wizPick(btn, key, val, reveal){
 }
 
 function wizSet(k,v){ formDraft[k]=v; renderPulseWizard(); }
+
+// A tribe photo is optional. Anything picked is checked here first so the
+// visitor hears about a wrong file straight away, not after the upload fails.
+function wizPickImage(input){
+  const f = (input && input.files && input.files[0]) || null;
+  if(!f) return;
+  if(!/^image\//.test(f.type || '')){ toast('That file is not a photo. Pick a JPEG or PNG.'); input.value=''; return; }
+  if(f.size > 5 * 1024 * 1024){ toast('That photo is over 5 MB. Pick a smaller one.'); input.value=''; return; }
+  formDraft.imageFile = f;
+  try{ formDraft.imagePreview = URL.createObjectURL(f); }catch(e){ formDraft.imagePreview = ''; }
+  const prev = document.getElementById('wizImagePrev');
+  if(prev){
+    prev.classList.add('has');
+    prev.style.backgroundImage = formDraft.imagePreview ? `url('${formDraft.imagePreview}')` : '';
+    prev.innerHTML = '';
+  }
+}
 function wizNext(){ if(wizStep<WIZ_STEPS-1) wizStep++; renderPulseWizard(); }
 function wizBack(){ if(wizStep>0) wizStep--; renderPulseWizard(); }
+// ── WHO MADE THIS TRIBE ───────────────────────────────────────────────────
+// Visitors have no login, so authorship is proved with a capability instead of
+// an identity: the row carries a random delete_token, the browser that created
+// it keeps that token locally, and the cancel call only works when they match.
+// Nobody else can cancel a tribe, even knowing its id.
+const TRIBE_TOKENS_KEY = 'sanvic_my_tribe_tokens';
+function tribeTokens(){
+  try{ return JSON.parse(localStorage.getItem(TRIBE_TOKENS_KEY) || '{}') || {}; }catch(e){ return {}; }
+}
+function rememberTribeToken(id, token){
+  if(!id || !token) return;
+  try{ const t = tribeTokens(); t[String(id)] = String(token); localStorage.setItem(TRIBE_TOKENS_KEY, JSON.stringify(t)); }catch(e){}
+}
+function forgetTribeToken(id){
+  try{ const t = tribeTokens(); delete t[String(id)]; localStorage.setItem(TRIBE_TOKENS_KEY, JSON.stringify(t)); }catch(e){}
+}
+function tribeIsMine(id){ return !!tribeTokens()[String(id)]; }
+
+async function cancelMyTribe(id){
+  const token = tribeTokens()[String(id)];
+  if(!token){ toast('Only the person who started a tribe can cancel it.'); return; }
+  if(!confirm('Cancel this tribe? Its plan, members and chat go with it. This cannot be undone.')) return;
+  try{
+    const { data, error } = await sb.rpc('cancel_tribe', { p_tribe_id:String(id), p_token:token });
+    if(error) throw error;
+    if(data !== true){ toast('That tribe could not be cancelled.'); return; }
+    const i = PULSE_TRIBES.findIndex(x=>String(x.id)===String(id));
+    if(i >= 0) PULSE_TRIBES.splice(i,1);
+    const j = MYSV_TRIBES.findIndex(x=>String(x.id)===String(id));
+    if(j >= 0) MYSV_TRIBES.splice(j,1);
+    if(typeof myTribes !== 'undefined' && myTribes) myTribes.delete(String(id));
+    forgetTribeToken(id);
+    closeInfoSheet();
+    renderPulseBody();
+    toast('Tribe cancelled.');
+  }catch(err){
+    console.warn('[SANVIC] Cancel tribe failed:', err);
+    toast('Could not cancel that just now. Try again.');
+  }
+}
+
 function wizCreate(){
   ensurePerson(async person=>{
     const whereLabel = formDraft.wherePick==='current' ? 'Current map area' : (formDraft.wherePick==='type' ? formDraft.whereText : 'Chosen place');
     const whenLabel = formDraft.when==='custom' ? formDraft.whenCustom.replace('T',', ') : formDraft.when;
     // The organiser names their own tribe; the plan they picked becomes the tag
-    // instead of the title. No stock photo is attached either.
+    // instead of the title.
     const title = (formDraft.name || '').trim() || formDraft.plan;
     const note = (formDraft.note || '').trim();
     const capNum = formDraft.size === '2–4' ? 4 : (formDraft.size === '5–10' ? 10 : 0);
-    // A created tribe is a real shared row now. It used to exist only on the
-    // phone that made it, which made a plan description and a tribe chat
-    // meaningless: nobody else could ever see either.
     try{
+      // The photo goes up first. It is optional, so a failed upload does not cost
+      // the visitor their tribe — it just arrives without a picture.
+      let imageUrl = '';
+      if(formDraft.imageFile){
+        try{
+          const ext = ((formDraft.imageFile.name || '').split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,5) || 'jpg';
+          const path = person.id + '/' + Date.now() + '.' + ext;
+          const up = await sb.storage.from('tribe-images').upload(path, formDraft.imageFile, { cacheControl:'31536000', upsert:false, contentType: formDraft.imageFile.type });
+          if(up.error) throw up.error;
+          const pub = sb.storage.from('tribe-images').getPublicUrl(path);
+          imageUrl = (pub && pub.data && pub.data.publicUrl) || '';
+        }catch(upErr){
+          console.warn('[SANVIC] Tribe photo upload failed:', upErr);
+          toast('The photo did not upload — creating the tribe without it.');
+        }
+      }
       const { data, error } = await sb.from('tribes').insert({
         title, where_text:whereLabel, when_text:whenLabel,
         sub:note || 'Just formed.', description:note || '',
         tags:[formDraft.plan], cap:capNum, joined:1, extra:0,
-        device_id:person.id, display_name:person.name
+        device_id:person.id, display_name:person.name,
+        image_url:imageUrl || null, thumb_url:imageUrl || ''
       }).select().single();
       if(error) throw error;
+      // Hold the cancel token: it is the only thing that can remove this tribe.
+      rememberTribeToken(data.id, data.delete_token);
       PULSE_TRIBES.unshift({
         id:data.id, title:data.title, where:data.where_text, when:data.when_text,
         sub:data.sub, description:data.description, by:person.name,
-        cap:data.cap, joined:1, extra:0, tags:data.tags||[]
+        cap:data.cap, joined:1, extra:0, tags:data.tags||[],
+        thumb:data.thumb_url || '', images:data.images || []
       });
       MYSV_TRIBES.unshift({
         id:data.id, title:data.title,
         meta:(data.where_text||'') + ' • ' + (data.when_text||''),
         more:data.sub, grad:'linear-gradient(135deg,#f97316,#7c2d12)',
-        thumb:'', images:[], credit:''
+        thumb:data.thumb_url || '', images:data.images || [], credit:''
       });
       myTribes.add(String(data.id));
       selectPulseView_reset();
@@ -2918,6 +3000,10 @@ function wizCreate(){
       toast('Tribe formed, ' + person.name + '. Anyone can find it in Tribes now.');
       openTribeDetail(String(data.id));
     }catch(err){
+      const msg = String((err && (err.message || err.details || err.hint)) || err);
+      // The database refuses these two outright, so say why rather than "failed".
+      if(/TRIBE_LIMIT/.test(msg)) return toast('That is two tribes today. You can start another tomorrow.');
+      if(/TRIBE_DUPLICATE/.test(msg)) return toast('You already have a tribe with that name and the same plan.');
       console.warn('[SANVIC] Tribe create failed:', err);
       toast('Could not create that tribe just now. Try again.');
     }
