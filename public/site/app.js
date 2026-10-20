@@ -1242,6 +1242,10 @@ function closeAllPanels() {
   closeExploreSheet();
   if(typeof closeMySanvicPanel==='function') closeMySanvicPanel();
   if(typeof closeHuntPanel==='function') closeHuntPanel();
+  // Belt and braces. A place opened from Explore could leave this behind, and
+  // place-open both shrinks the map on desktop and hides the Explore sheet, so
+  // the map kept looking "wrong" until the next tab change cleared it.
+  document.body.classList.remove('place-open');
   refreshPanelOpen();
 }
 

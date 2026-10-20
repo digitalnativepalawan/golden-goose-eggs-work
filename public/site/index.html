@@ -2197,7 +2197,9 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by app.js and entry-flow.js so the two timers
   // cannot drift apart. Raise it to hold the first page longer.
-  window.SANVIC_SPLASH_HOLD = 2000;
+  // The wordmark is the first thing anyone sees and the partner wants it to
+  // land rather than flash past. Four and a half seconds, per his note.
+  window.SANVIC_SPLASH_HOLD = 4500;
 </script>
 <script src="barangays.geojson.js"></script>
 <script>

@@ -85,6 +85,33 @@
       .sanvic-entry-choice:focus-visible{outline:2px solid #65e1d1;outline-offset:2px}
       @media(min-width:700px){.sanvic-entry{justify-content:flex-start;padding-left:max(6vw,70px)}.sanvic-entry-card{width:min(46vw,560px);max-height:min(86vh,720px)}.sanvic-entry-inner{padding:32px 28px 24px}.sanvic-entry-title{font-size:clamp(2.1rem,3.2vw,3rem)}.sanvic-vibe-grid{grid-template-columns:1fr 1fr;max-height:40vh}}
       @media(max-height:720px){.sanvic-entry-inner{gap:10px;padding-top:18px;padding-bottom:14px}.sanvic-entry-title{font-size:1.72rem}.sanvic-entry-sub{font-size:.82rem}.sanvic-vibe-grid{max-height:28dvh}.sanvic-vibe-option{padding:9px 11px;font-size:.82rem}.sanvic-entry-primary{min-height:46px}}
+      /* ── The editorial introduction (step 0) ────────────────────────────
+         James's design: a light page, serif headline, orange call to action.
+         It is a deliberate departure from the dark app, so the card itself
+         changes shape for it rather than the page squeezing into the dialog. */
+      .sanvic-entry-card.is-intro{width:100%;max-height:100dvh;border-radius:0;background:#f7f5f2;border:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+      .sanvic-entry-card.is-intro .sanvic-entry-inner{padding:0;gap:0;overflow-y:auto;max-height:100dvh;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+      .sv-intro{display:flex;flex-direction:column;background:#f7f5f2;color:#33556f;min-height:100dvh}
+      .sv-intro-hero{position:relative;height:44vh;min-height:220px;max-height:430px;overflow:hidden;background:#dfe7ea;flex-shrink:0}
+      .sv-intro-hero img{width:100%;height:100%;object-fit:cover;display:block}
+      .sv-intro-hero::after{content:'';position:absolute;left:-14%;right:-14%;bottom:-2px;height:10%;background:#f7f5f2;border-radius:50% 50% 0 0 / 100% 100% 0 0}
+      .sv-intro-body{padding:24px 24px 34px;display:flex;flex-direction:column;gap:15px}
+      .sv-intro-title{font-family:var(--font-display,Georgia,'Times New Roman',serif);font-size:clamp(1.95rem,7.6vw,2.6rem);line-height:1.12;font-weight:600;color:#1b3a5c;margin:0;letter-spacing:-.005em}
+      .sv-intro-rule{height:3px;width:76px;background:#e2603a;border-radius:2px;flex-shrink:0}
+      .sv-intro-rule.short{width:56px;margin:8px auto 0}
+      .sv-intro-kicker{font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:#93a9ba;font-weight:600}
+      .sv-intro-body p{font-size:.95rem;line-height:1.62;color:#3d5f79;margin:0}
+      .sv-intro-lead{font-weight:700;color:#1b3a5c}
+      .sv-intro-cta{margin-top:8px;min-height:56px;border:0;border-radius:999px;background:#e2603a;color:#fff;font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);font-weight:700;font-size:.9rem;letter-spacing:.14em;text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer;box-shadow:0 12px 28px rgba(226,96,58,.26);-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+      .sv-intro-cta:active{transform:scale(.985)}
+      .sv-intro-foot{text-align:center;font-size:.68rem;letter-spacing:.34em;text-transform:uppercase;color:#b0c1ce;margin-top:12px}
+      @media(min-width:760px){
+        .sv-intro-hero{height:46vh;max-height:540px}
+        .sv-intro-body{max-width:780px;width:100%;margin:0 auto;padding:46px 40px 64px;gap:18px}
+        .sv-intro-title{font-size:clamp(2.3rem,3.6vw,3.2rem)}
+        .sv-intro-body p{font-size:1.04rem}
+        .sv-intro-cta{max-width:420px;width:100%;margin-left:auto;margin-right:auto}
+      }
     `;
     document.head.appendChild(s);
   }
@@ -116,6 +143,31 @@
 
   function render(){
     const w=document.getElementById('sanvicEntryContent'); if(!w) return;
+    // Step 0 is the editorial page: a full-bleed introduction, not a card, so
+    // the whole panel switches shape for it.
+    const card=document.querySelector('.sanvic-entry-card');
+    if(card) card.classList.toggle('is-intro', state.step===0);
+    if(state.step===0){
+      // The words and the order are the partner's, taken from his design.
+      w.innerHTML=`<div class="sv-intro">
+        <div class="sv-intro-hero"><img src="assets/san-vicente-long-beach.jpg" alt="Long Beach, San Vicente" loading="eager"></div>
+        <div class="sv-intro-body">
+          <h1 class="sv-intro-title">There is more to paradise than you imagine.</h1>
+          <div class="sv-intro-rule"></div>
+          <div class="sv-intro-kicker">Discover San Vicente</div>
+          <p>Welcome to San Vicente, one of Palawan's most beautiful and still largely undiscovered destinations.</p>
+          <p>You may have heard of Port Barton, a charming seaside village famous for its island hopping, laid-back atmosphere and tropical charm. But Port Barton is only a small part of San Vicente.</p>
+          <p class="sv-intro-lead">Travel north and discover an entirely different side of Palawan.</p>
+          <p>Kilometers of unspoiled beaches, spectacular coastal viewpoints, fishing villages, tropical forests, hidden waterfalls and islands waiting to be explored.</p>
+          <p>From the endless sands of Long Beach to the quieter shores of Alimanguan and beyond, San Vicente offers something increasingly rare: the freedom to discover paradise at your own pace.</p>
+          <div class="sv-intro-rule short"></div>
+          <button type="button" class="sv-intro-cta" id="entryIntroGo">Welcome in Sanvic <span aria-hidden="true">&#8594;</span></button>
+          <div class="sv-intro-foot">Palawan</div>
+        </div>
+      </div>`;
+      bindAction('entryIntroGo', ()=>{ state.step=1; render(); });
+      return;
+    }
     if(state.step===1){
       w.innerHTML=`<div class="sanvic-entry-kicker">SANVIC</div><h1 class="sanvic-entry-title">Do you live here, or are you visiting?</h1><p class="sanvic-entry-sub">It changes what the map puts in front of you first.<br>You can change this later.</p><div class="sanvic-entry-choices"><button type="button" class="sanvic-entry-choice" id="entryResident">${icon('house',17)}<span>I live here</span></button><button type="button" class="sanvic-entry-choice" id="entryVisitor">${icon('luggage',17)}<span>I'm visiting</span></button></div><button type="button" class="sanvic-entry-secondary" id="entrySkip">Skip</button>`;
       bindAction('entryResident', ()=>chooseAudience('local'));
@@ -191,6 +243,9 @@
   // had been switched off, which is why nobody ever saw it.
   const openWhenReady=()=>{
     completed=false;
+    // The editorial page comes first, straight after the splash. Reopening the
+    // flow later (from "choose your vibes") still goes to the questions.
+    state.step=0;
     document.body.classList.add('sanvic-entry-lock');
     mount();
     render();
