@@ -4403,7 +4403,12 @@ window.addEventListener('load',()=>{
   setTimeout(()=>{
     document.getElementById('bottomDock').classList.add('visible');
     document.getElementById('talaOrbWrap').classList.remove('hidden');
-    dockNav('discover');
+    // Land on the map, not on a panel. This used to call dockNav('discover'),
+    // which opened the Explore sheet automatically — so the first thing anyone
+    // saw was a window over the map. The partner asked for the map only, with
+    // Explore one tap away.
+    setActiveDock('discover');
+    closeAllPanels();
     if(!localStorage.getItem(DOCK_SEEN_KEY)){
       setTimeout(()=>{
         document.getElementById('bottomDock').classList.add('intro-pulse');

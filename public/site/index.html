@@ -175,6 +175,9 @@ body.panel-open .hero-overlay{transform:translateY(-6px)}
 .explore-pill{position:fixed;top:calc(var(--safe-top) + 64px);left:16px;z-index:60;display:none;align-items:center;gap:7px;padding:10px 15px;border-radius:var(--radius-pill);background:var(--glass-bg-heavy);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border:1px solid var(--glass-border);color:var(--white-soft);font-family:var(--font-body);font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.3);transition:opacity .3s,transform .3s}
 .explore-pill:active{transform:scale(.97)}
 body.sanvic-profiled .explore-pill{display:inline-flex}
+/* The un-profiled app has its own "Explore places" reopen button; with the pill
+   in place for profiled visitors, showing both would be two doors to one room. */
+body.sanvic-profiled .explore-reopen{display:none!important}
 body.sanvic-profiled.panel-open .explore-pill{opacity:0;pointer-events:none}
 body.sanvic-profiled .hero-headline,
 body.sanvic-profiled .hero-subtitle,
