@@ -40,6 +40,10 @@
   const PLACEHOLDERS = ['Marco','Luna','IslandCat','The Dutch Guy','SandyFeet','Still Hungover'];
   const state = { step:1, audience:'', nickname:'', vibes:[] };
   let completed = false;
+  // True when the editorial page is being shown to someone who has already
+  // answered the questions: the page is the front door, not part of the flow,
+  // so its button hands straight to the map instead of to the questionnaire.
+  let introOnly = false;
 
   function esc(v){ return String(v||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   function saved(){ try{return JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){return null;} }
@@ -165,7 +169,7 @@
           <div class="sv-intro-foot">Palawan</div>
         </div>
       </div>`;
-      bindAction('entryIntroGo', ()=>{ state.step=1; render(); });
+      bindAction('entryIntroGo', ()=>{ if(introOnly){ closeIntro(); return; } state.step=1; render(); });
       return;
     }
     if(state.step===1){
@@ -234,11 +238,20 @@
     mount();render();
     document.getElementById('sanvicEntry')?.classList.add('active');
   };
+  const hold=Number(window.SANVIC_SPLASH_HOLD||2000);
+  const INTRO_SEEN='sanvic_intro_seen';
+  function introSeen(){ try{ return sessionStorage.getItem(INTRO_SEEN)==='1'; }catch(e){ return false; } }
+  function markIntroSeen(){ try{ sessionStorage.setItem(INTRO_SEEN,'1'); }catch(e){} }
+
   if(!shouldShow()){
     document.body.classList.remove('sanvic-entry-lock');
     const b=document.getElementById('bottomDock'); if(b) b.classList.add('visible');
     const t=document.getElementById('talaOrbWrap'); if(t) t.classList.remove('hidden');
     setTimeout(applyProfile,0);
+    // Someone who has already answered still comes in through the editorial
+    // page, once per session. It used to be tied to the first visit only, which
+    // is why the partner never saw it on his own phone.
+    if(!introSeen()) showIntroOnly();
     return;
   }
   // First visit: hold the splash, then open the questionnaire. The flow, the
@@ -254,8 +267,29 @@
     render();
     const el=document.getElementById('sanvicEntry');
     if(el) el.classList.add('active');
+    markIntroSeen();
   };
-  const hold=Number(window.SANVIC_SPLASH_HOLD||2000);
+  // The editorial page on its own, for someone who has already answered.
+  function showIntroOnly(){
+    const run=()=>{
+      introOnly=true; completed=false;
+      document.body.classList.add('sanvic-entry-lock');
+      mount(); state.step=0; render();
+      const el=document.getElementById('sanvicEntry');
+      if(el) el.classList.add('active');
+      markIntroSeen();
+    };
+    if(document.readyState==='complete'){ setTimeout(run,hold); }
+    else { window.addEventListener('load',()=>setTimeout(run,hold)); }
+  }
+  // Leave the page without touching the saved profile.
+  function closeIntro(){
+    const o=document.getElementById('sanvicEntry');
+    if(o){ o.classList.remove('active'); o.remove(); }
+    unlock();
+    try{ window.dispatchEvent(new Event('sanvic:entry-complete')); }catch(e){}
+  }
+
   if(document.readyState==='complete'){ setTimeout(openWhenReady,hold); }
   else { window.addEventListener('load',()=>setTimeout(openWhenReady,hold)); }
 })();
