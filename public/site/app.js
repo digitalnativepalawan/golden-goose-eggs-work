@@ -3933,6 +3933,10 @@ function openDest(d,recordHistory=true){
   if(tipsBox){ tipsBox.hidden = true; tipsBox.innerHTML = ''; }
   closeTalaSheet(false);
   const sheet=document.getElementById('destSheet');sheet.className='dest-sheet expanded';sheet.removeAttribute('inert');
+  // On a phone the sheet is nearly the whole screen, which is why the partner
+  // could not see where the place was. It now stops above the map, and the map
+  // is pushed so the pin sits in the part that is left.
+  sheet.style.maxHeight = exploreIsSide() ? '' : '72vh';
   sheet.setAttribute('role','region');sheet.setAttribute('aria-labelledby','deTitle');sheet.style.transform='';
   document.getElementById('destOverlay').classList.remove('active');
   document.body.classList.add('place-open');
@@ -3940,20 +3944,87 @@ function openDest(d,recordHistory=true){
   document.getElementById('heroOverlay').classList.add('hidden');document.getElementById('heroFade').classList.add('hidden');
   document.querySelector('.dest-expanded').scrollTop=0;
   syncMapViewport();
-  if(map && SanvicExplore.hasCoordinates(d)){
-    map.setView([d.lat,d.lng],Math.max(13,map.getZoom()),{animate:false});
-    if(!exploreIsSide())map.panBy([0,Math.min(window.innerHeight*.25,190)],{animate:false});
-  }
+  centerMapOnPlace(d);
   document.getElementById('detailBack').focus({preventScroll:true});
 }
-function toggleDestSheet(){
-  // Details are a single readable view. Explore owns the mobile snap states.
-  if(currentDest)document.querySelector('.dest-expanded').scrollTo({top:0,behavior:reducedMotion()?'auto':'smooth'});
+
+// Put the place in the slice of map the sheet is not covering. panBy moves the
+// content the other way, so a positive y lifts the pin up the screen.
+function centerMapOnPlace(d){
+  if(!map || !d || typeof SanvicExplore==='undefined' || !SanvicExplore.hasCoordinates(d)) return;
+  try{
+    map.setView([d.lat,d.lng],Math.max(13,map.getZoom()),{animate:false});
+    if(!exploreIsSide()) map.panBy([0,Math.min(window.innerHeight*0.3,260)],{animate:false});
+  }catch(e){}
 }
+
+// The handle lowers the sheet to the compact bar and shows the map, which is the
+// only way to see where the place actually is. It used to only scroll the panel,
+// so the window could not be lowered at all. On a tablet or desktop the sheet is
+// a side panel beside the map, so there is nothing to lower.
+function toggleDestSheet(){
+  const sheet=document.getElementById('destSheet');
+  if(!sheet || !currentDest) return;
+  const body=document.querySelector('.dest-expanded');
+  if(exploreIsSide()){ if(body) body.scrollTo({top:0,behavior:reducedMotion()?'auto':'smooth'}); return; }
+  if(sheet.classList.contains('closed')){
+    sheet.className='dest-sheet expanded';
+    sheet.style.maxHeight='72vh';
+    if(body) body.scrollTop=0;
+  } else {
+    sheet.className='dest-sheet closed';
+    sheet.style.maxHeight='';
+  }
+  centerMapOnPlace(currentDest);
+  syncMapViewport();
+}
+
+// Drag the handle down to lower it, the way a sheet is expected to behave.
+(function bindDestHandleDrag(){
+  let startY=0, dragging=false, sheet=null, handler=null;
+  const onStart=(e)=>{
+    sheet=document.getElementById('destSheet');
+    if(!sheet || !currentDest || exploreIsSide()) return;
+    startY=(e.touches?e.touches[0].clientY:e.clientY); dragging=true;
+    sheet.style.transition='none';
+  };
+  const onMove=(e)=>{
+    if(!dragging || !sheet) return;
+    const y=(e.touches?e.touches[0].clientY:e.clientY)-startY;
+    if(y>0) sheet.style.transform='translateY('+Math.min(y,220)+'px)';
+  };
+  const onEnd=(e)=>{
+    if(!dragging || !sheet){ dragging=false; return; }
+    dragging=false;
+    const y=(e.changedTouches?e.changedTouches[0].clientY:e.clientY)-startY;
+    sheet.style.transition='';
+    if(y>70 && !sheet.classList.contains('closed')){
+      sheet.style.transform='';
+      sheet.className='dest-sheet closed';
+      sheet.style.maxHeight='';
+      centerMapOnPlace(currentDest);
+      syncMapViewport();
+    } else {
+      sheet.style.transform='';
+    }
+  };
+  const attach=()=>{
+    handler=document.querySelector('.dest-handle');
+    if(!handler || handler.dataset.dragBound) return;
+    handler.dataset.dragBound='1';
+    handler.addEventListener('touchstart',onStart,{passive:true});
+    handler.addEventListener('touchmove',onMove,{passive:true});
+    handler.addEventListener('touchend',onEnd);
+    handler.addEventListener('mousedown',onStart);
+    document.addEventListener('mousemove',onMove);
+    document.addEventListener('mouseup',onEnd);
+  };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',attach); else attach();
+})();
 function closeDestSheet(restore=true){
   const sheet=document.getElementById('destSheet');
   const wasOpen=!!currentDest;
-  sheet.style.transform='';sheet.className='dest-sheet';sheet.setAttribute('inert','');
+  sheet.style.transform='';sheet.style.maxHeight='';sheet.className='dest-sheet';sheet.setAttribute('inert','');
   document.getElementById('deMedia').replaceChildren(); // stop video/audio
   document.getElementById('destOverlay').classList.remove('active');
   document.body.classList.remove('place-open');

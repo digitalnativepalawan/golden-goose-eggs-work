@@ -203,7 +203,10 @@
   // takes effect immediately and survives a reload.
   function chooseAudience(v){ state.audience=(v==='local')?'local':'visitor'; state.step=2; render(); }
   function toggle(i){ const v=VIBES[i]; if(!v)return; const k=state.vibes.indexOf(v[0]); if(k>=0)state.vibes.splice(k,1); else if(state.vibes.length<MAX)state.vibes.push(v[0]); render(); }
-  function applyProfile(p){ const x=p||saved(); if(!x)return; document.body.dataset.sanvicVibes=(x.vibeTags||[]).join(' '); if(x.nickname)document.body.dataset.sanvicNickname=x.nickname; const n=document.getElementById('pulseComposeName'); if(n&&x.nickname&&!n.value)n.value=x.nickname; }
+  function applyProfile(p){ const x=p||saved(); if(!x)return; document.body.dataset.sanvicVibes=(x.vibeTags||[]).join(' '); if(x.nickname)document.body.dataset.sanvicNickname=x.nickname; const n=document.getElementById('pulseComposeName'); if(n&&x.nickname&&!n.value)n.value=x.nickname;
+    // Answered the questions: the map becomes the landing page, so the hero
+    // stands down and the Explore pill takes over.
+    document.body.classList.add('sanvic-profiled'); }
   function unlock(){ document.body.classList.remove('sanvic-entry-lock'); const b=document.getElementById('bottomDock'); if(b)b.classList.add('visible'); const t=document.getElementById('talaOrbWrap'); if(t)t.classList.remove('hidden'); applyProfile(); }
   function complete(){
     if(completed) return;
