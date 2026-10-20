@@ -94,6 +94,10 @@
          It is a deliberate departure from the dark app, so the card itself
          changes shape for it rather than the page squeezing into the dialog. */
       .sanvic-entry-card.is-intro{width:100%;max-height:100dvh;border-radius:0;background:#f7f5f2;border:0;box-shadow:none;backdrop-filter:none;-webkit-backdrop-filter:none}
+      /* No dark frame around the editorial page: it covers the screen. */
+      .sanvic-entry.is-intro{padding:0;background:#f7f5f2;align-items:stretch;justify-content:flex-start}
+      .sanvic-entry.is-intro .sanvic-entry-card{width:100%;max-width:100%;max-height:100dvh;border-radius:0;flex:1}
+      .sanvic-entry.is-intro .sanvic-entry-inner{padding:0;gap:0;max-height:100dvh}
       .sanvic-entry-card.is-intro .sanvic-entry-inner{padding:0;gap:0;overflow-y:auto;max-height:100dvh;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
       .sv-intro{display:flex;flex-direction:column;background:#f7f5f2;color:#33556f;min-height:100dvh}
       .sv-intro-hero{position:relative;height:44vh;min-height:220px;max-height:430px;overflow:hidden;background:#dfe7ea;flex-shrink:0}
@@ -151,6 +155,10 @@
     // the whole panel switches shape for it.
     const card=document.querySelector('.sanvic-entry-card');
     if(card) card.classList.toggle('is-intro', state.step===0);
+    // The outer panel carries padding for the dialog; the editorial page has to
+    // be full bleed, otherwise it renders inside a dark frame.
+    const root=document.getElementById('sanvicEntry');
+    if(root) root.classList.toggle('is-intro', state.step===0);
     if(state.step===0){
       // The words and the order are the partner's, taken from his design.
       w.innerHTML=`<div class="sv-intro">
