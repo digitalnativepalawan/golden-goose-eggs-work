@@ -1420,7 +1420,16 @@ function syncMapViewport(){
 function exploreResults(){
   const results=SanvicExplore.filter(destinations,exploreState,catStyle);
   const localKeys=/food|shop|service|transport|market|stay|cafe|restaurant/i;
+  // When someone has typed something, the best match leads. The search used to
+  // fall back to alphabetical, so "quiet beach" could put the weakest match
+  // first just because of its letter.
+  const terms=(typeof SanvicExplore.queryTerms==='function')?SanvicExplore.queryTerms(exploreState.query):[];
+  const scoreOf=d=>terms.length?SanvicExplore.score(d,terms,catStyle):0;
   return results.sort((a,b)=>{
+    if(terms.length){
+      const byScore=scoreOf(b)-scoreOf(a);
+      if(byScore) return byScore;
+    }
     if(exploreState.nearby && userLocationMarker){
       const p=userLocationMarker.getLatLng();
       const dist=d=>SanvicExplore.hasCoordinates(d)?SanvicExplore.distanceKm(p,d):Infinity;
@@ -1488,7 +1497,7 @@ function renderExploreContent(){
     : 'Loading the local directory…';
   if(destinationsSource==='loading'){ body.innerHTML='<div class="explore-empty" role="status">Finding places across San Vicente…</div>'; return; }
   body.innerHTML=matches.length?matches.map(explorePlaceCard).join(''):
-    `<div class="explore-empty">${lucideSvg('map-pin',32)}<h3>${destinations.length?'No matching places yet':'The directory is taking shape'}</h3><p>${destinations.length?'Try a different name, category or barangay.':'Local businesses and tourist places will appear here as they are added.'}</p>${destinations.length?'<button class="es-action" onclick="resetExploreFilters()">Show all places</button>':''}</div>`;
+    `<div class="explore-empty">${lucideSvg('map-pin',32)}<h3>${destinations.length?(exploreState.query?'Nothing matched that':"No matching places yet"):'The directory is taking shape'}</h3><p>${destinations.length?(exploreState.query?'Try a place name, or say what you feel like, like "quiet beach", "sunset", "waterfall trek" or "seafood dinner".':'Try a different category or barangay.'):'Local businesses and tourist places will appear here as they are added.'}</p>${destinations.length?'<button class="es-action" onclick="resetExploreFilters()">Show all places</button>':''}</div>`;
 }
 // True only when the visitor has actually narrowed Explore (search text,
 // category, barangay area, or "near me"). An unfiltered Explore list must not
