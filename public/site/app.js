@@ -837,6 +837,11 @@ const LUCIDE_MORE_ICONS = {
   "shopping-basket": "<path d=\"m15 11-1 9\" /> <path d=\"m19 11-4-7\" /> <path d=\"M2 11h20\" /> <path d=\"m3.5 11 1.6 7.4a2 2 0 0 0 2 1.6h9.8a2 2 0 0 0 2-1.6l1.7-7.4\" /> <path d=\"M4.5 15.5h15\" /> <path d=\"m5 11 4-7\" /> <path d=\"m9 11 1 9\" />",
   "smile": "<path d=\"M15 10V9\" /> <path d=\"M16.472 15a6 6 0 01-8.943 0\" /> <path d=\"M9 10V9\" /> <circle cx=\"12\" cy=\"12\" r=\"10\" />",
   "house": "<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\" /> <path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\" />",
+  // Added for the place contact block: a listing needs a phone, a mailbox and a
+  // message icon or it cannot show how to reach anybody.
+  "phone": "<path d=\"M13.832 16.568a1 1 0 0 0 1.213-.303l.355-.465A2 2 0 0 1 17 15h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2A18 18 0 0 1 2 4a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v3a2 2 0 0 1-.8 1.6l-.468.351a1 1 0 0 0-.292 1.233 14 14 0 0 0 6.392 6.384\" />",
+  "mail": "<path d=\"m22 7-8.991 5.727a2 2 0 0 1-2.009 0L2 7\" /> <rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\" />",
+  "message-circle": "<path d=\"M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719\" />",
 };
 Object.assign(EXTRA_ICONS, LUCIDE_MORE_ICONS);
 
@@ -3737,6 +3742,110 @@ function buildCarouselImages(d){
   return [...new Set(images)];
 }
 
+// ── WHAT THE PLACE ACTUALLY OFFERS ────────────────────────────────────────
+// Address, how to reach it, opening hours, prices, phones, links and
+// facilities. Fetched per place when the sheet opens, so a visitor who never
+// opens a listing pays nothing for the feature. One request: all four child
+// tables hang off the place itself.
+async function renderPlaceExtras(d){
+  const box = document.getElementById('deExtras');
+  if(!box) return;
+  box.innerHTML = '';
+  if(!d || d.id == null) return;
+  let row = null;
+  try{
+    const { data, error } = await sb.from('destinations')
+      .select('id,place_details(*),place_contacts(*),place_links(*),place_amenities(*)')
+      .eq('id', d.id).maybeSingle();
+    if(error) throw error;
+    row = data;
+  }catch(err){
+    console.warn('[SANVIC] Place details failed to load:', err);
+    return;
+  }
+  // The sheet may have moved on to another place while this was in flight.
+  if(!row || !box.isConnected) return;
+  if(!currentDest || String(currentDest.id) !== String(d.id)) return;
+
+  const det = Array.isArray(row.place_details) ? row.place_details[0] : row.place_details;
+  const contacts = (row.place_contacts || []).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  const links = (row.place_links || []).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+  const amKeys = (row.place_amenities || []).map(a=>a.amenity_key);
+  if(amKeys.length) await loadAmenityVocab();
+
+  const safeUrl = (u) => {
+    const href = /^https?:/i.test(String(u||'')) ? String(u) : ('https://' + String(u||''));
+    try{ return (typeof SanvicExplore !== 'undefined' && SanvicExplore.safeUrl) ? SanvicExplore.safeUrl(href, true) : href; }catch(e){ return href; }
+  };
+  const contactIcon = (kind) => kind === 'email' ? 'mail'
+    : (kind === 'whatsapp' || kind === 'viber' || kind === 'messenger') ? 'message-circle' : 'phone';
+
+  const facts = [];
+  if(det && det.hours) facts.push(['clock', det.hours]);
+  if(det && det.price_from != null) facts.push(['banknote', 'From ₱' + Number(det.price_from).toLocaleString() + (det.price_unit ? ' / ' + det.price_unit : '')]);
+  else if(det && det.price_range) facts.push(['banknote', det.price_range]);
+  if(det && det.entrance_fee) facts.push(['ticket', det.entrance_fee]);
+  if(det && det.check_in) facts.push(['key', 'Check-in ' + det.check_in]);
+  if(det && det.check_out) facts.push(['key', 'Check-out ' + det.check_out]);
+  if(det && det.best_time) facts.push(['sunset', det.best_time]);
+  if(det && det.payment_methods && det.payment_methods.length) facts.push(['banknote', det.payment_methods.join(', ')]);
+  if(det && det.languages && det.languages.length) facts.push(['globe', det.languages.join(', ')]);
+
+  const whereLines = [];
+  if(det && det.address) whereLines.push(det.address);
+  if(det && det.landmark) whereLines.push(det.landmark);
+  if(det && det.plus_code) whereLines.push('Plus code ' + det.plus_code);
+  if(det && det.how_to_get) whereLines.push(det.how_to_get);
+  if(det && det.accessibility) whereLines.push(det.accessibility);
+
+  const amenities = amKeys.map(k=>{
+    const a = (AMENITY_VOCAB || []).find(x=>x.key===k);
+    return { label: a ? a.label : k, icon: a ? a.icon : null };
+  });
+
+  const html = `
+    ${whereLines.length ? `<div class="dex-block">
+      <div class="dex-title">${lucideSvg('map-pin',12)} Where and how to reach it</div>
+      ${whereLines.map(l=>`<div class="dex-line">${escapeHtml(l)}</div>`).join('')}
+    </div>` : ''}
+    ${facts.length ? `<div class="dex-block">
+      <div class="dex-title">Good to know</div>
+      <div class="dex-facts">${facts.map(([ic,t])=>`<span class="dex-fact">${lucideSvg(ic,12)} ${escapeHtml(String(t))}</span>`).join('')}</div>
+    </div>` : ''}
+    ${contacts.length ? `<div class="dex-block">
+      <div class="dex-title">Contact</div>
+      <div class="dex-links">${contacts.map(c=>{
+        const v = String(c.value||'').trim();
+        if(!v) return '';
+        const kind = c.kind || 'phone';
+        const href = kind === 'email' ? ('mailto:' + v)
+          : (kind === 'whatsapp' ? ('https://wa.me/' + v.replace(/[^0-9]/g,''))
+          : (kind === 'viber' || kind === 'messenger' ? safeUrl(v) : ('tel:' + v.replace(/[^0-9+]/g,''))));
+        return `<a class="dex-link" href="${escapeHtml(href)}"${kind === 'email' || kind === 'phone' || kind === 'mobile' ? '' : ' target="_blank" rel="noopener noreferrer"'}>${lucideSvg(contactIcon(kind),12)} ${escapeHtml((c.label ? c.label + ': ' : '') + v)}</a>`;
+      }).join('')}</div>
+    </div>` : ''}
+    ${links.length ? `<div class="dex-block">
+      <div class="dex-title">Find them online</div>
+      <div class="dex-links">${links.map(l=>{
+        const url = safeUrl(l.url);
+        if(!url) return '';
+        const label = ((LINK_KINDS.find(x=>x[0]===l.kind)||[])[1]) || l.label || 'Link';
+        return `<a class="dex-link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${lucideSvg('external-link',12)} ${escapeHtml(label)}</a>`;
+      }).join('')}</div>
+    </div>` : ''}
+    ${amenities.length ? `<div class="dex-block">
+      <div class="dex-title">What it has</div>
+      <div class="dex-amen">${amenities.map(a=>`<span>${a.icon ? lucideSvg(a.icon,12) : ''} ${escapeHtml(a.label)}</span>`).join('')}</div>
+    </div>` : ''}
+    ${det && det.policies ? `<div class="dex-block">
+      <div class="dex-title">Rules and policy</div>
+      <div class="dex-line">${escapeHtml(det.policies)}</div>
+    </div>` : ''}
+    ${det && (det.verified_at || det.source) ? `<div class="dex-src">${det.verified_at ? 'Details confirmed ' + escapeHtml(String(det.verified_at).slice(0,10)) : 'Details not yet confirmed'}${det.source ? ' · ' + escapeHtml(det.source) : ''}</div>` : ''}`;
+
+  box.innerHTML = html;
+}
+
 function openDest(d,recordHistory=true){
   if(!d)return;
   if(!document.body.classList.contains('explore-open')){
@@ -3748,6 +3857,7 @@ function openDest(d,recordHistory=true){
   currentDest=d;
   mysvTrackRecent(d);
   highlightExplorePlace(d.id);
+  renderPlaceExtras(d);   // address, contacts, links, facilities — fetched per place
   if(recordHistory){
     const state={sanvic:true,tab:'discover',place:String(d.id)};
     if(history.state?.place)history.replaceState(state,'');else history.pushState(state,'');
@@ -5050,6 +5160,8 @@ function adminDestFormHtml(){
         <div class="admin-field"><label>Season</label><input id="adfSeason" value="${escapeHtml(d.stats.season)}"></div>
       </div>
 
+      <div id="adpExtras" class="admin-extras">${adminPlaceExtrasHtml()}</div>
+
       <div class="admin-edit-actions">
         <button class="admin-save-btn" id="adfSaveBtn" onclick="adminSaveDest()">${isNew?'Create listing':'Save changes'}</button>
         <button class="admin-cancel-btn" onclick="adminEditingDestId=null;renderAdminDest();">Cancel</button>
@@ -5098,8 +5210,17 @@ function adminParseMapsLink(){
   }
 }
 
-function adminNewDest(){ adminEditingDestId='new'; renderAdminDest(); }
-function adminEditDest(id){ adminEditingDestId=id; renderAdminDest(); }
+function adminNewDest(){
+  adminEditingDestId='new';
+  __adminDetails=null; __adminContacts=[]; __adminLinks=[]; __adminAmenities=new Set(); __adminPayments=new Set();
+  renderAdminDest();
+  loadAmenityVocab().then(()=>renderAdminPlaceExtras());
+}
+function adminEditDest(id){
+  adminEditingDestId=id;
+  renderAdminDest();
+  Promise.all([loadAmenityVocab(), adminFetchPlaceExtras(id)]).then(()=>renderAdminPlaceExtras());
+}
 
 // Optional helper: a Google Business Profile URL is usually just a Google
 // Maps place link — when it is, quietly fill in name/lat/lng as a convenience.
@@ -5413,6 +5534,250 @@ async function adminUploadVideoIfNeeded(){
   return data.publicUrl;
 }
 
+// ═══════════════════════════════════════════════════════
+// PLACE DETAILS — the practical half of a listing
+// ═══════════════════════════════════════════════════════
+// A listing used to be a name, a photo and a description. This is where the
+// things a visitor actually needs go: where it is, how to reach it, what it
+// costs, how to contact it, where else it lives online, and what it has.
+// Stored in five small tables rather than forty columns on destinations.
+let AMENITY_VOCAB = [];
+let __adminDetails = null;
+let __adminContacts = [];
+let __adminLinks = [];
+let __adminAmenities = new Set();
+let __adminPayments = new Set();
+const PAYMENT_OPTIONS = ['Cash','GCash','Maya','Card','Bank transfer'];
+const CONTACT_KINDS = [['phone','Phone'],['mobile','Mobile'],['whatsapp','WhatsApp'],['viber','Viber'],['email','Email'],['messenger','Messenger'],['other','Other']];
+const LINK_KINDS = [['website','Website'],['facebook','Facebook'],['instagram','Instagram'],['tiktok','TikTok'],['youtube','YouTube'],['google','Google Profile'],['booking','Booking.com'],['agoda','Agoda'],['airbnb','Airbnb'],['messenger','Messenger'],['other','Other']];
+const AMENITY_GROUP_ORDER = ['Room','Facilities','Food','Activities','Services','Policies','Access'];
+
+async function loadAmenityVocab(){
+  if(AMENITY_VOCAB.length) return AMENITY_VOCAB;
+  try{
+    const { data, error } = await sb.from('amenities').select('key,label,icon,grp,sort_order').order('sort_order', { ascending:true });
+    if(error) throw error;
+    AMENITY_VOCAB = data || [];
+  }catch(err){
+    console.warn('[SANVIC] Amenity list failed to load:', err);
+  }
+  return AMENITY_VOCAB;
+}
+
+// Everything that hangs off one place, in a single request: all four child
+// tables reference the place itself, so they come back together.
+async function adminFetchPlaceExtras(id){
+  __adminDetails = null; __adminContacts = []; __adminLinks = []; __adminAmenities = new Set(); __adminPayments = new Set();
+  if(id === 'new' || id == null) return;
+  try{
+    const { data, error } = await sb.from('destinations')
+      .select('id,place_details(*),place_contacts(*),place_links(*),place_amenities(*)')
+      .eq('id', id).maybeSingle();
+    if(error) throw error;
+    if(!data) return;
+    __adminDetails  = (data.place_details && data.place_details[0]) || (Array.isArray(data.place_details) ? null : data.place_details) || null;
+    __adminContacts = (data.place_contacts || []).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+    __adminLinks    = (data.place_links || []).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+    __adminAmenities = new Set((data.place_amenities || []).map(r=>r.amenity_key));
+    __adminPayments  = new Set((__adminDetails && __adminDetails.payment_methods) || []);
+  }catch(err){
+    console.warn('[SANVIC] Place details failed to load:', err);
+  }
+}
+
+function adminPlaceField(id, label, value, placeholder, hint){
+  return `<div class="admin-field"><label>${label}</label>
+    <input id="${id}" value="${escapeHtml(value||'')}" placeholder="${escapeHtml(placeholder||'')}">
+    ${hint ? `<div class="admin-hint">${hint}</div>` : ''}</div>`;
+}
+
+function adminContactsHtml(){
+  return `<div class="admin-field"><label>Phones &amp; messages</label>
+    <div class="admin-rows">
+      ${__adminContacts.map((c,i)=>`
+        <div class="admin-row">
+          <select onchange="__adminContacts[${i}].kind=this.value" style="max-width:130px">
+            ${CONTACT_KINDS.map(([k,l])=>`<option value="${k}"${c.kind===k?' selected':''}>${l}</option>`).join('')}
+          </select>
+          <input value="${escapeHtml(c.value||'')}" placeholder="e.g. 0917 000 0000" oninput="__adminContacts[${i}].value=this.value">
+          <input value="${escapeHtml(c.label||'')}" placeholder="Label (Front desk)" oninput="__adminContacts[${i}].label=this.value" style="max-width:150px">
+          <button type="button" class="admin-row-x" onclick="adminRemoveContact(${i})" aria-label="Remove">${lucideSvg('trash-2',14)}</button>
+        </div>`).join('')}
+    </div>
+    <button type="button" class="admin-add-btn" onclick="adminAddContact()">+ Add contact</button>
+  </div>`;
+}
+function adminAddContact(){ __adminContacts.push({ kind:'phone', value:'', label:'' }); renderAdminPlaceExtras(); }
+function adminRemoveContact(i){ __adminContacts.splice(i,1); renderAdminPlaceExtras(); }
+
+function adminLinksHtml(){
+  return `<div class="admin-field"><label>Online</label>
+    <div class="admin-rows">
+      ${__adminLinks.map((l,i)=>`
+        <div class="admin-row">
+          <select onchange="__adminLinks[${i}].kind=this.value" style="max-width:140px">
+            ${LINK_KINDS.map(([k,lab])=>`<option value="${k}"${l.kind===k?' selected':''}>${lab}</option>`).join('')}
+          </select>
+          <input value="${escapeHtml(l.url||'')}" placeholder="https://…" oninput="__adminLinks[${i}].url=this.value">
+          <button type="button" class="admin-row-x" onclick="adminRemoveLink(${i})" aria-label="Remove">${lucideSvg('trash-2',14)}</button>
+        </div>`).join('')}
+    </div>
+    <button type="button" class="admin-add-btn" onclick="adminAddLink()">+ Add link</button>
+  </div>`;
+}
+function adminAddLink(){ __adminLinks.push({ kind:'facebook', url:'', label:'' }); renderAdminPlaceExtras(); }
+function adminRemoveLink(i){ __adminLinks.splice(i,1); renderAdminPlaceExtras(); }
+
+function adminAmenitiesHtml(){
+  if(!AMENITY_VOCAB.length){
+    return `<div class="admin-field"><label>What it has</label><div class="admin-hint">Loading the amenity list…</div></div>`;
+  }
+  const groups = AMENITY_GROUP_ORDER.filter(g=>AMENITY_VOCAB.some(a=>a.grp===g));
+  const others = AMENITY_VOCAB.filter(a=>AMENITY_GROUP_ORDER.indexOf(a.grp) < 0).map(a=>a.grp).filter((v,i,arr)=>v && arr.indexOf(v)===i);
+  return `<div class="admin-field"><label>What it has</label>
+    ${groups.concat(others).map(g=>`
+      <div class="admin-amenity-group">
+        <div class="admin-amenity-title">${escapeHtml(g||'Other')}</div>
+        <div class="admin-amenity-list">
+          ${AMENITY_VOCAB.filter(a=>(a.grp||'Other')===(g||'Other')).map(a=>`
+            <label class="admin-amenity">
+              <input type="checkbox" ${__adminAmenities.has(a.key)?'checked':''} onchange="adminToggleAmenity('${a.key}',this.checked)">
+              <span>${a.icon ? lucideSvg(a.icon,13) : ''} ${escapeHtml(a.label)}</span>
+            </label>`).join('')}
+        </div>
+      </div>`).join('')}
+    <div class="admin-hint">Tick what the place actually has. These become filterable later, so keep them honest.</div>
+  </div>`;
+}
+function adminToggleAmenity(key, on){ if(on) __adminAmenities.add(key); else __adminAmenities.delete(key); }
+
+function adminPlaceExtrasHtml(){
+  const d = __adminDetails || {};
+  return `
+    <div class="admin-group-title">Where it is and how to reach it</div>
+    ${adminPlaceField('adpAddress','Street address or landmark', d.address, 'Sitio Marikit, Barangay Poblacion')}
+    ${adminPlaceField('adpPlus','Plus code (optional)', d.plus_code, '7Q34+XX San Vicente')}
+    ${adminPlaceField('adpLandmark','Nearest landmark', d.landmark, 'Beside the church, 200 m past the port')}
+    <div class="admin-field"><label>How to get there</label>
+      <textarea id="adpHowTo" rows="2" placeholder="Tricycle from Poblacion, 15 minutes, ₱150. Boat from Port Barton in high season.">${escapeHtml(d.how_to_get||'')}</textarea></div>
+
+    <div class="admin-group-title">Opening, prices and policy</div>
+    ${adminPlaceField('adpHours','Opening hours', d.hours, 'Daily 7am to 9pm, closed Mondays')}
+    ${adminPlaceField('adpBestTime','Best time to go', d.best_time, 'Low tide in the morning, sunset on the west side')}
+    <div class="admin-grid-3">
+      <div class="admin-field"><label>Price band</label>
+        <select id="adpPriceRange">
+          <option value=""${!d.price_range?' selected':''}>—</option>
+          ${['₱','₱₱','₱₱₱'].map(v=>`<option value="${v}"${d.price_range===v?' selected':''}>${v}</option>`).join('')}
+        </select></div>
+      <div class="admin-field"><label>From price</label><input id="adpPriceFrom" value="${d.price_from!=null?escapeHtml(String(d.price_from)):''}" placeholder="2500"></div>
+      <div class="admin-field"><label>Per</label>
+        <select id="adpPriceUnit">
+          ${['','night','person','plate','trip','hour'].map(v=>`<option value="${v}"${(d.price_unit||'')===v?' selected':''}>${v||'—'}</option>`).join('')}
+        </select></div>
+    </div>
+    <div class="admin-grid-2">
+      ${adminPlaceField('adpEntrance','Entrance fee (if any)', d.entrance_fee, '₱50 per person, guides ₱500')}
+      ${adminPlaceField('adpLanguages','Languages spoken', (d.languages||[]).join(', '), 'English, Filipino, Cuyonon')}
+    </div>
+    <div class="admin-grid-2">
+      ${adminPlaceField('adpCheckIn','Check-in', d.check_in, '2pm')}
+      ${adminPlaceField('adpCheckOut','Check-out', d.check_out, '11am')}
+    </div>
+    <div class="admin-field"><label>Payment methods</label>
+      <div class="admin-amenity-list">
+        ${PAYMENT_OPTIONS.map(p=>`
+          <label class="admin-amenity">
+            <input type="checkbox" ${__adminPayments.has(p)?'checked':''} onchange="adminTogglePayment('${p}',this.checked)">
+            <span>${escapeHtml(p)}</span>
+          </label>`).join('')}
+      </div>
+    </div>
+    <div class="admin-field"><label>House rules, deposit or cancellation policy</label>
+      <textarea id="adpPolicies" rows="2" placeholder="50% deposit to hold a room. Free cancellation 7 days before. No loud music after 10pm.">${escapeHtml(d.policies||'')}</textarea></div>
+    ${adminPlaceField('adpAccess','Accessibility', d.accessibility, 'Two ground floor rooms, step-free path to the restaurant')}
+
+    <div class="admin-group-title">Contacts</div>
+    ${adminContactsHtml()}
+
+    <div class="admin-group-title">Links</div>
+    ${adminLinksHtml()}
+
+    <div class="admin-group-title">Facilities</div>
+    ${adminAmenitiesHtml()}
+
+    <div class="admin-group-title">Where this information came from</div>
+    <div class="admin-grid-2">
+      ${adminPlaceField('adpSource','Source', d.source, 'Owner, Google profile, OSM, local office')}
+      ${adminPlaceField('adpVerifiedBy','Checked by', d.verified_by, 'Your name')}
+    </div>
+    <div class="admin-field">
+      <label class="admin-amenity" style="width:auto;display:inline-flex">
+        <input type="checkbox" id="adpVerified" ${d.verified_at?'checked':''}>
+        <span>Details confirmed with the property</span>
+      </label>
+      <div class="admin-hint">${d.verified_at ? 'Last confirmed ' + escapeHtml(String(d.verified_at).slice(0,10)) + '. Unticking clears the date.' : 'Tourist information goes stale. Tick this when someone actually checked it.'}</div>
+    </div>`;
+}
+function adminTogglePayment(p, on){ if(on) __adminPayments.add(p); else __adminPayments.delete(p); }
+function renderAdminPlaceExtras(){
+  const box = document.getElementById('adpExtras');
+  if(box) box.innerHTML = adminPlaceExtrasHtml();
+}
+
+function adpText(id){
+  const el = document.getElementById(id);
+  return el ? String(el.value || '').trim() : '';
+}
+function adpChecked(id){
+  const el = document.getElementById(id);
+  return !!(el && el.checked);
+}
+
+// Writes the practical block, then replaces the contact, link and amenity sets.
+// Everything is keyed on place_id, so a replace is the simplest correct thing.
+async function adminSavePlaceExtras(placeId){
+  if(!placeId) return;
+  const priceFrom = parseFloat(adpText('adpPriceFrom'));
+  const details = {
+    place_id: placeId,
+    address: adpText('adpAddress') || null,
+    plus_code: adpText('adpPlus') || null,
+    landmark: adpText('adpLandmark') || null,
+    how_to_get: adpText('adpHowTo') || null,
+    hours: adpText('adpHours') || null,
+    best_time: adpText('adpBestTime') || null,
+    price_range: adpText('adpPriceRange') || null,
+    price_from: isNaN(priceFrom) ? null : priceFrom,
+    price_unit: adpText('adpPriceUnit') || null,
+    entrance_fee: adpText('adpEntrance') || null,
+    check_in: adpText('adpCheckIn') || null,
+    check_out: adpText('adpCheckOut') || null,
+    payment_methods: [...__adminPayments],
+    languages: adpText('adpLanguages').split(',').map(s=>s.trim()).filter(Boolean),
+    policies: adpText('adpPolicies') || null,
+    accessibility: adpText('adpAccess') || null,
+    source: adpText('adpSource') || null,
+    verified_by: adpText('adpVerifiedBy') || null,
+    verified_at: adpChecked('adpVerified') ? (__adminDetails && __adminDetails.verified_at) || new Date().toISOString() : null,
+    updated_at: new Date().toISOString()
+  };
+  const { error: dErr } = await sb.from('place_details').upsert(details, { onConflict:'place_id' });
+  if(dErr) throw dErr;
+
+  const contacts = __adminContacts.filter(c=>c.value).map((c,i)=>({ place_id:placeId, kind:c.kind||'phone', value:c.value, label:c.label||null, sort_order:i }));
+  await sb.from('place_contacts').delete().eq('place_id', placeId);
+  if(contacts.length){ const { error } = await sb.from('place_contacts').insert(contacts); if(error) throw error; }
+
+  const links = __adminLinks.filter(l=>l.url).map((l,i)=>({ place_id:placeId, kind:l.kind||'website', url:l.url, label:l.label||null, sort_order:i }));
+  await sb.from('place_links').delete().eq('place_id', placeId);
+  if(links.length){ const { error } = await sb.from('place_links').insert(links); if(error) throw error; }
+
+  const amen = [...__adminAmenities].map(k=>({ place_id:placeId, amenity_key:k }));
+  await sb.from('place_amenities').delete().eq('place_id', placeId);
+  if(amen.length){ const { error } = await sb.from('place_amenities').insert(amen); if(error) throw error; }
+}
+
 async function adminSaveDest(){
   if(!adminRequireWrite()) return;
   const saveBtn = document.getElementById('adfSaveBtn');
@@ -5460,14 +5825,19 @@ async function adminSaveDest(){
       return;
     }
 
+    let placeId = adminEditingDestId;
     if(adminEditingDestId === 'new'){
       payload.sort_order = destinations.length;
-      const { error } = await sb.from('destinations').insert(payload);
+      const { data, error } = await sb.from('destinations').insert(payload).select('id').single();
       if(error) throw error;
+      placeId = data && data.id;
     } else {
       const { error } = await sb.from('destinations').update(payload).eq('id', adminEditingDestId);
       if(error) throw error;
     }
+    // Then everything that hangs off the place: its practical block, its phones,
+    // its links and the amenities it has.
+    await adminSavePlaceExtras(placeId);
     await loadDataFromSupabase();
     adminEditingDestId = null;
     renderAdminDest();
@@ -5909,17 +6279,22 @@ function mediaThumbHtml(url, i, delCall, coverCall){
 
 function mediaGalleryHtml(containerId, prefix){
   __mediaPrefix = prefix || 'item';
+  __mediaActiveContainer = containerId;
   const imgs = (__mediaGallery || []).map((url, i) =>
     mediaThumbHtml(url, i, `mediaRemoveImage(${i},'${containerId}')`, `mediaMakeCover(${i},'${containerId}')`)
   ).join('');
   return `
-    <label>Gallery images (tap + to upload from device, or paste a URL)</label>
-    <div class="admin-media-grid" id="${containerId}Gallery">${imgs}
+    <label>Photos — choose as many as you like, drag a batch in, or paste a screenshot</label>
+    <div class="admin-media-grid" id="${containerId}Gallery"
+         ondragover="event.preventDefault();this.classList.add('is-drag')"
+         ondragleave="this.classList.remove('is-drag')"
+         ondrop="mediaDrop(event,'${containerId}')">${imgs}
       <label class="admin-media-add">
-        <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" onchange="mediaUploadFile(this,'${containerId}')" hidden>
-        <span>+</span>
+        <input type="file" accept="image/*" multiple onchange="mediaUploadFile(this,'${containerId}')" hidden>
+        <span>+</span><small>Add photos</small>
       </label>
     </div>
+    <div class="admin-media-status" id="${containerId}MediaStatus"></div>
     <div style="display:flex;gap:6px;margin-top:6px;">
       <input id="${containerId}UrlInput" placeholder="Or paste image URL…" style="flex:1;padding:7px 10px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
       <button class="admin-mini-btn" onclick="mediaAddUrl('${containerId}')">Add URL</button>
@@ -5935,23 +6310,101 @@ function mediaAddUrl(containerId){
   mediaRefreshGrid(containerId);
 }
 
-async function mediaUploadFile(input, containerId){
-  if(!adminRequireWrite()){ if(input) input.value = ''; return; }
-  const file = input.files[0];
-  if(!file) return;
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-  const path = __mediaPrefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.' + ext;
-  try {
-    const { error } = await sb.storage.from('destination-images').upload(path, file, { cacheControl:'3600', upsert:false, contentType: file.type || 'image/jpeg' });
-    if(error) throw error;
-    const { data } = sb.storage.from('destination-images').getPublicUrl(path);
-    if(data && data.publicUrl){
-      __mediaGallery.push(data.publicUrl);
-      mediaRefreshGrid(containerId);
-    }
-  } catch(e){ alert('Upload failed: ' + e.message); }
-  input.value = '';
+// ── FAST PHOTO ADDING ─────────────────────────────────────────────────────
+// Adding photos one at a time from a phone was the slowest part of listing a
+// place. Now: pick as many as you like, drag a batch onto the grid, or paste a
+// screenshot. They go up three at a time, and each phone photo is shrunk first,
+// which is usually the difference between thirty seconds and three.
+let __mediaActiveContainer = '';
+
+function mediaSetStatus(containerId, text, isError){
+  const el = document.getElementById(containerId + 'MediaStatus');
+  if(!el) return;
+  el.textContent = text || '';
+  el.classList.toggle('is-error', !!isError);
 }
+
+// Phone photos run 4-12 MB. Downscale to 2400px wide before sending. Anything
+// already small, or anything the browser cannot decode, goes up untouched.
+async function mediaShrinkImage(file){
+  try{
+    if(!/^image\//.test(file.type || '') || file.type === 'image/gif') return file;
+    if(file.size < 400 * 1024) return file;
+    const bmp = await createImageBitmap(file, { imageOrientation:'from-image' });
+    const scale = Math.min(1, 2400 / bmp.width);
+    if(scale === 1 && file.size < 1500 * 1024) return file;
+    const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(bmp, 0, 0, w, h);
+    const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', 0.85));
+    if(!blob || blob.size >= file.size) return file;
+    return new File([blob], (file.name || 'photo').replace(/\.[^.]+$/, '') + '.jpg', { type:'image/jpeg' });
+  }catch(e){ return file; }
+}
+
+function mediaDrop(ev, containerId){
+  ev.preventDefault();
+  if(ev.currentTarget) ev.currentTarget.classList.remove('is-drag');
+  const files = ev.dataTransfer ? ev.dataTransfer.files : null;
+  if(files && files.length) mediaUploadFiles(files, containerId);
+}
+
+function mediaUploadFile(input, containerId){
+  const files = (input && input.files) ? [...input.files] : [];
+  if(files.length) mediaUploadFiles(files, containerId);
+  if(input) input.value = '';
+}
+
+async function mediaUploadFiles(files, containerId){
+  if(!adminRequireWrite()) return;
+  const list = [...(files || [])].filter(f => /^image\//.test(f.type || ''));
+  if(!list.length) return;
+  __mediaActiveContainer = containerId;
+  const before = __mediaGallery.length;
+  const queue = list.slice();
+  let finished = 0, failed = 0;
+  mediaSetStatus(containerId, `Uploading ${list.length} photo${list.length === 1 ? '' : 's'}…`);
+  const uploadOne = async () => {
+    while(queue.length){
+      const file = queue.shift();
+      try{
+        const small = await mediaShrinkImage(file);
+        const ext = ((small.name || '').split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g,'') || 'jpg';
+        const path = __mediaPrefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,8) + '.' + ext;
+        const { error } = await sb.storage.from('destination-images')
+          .upload(path, small, { cacheControl:'3600', upsert:false, contentType: small.type || 'image/jpeg' });
+        if(error) throw error;
+        const { data } = sb.storage.from('destination-images').getPublicUrl(path);
+        if(!data || !data.publicUrl) throw new Error('no public URL returned');
+        __mediaGallery.push(data.publicUrl);
+        mediaRefreshGrid(containerId);
+      }catch(e){
+        failed++;
+        console.warn('[SANVIC] Photo upload failed:', e);
+      }
+      finished++;
+      mediaSetStatus(containerId, finished < list.length ? `Uploaded ${finished} of ${list.length}…` : '', false);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(3, list.length) }, uploadOne));
+  const added = __mediaGallery.length - before;
+  mediaSetStatus(containerId, failed
+    ? `${added} added, ${failed} failed. Try those again.`
+    : `${added} photo${added === 1 ? '' : 's'} added.`, failed > 0);
+}
+
+// Paste straight into whichever listing is open.
+document.addEventListener('paste', (e)=>{
+  const overlay = document.getElementById('adminPanelOverlay');
+  if(!overlay || !overlay.classList.contains('active')) return;
+  if(!__mediaActiveContainer) return;
+  const files = e.clipboardData ? [...(e.clipboardData.files || [])] : [];
+  const imgs = files.filter(f => /^image\//.test(f.type || ''));
+  if(!imgs.length) return;
+  e.preventDefault();
+  mediaUploadFiles(imgs, __mediaActiveContainer);
+});
 
 function mediaRemoveImage(idx, containerId){
   __mediaGallery.splice(idx, 1);

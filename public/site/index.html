@@ -1292,6 +1292,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
         What's around me
       </button>
     </div>
+    <div class="dest-exp-extras" id="deExtras"></div>
     <div class="dest-exp-tips" id="deTipsBox" hidden></div>
     <button class="dest-exp-back" onclick="closeDestSheet()">Back to map</button>
   </div>
@@ -2093,6 +2094,41 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .dept-form{display:flex;flex-direction:column;gap:8px;margin-top:4px}
   .dept-form textarea{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;font-size:.84rem;line-height:1.5;font-family:var(--font-body);outline:0;resize:vertical}
   .dept-form button{align-self:flex-start}
+  /* ── Admin: place details, contacts, links, amenities ─────────────────── */
+  .admin-extras{margin-top:6px}
+  .admin-group-title{margin:18px 0 8px;padding-top:12px;border-top:1px solid var(--glass-border);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(94,234,212,.85);font-weight:700}
+  .admin-hint{font-size:.68rem;line-height:1.45;color:var(--white-dim);margin-top:5px}
+  .admin-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+  .admin-rows{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+  .admin-row{display:flex;gap:6px;align-items:center}
+  .admin-row input,.admin-row select{flex:1;min-width:0}
+  .admin-row-x{width:34px;height:34px;flex-shrink:0;border-radius:9px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .admin-row-x:hover{color:#ef4444;border-color:rgba(239,68,68,.4)}
+  .admin-amenity-group{margin-bottom:10px}
+  .admin-amenity-title{font-size:.68rem;font-weight:700;color:var(--white-muted);margin-bottom:6px}
+  .admin-amenity-list{display:flex;flex-wrap:wrap;gap:6px}
+  .admin-amenity{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--glass-border);background:rgba(255,255,255,.035);font-size:.72rem;color:var(--white-dim);cursor:pointer}
+  .admin-amenity input{width:auto;min-height:0;margin:0}
+  .admin-amenity:has(input:checked){border-color:rgba(20,184,166,.55);background:rgba(20,184,166,.12);color:rgba(167,243,208,.95)}
+  /* Fast photo adding: big tap target, drop highlight, live progress */
+  .admin-media-add{flex-direction:column;gap:2px}
+  .admin-media-add small{font-size:.55rem;font-weight:600;letter-spacing:.02em}
+  .admin-media-grid.is-drag{outline:2px dashed rgba(20,184,166,.6);outline-offset:3px;background:rgba(20,184,166,.05)}
+  .admin-media-status{font-size:.7rem;color:var(--white-dim);margin-top:6px;min-height:1em}
+  .admin-media-status.is-error{color:#fca5a5}
+  @media(max-width:640px){ .admin-grid-3{grid-template-columns:1fr} }
+  /* Visitor-facing: what a place actually offers */
+  .dest-exp-extras{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+  .dex-block{display:flex;flex-direction:column;gap:5px}
+  .dex-title{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.4);font-weight:700}
+  .dex-line{font-size:.82rem;line-height:1.5;color:rgba(255,255,255,.82)}
+  .dex-facts{display:flex;flex-wrap:wrap;gap:6px}
+  .dex-fact{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:999px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:.72rem;color:rgba(255,255,255,.8)}
+  .dex-links{display:flex;flex-wrap:wrap;gap:6px}
+  .dex-link{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border-radius:999px;border:1px solid rgba(20,184,166,.35);background:rgba(20,184,166,.1);color:#a7f3d0;font-size:.74rem;font-weight:600;text-decoration:none}
+  .dex-amen{display:flex;flex-wrap:wrap;gap:5px}
+  .dex-amen span{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);font-size:.7rem;color:rgba(255,255,255,.72)}
+  .dex-src{font-size:.62rem;color:rgba(255,255,255,.32)}
   .hunt-reward-badge{align-self:flex-start;background:#fbbf24;color:#78350f;padding:4px 10px;border-radius:999px;font-size:.65rem;font-weight:800;letter-spacing:.5px}
   .hunt-reward-t{color:#fff;font-size:1.05rem;font-weight:700;margin-top:8px}
   .hunt-reward-s{color:rgba(255,255,255,.75);font-size:.75rem;line-height:1.5;margin-top:4px}
