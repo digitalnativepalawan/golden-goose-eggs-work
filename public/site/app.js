@@ -2060,7 +2060,19 @@ function openPulsePanel(){
   selectPulseView(pulseView || 'tribes');
   updateLiveCounts();
   pulseRibbonOnScroll();
+  syncPulseRibbonHeight();
 }
+
+// The category chips wrap to as many lines as there are categories, so the
+// resting height is measured instead of assumed. A fixed cap clipped the third
+// row on a phone and the last categories could not be reached.
+function syncPulseRibbonHeight(){
+  const rib = document.getElementById('pv2CatRibbon');
+  if(!rib) return;
+  const full = rib.scrollHeight;
+  if(full) rib.style.setProperty('--rib-h', full + 'px');
+}
+window.addEventListener('resize', ()=>{ if(document.body.classList.contains('panel-open')) syncPulseRibbonHeight(); });
 // The filter row used to be pinned above the scrolling area for good, so on a
 // phone it ate the height an event card needed and a single card could not fit.
 // Now it collapses away as the list scrolls and returns at the top.

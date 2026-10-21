@@ -1418,7 +1418,10 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .pv2-vtab svg{width:22px;height:22px}
   .pv2-vtab.active{color:#5eead4}
   .pv2-vtab.active::after{content:'';position:absolute;left:12%;right:12%;bottom:-1px;height:2px;background:#5eead4;border-radius:2px}
-  .pv2-catribbon{position:relative;flex-shrink:0;padding:12px 30px 12px 14px;max-height:110px;overflow:hidden;transition:max-height .28s ease,opacity .2s ease,padding .28s ease}
+  /* The resting height is measured in JS (--rib-h), not guessed: a fixed cap
+     clipped the third row of categories on a phone, so the last chips were
+     invisible. Collapsing still animates, from the real height to zero. */
+  .pv2-catribbon{position:relative;flex-shrink:0;padding:12px 30px 12px 14px;max-height:var(--rib-h,200px);overflow:hidden;transition:max-height .28s ease,opacity .2s ease,padding .28s ease}
   /* Scrolled down: the filter row gets out of the way so a whole event card can
      fit on a phone. It comes back the moment you scroll up to the top. */
   .pv2-catribbon.is-away{max-height:0;opacity:0;padding-top:0;padding-bottom:0;pointer-events:none}
