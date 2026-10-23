@@ -100,10 +100,9 @@
       .sanvic-entry.is-intro .sanvic-entry-inner{padding:0;gap:0;max-height:100dvh}
       .sanvic-entry-card.is-intro .sanvic-entry-inner{padding:0;gap:0;overflow-y:auto;max-height:100dvh;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
       .sv-intro{display:flex;flex-direction:column;background:#f7f5f2;color:#33556f;min-height:100dvh}
-      .sv-intro-hero{position:relative;height:44vh;min-height:220px;max-height:430px;overflow:hidden;background:#dfe7ea;flex-shrink:0}
-      .sv-intro-hero img{width:100%;height:100%;object-fit:cover;display:block}
-      .sv-intro-hero::after{content:'';position:absolute;left:-14%;right:-14%;bottom:-2px;height:10%;background:#f7f5f2;border-radius:50% 50% 0 0 / 100% 100% 0 0}
-      .sv-intro-body{padding:24px 24px 34px;display:flex;flex-direction:column;gap:15px}
+      /* No hero photograph: see the note in the markup. The page opens on the
+         headline instead, with the breathing room the photo used to give it. */
+      .sv-intro-body{padding:64px 24px 40px;display:flex;flex-direction:column;gap:15px}
       .sv-intro-title{font-family:var(--font-display,Georgia,'Times New Roman',serif);font-size:clamp(1.95rem,7.6vw,2.6rem);line-height:1.12;font-weight:600;color:#1b3a5c;margin:0;letter-spacing:-.005em}
       .sv-intro-rule{height:3px;width:76px;background:#e2603a;border-radius:2px;flex-shrink:0}
       .sv-intro-rule.short{width:56px;margin:8px auto 0}
@@ -114,8 +113,7 @@
       .sv-intro-cta:active{transform:scale(.985)}
       .sv-intro-foot{text-align:center;font-size:.68rem;letter-spacing:.34em;text-transform:uppercase;color:#b0c1ce;margin-top:12px}
       @media(min-width:760px){
-        .sv-intro-hero{height:46vh;max-height:540px}
-        .sv-intro-body{max-width:780px;width:100%;margin:0 auto;padding:46px 40px 64px;gap:18px}
+        .sv-intro-body{max-width:780px;width:100%;margin:0 auto;padding:92px 40px 80px;gap:18px}
         .sv-intro-title{font-size:clamp(2.3rem,3.6vw,3.2rem)}
         .sv-intro-body p{font-size:1.04rem}
         .sv-intro-cta{max-width:420px;width:100%;margin-left:auto;margin-right:auto}
@@ -161,8 +159,11 @@
     if(root) root.classList.toggle('is-intro', state.step===0);
     if(state.step===0){
       // The words and the order are the partner's, taken from his design.
+      // The hero photograph is deliberately absent. The design's image is an
+      // aerial shot of the beach and mountain that we do not have a copy of, and
+      // a different picture in its place was worse than none. The head of the
+      // page returns the moment that file is supplied.
       w.innerHTML=`<div class="sv-intro">
-        <div class="sv-intro-hero"><img src="assets/san-vicente-long-beach.jpg" alt="Long Beach, San Vicente" loading="eager"></div>
         <div class="sv-intro-body">
           <h1 class="sv-intro-title">There is more to paradise than you imagine.</h1>
           <div class="sv-intro-rule"></div>
