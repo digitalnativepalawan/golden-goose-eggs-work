@@ -725,19 +725,21 @@ function applySplashText(){
 
 // The built-in taxonomy, in the order visitors meet it in Explore and in the
 // Trails. Kept in step with the destination_categories rows in Supabase, which
-// win at runtime. Culture is retired: its only place, San Vicente Poblacion,
-// now sits under Services, and Resto-bar replaces the old Food label.
+// win at runtime. The palette is the partner's: his colours, so the categories
+// read as one family instead of a dozen unrelated hues. Useful Stops covers the
+// practical places — sari-sari, h24, vulcanizers, small fuel stops.
 const DEFAULT_CAT_STYLE = {
-  beaches:{label:"Beaches",color:"#0ea5e9",icon:"waves"},
-  islands:{label:"Islands",color:"#8b5cf6",icon:"palmtree"},
-  nature:{label:"Nature",color:"#22c55e",icon:"trees"},
-  adventure:{label:"Adventure",color:"#ef4444",icon:"compass"},
-  stays:{label:"Stays",color:"#ec4899",icon:"bed-double"},
-  waterfalls:{label:"Waterfalls",color:"#06b6d4",icon:"droplets"},
-  food:{label:"Resto-bar",color:"#f97316",icon:"utensils-crossed"},
-  services:{label:"Services",color:"#64748b",icon:"landmark"},
-  sport:{label:"Sport",color:"#10b981",icon:"medal"},
-  nightlife:{label:"Nightlife",color:"#d946ef",icon:"music"}
+  beaches:{label:"Beaches",color:"#E6D599",icon:"waves"},
+  islands:{label:"Islands",color:"#6FD3E8",icon:"palmtree"},
+  nature:{label:"Natural Spots",color:"#7DDF83",icon:"trees"},
+  adventure:{label:"Adventure Locations",color:"#FF7A5C",icon:"compass"},
+  stays:{label:"Accommodations",color:"#4DE3C1",icon:"bed-double"},
+  waterfalls:{label:"Waterfalls",color:"#7FE3D0",icon:"droplets"},
+  food:{label:"Resto Bar",color:"#FF8F52",icon:"utensils-crossed"},
+  services:{label:"Services",color:"#7FA8FF",icon:"landmark"},
+  stops:{label:"Useful Stops",color:"#D4FF72",icon:"shopping-bag"},
+  sport:{label:"Sport",color:"#FFC46B",icon:"medal"},
+  nightlife:{label:"Nightlife",color:"#B98CFF",icon:"music"}
 };
 
 // Inlined Lucide SVG inner-content for the curated icon set admins can
@@ -1442,6 +1444,16 @@ function exploreResults(){
     return Number(!!b.featured)-Number(!!a.featured) || a.name.localeCompare(b.name);
   });
 }
+// The category marker: a small dot in that category's own colour, glowing, so a
+// row of categories reads as one family. This is the partner's "neon dots",
+// replacing the icon that sat here and made the list look busy.
+function catDot(key){
+  const c = (catStyle && catStyle[key] && catStyle[key].color) || '#7FA8FF';
+  return `<i class="sv-cat-dot" style="--c:${escT(c)}" aria-hidden="true"></i>`;
+}
+function catColour(key){
+  return (catStyle && catStyle[key] && catStyle[key].color) || '#7FA8FF';
+}
 function explorePlaceCard(d){
   const cat=catStyle[d.category] || {label:d.category||'Place',icon:'map-pin'};
   const photo=SanvicExplore.safeUrl(d.image,true);
@@ -1457,7 +1469,7 @@ function explorePlaceCard(d){
   const catColor=cat.color||'#94b7b8';
   return `<button class="explore-result${selected?' selected':''}" data-place-id="${escT(d.id)}" aria-pressed="${selected}" onclick="selectExplorePlace(this.dataset.placeId)">
     <span class="explore-result-image">${photo?`<img src="${escT(photo)}" alt="${escT(d.name)}" loading="lazy" onerror="this.hidden=true">`:''}<span class="image-placeholder" style="color:${escT(catColor)};background:linear-gradient(145deg,${escT(catColor)}2e,${escT(catColor)}0f)" aria-hidden="true">${lucideSvg(cat.icon||'map-pin',24)}</span></span>
-    <span class="explore-result-copy"><strong class="result-name">${escT(d.name)}</strong><span class="result-meta"><span class="result-category">${escT(cat.label)}</span><span class="result-area">${lucideSvg('map-pin',12)} ${escT(d.barangay||'San Vicente')}</span>${meta?`<span class="result-access">${escT(meta)}</span>`:''}</span></span>
+    <span class="explore-result-copy"><strong class="result-name">${escT(d.name)}</strong><span class="result-meta"><span class="result-category">${catDot(d.category)}${escT(cat.label)}</span><span class="result-area">${lucideSvg('map-pin',12)} ${escT(d.barangay||'San Vicente')}</span>${meta?`<span class="result-access">${escT(meta)}</span>`:''}</span></span>
     <span class="result-arrow" aria-hidden="true">${lucideSvg('chevron-right',17)}</span>
   </button>`;
 }
@@ -1481,7 +1493,7 @@ function renderExploreContent(){
   // Show real categories only; the admin remains free to add or rename them.
   const ribbon=document.getElementById('esRibbon');
   ribbon.innerHTML=`<button class="es-chip ${exploreState.category==='all'?'accent':''}" data-category="all" aria-pressed="${exploreState.category==='all'}" onclick="selectExploreCategory('all')"><span class="es-chip-label">All places</span></button>`+
-    keys.map(k=>`<button class="es-chip ${exploreState.category===k?'accent':''}" data-category="${escT(k)}" aria-pressed="${exploreState.category===k}" onclick="selectExploreCategory(this.dataset.category)">${lucideSvg(catStyle[k].icon||'map-pin',16)}<span class="es-chip-label">${escT(catStyle[k].label)}</span></button>`).join('');
+    keys.map(k=>`<button class="es-chip ${exploreState.category===k?'accent':''}" data-category="${escT(k)}" aria-pressed="${exploreState.category===k}" onclick="selectExploreCategory(this.dataset.category)">${catDot(k)}<span class="es-chip-label">${escT(catStyle[k].label)}</span></button>`).join('');
   const areas=Array.from(new Set(destinations.map(d=>d.barangay).filter(Boolean))).sort();
   const area=document.getElementById('esArea');
   area.innerHTML='<option value="">All barangays</option>'+areas.map(b=>`<option value="${escT(b)}">${escT(b)}</option>`).join('');
