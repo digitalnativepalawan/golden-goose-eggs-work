@@ -1018,10 +1018,11 @@ function rebuildMarkers(){
     if(!SanvicExplore.hasCoordinates(d)) return;
     if(!markersByCat[d.category]) markersByCat[d.category]=[];
     const style=catStyle[d.category] || DEFAULT_CAT_STYLE[d.category] || {};
-    const configured=style.icon;
-    const icon=LUCIDE_ICONS[configured] || EXTRA_ICONS[configured] ? configured : DEFAULT_CAT_STYLE[d.category]?.icon || 'map-pin';
     const color=/^#[0-9a-f]{6}$/i.test(style.color||'') ? style.color : '#0ea5e9';
-    const html = `<span class="place-pin" style="--pin-color:${color}">${lucideSvg(icon,11)}</span>`;
+    // The marker is the partner's neon dot: a disc in the category colour with a
+    // small white centre and a slight glow. It carried a category icon before,
+    // which is what he kept pointing at — no glyph goes in the pin now.
+    const html = `<span class="place-pin" style="--pin-color:${color}"></span>`;
     const m = L.marker([d.lat,d.lng],{title:d.name,alt:d.name,keyboard:true,icon:L.divIcon({className:'place-marker',html,iconSize:[44,44],iconAnchor:[22,22]})});
     const label = document.createElement('span'); label.textContent=d.name;
     m.bindTooltip(label,{direction:'top',offset:[0,-11]});

@@ -2126,8 +2126,8 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
      own colour, a bright core, and a wide soft bloom around it. Sized per
      context rather than one size everywhere. */
   .sv-cat-dot{--s:18px;display:inline-block;width:var(--s);height:var(--s);border-radius:50%;flex-shrink:0;vertical-align:middle;
-    background:radial-gradient(circle at 50% 40%, #ffffff 0 10%, var(--c,#7FA8FF) 42%, var(--c,#7FA8FF) 100%);
-    box-shadow:0 0 6px var(--c,#7FA8FF),0 0 16px var(--c,#7FA8FF)}
+    background:radial-gradient(circle closest-side, #ffffff 0 30%, var(--c,#7FA8FF) 31% 100%);
+    box-shadow:0 0 7px var(--c,#7FA8FF),0 0 16px var(--c,#7FA8FF)}
   .sv-cat-dot.lg{--s:30px}
   /* The admin's category rows, to the partner's sheet: dot, name, hex. */
   .admin-cat-label{font-size:1rem;font-weight:600;color:#fff;line-height:1.2}
