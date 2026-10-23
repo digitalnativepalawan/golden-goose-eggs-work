@@ -2122,10 +2122,19 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .dept-form{display:flex;flex-direction:column;gap:8px;margin-top:4px}
   .dept-form textarea{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#fff;font-size:.84rem;line-height:1.5;font-family:var(--font-body);outline:0;resize:vertical}
   .dept-form button{align-self:flex-start}
-  /* The category marker: a glowing dot in the category's own colour. */
-  .sv-cat-dot{display:inline-block;width:9px;height:9px;border-radius:50%;flex-shrink:0;vertical-align:middle;background:var(--c,#7FA8FF);box-shadow:0 0 8px var(--c,#7FA8FF),0 0 2px var(--c,#7FA8FF)}
-  .es-chip .sv-cat-dot{margin-right:2px}
-  .result-category .sv-cat-dot{width:7px;height:7px;margin-right:5px}
+  /* The category marker, to the partner's sheet: a round dot in the category's
+     own colour, a bright core, and a wide soft bloom around it. Sized per
+     context rather than one size everywhere. */
+  .sv-cat-dot{--s:18px;display:inline-block;width:var(--s);height:var(--s);border-radius:50%;flex-shrink:0;vertical-align:middle;
+    background:radial-gradient(circle at 50% 40%, #ffffff 0 10%, var(--c,#7FA8FF) 42%, var(--c,#7FA8FF) 100%);
+    box-shadow:0 0 6px var(--c,#7FA8FF),0 0 16px var(--c,#7FA8FF)}
+  .sv-cat-dot.lg{--s:30px}
+  /* The admin's category rows, to the partner's sheet: dot, name, hex. */
+  .admin-cat-label{font-size:1rem;font-weight:600;color:#fff;line-height:1.2}
+  .admin-cat-hex{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(186,203,235,.6);margin-top:4px}
+  .sv-cat-dot.sm{--s:12px}
+  .es-chip .sv-cat-dot{--s:14px;margin-right:3px}
+  .result-category .sv-cat-dot{--s:11px;margin-right:5px}
   /* Picked for you: the reason, and something specific about the place. */
   .today-node .tnode-label{display:flex;align-items:center;gap:7px}
   .today-node .tnode-label svg{flex-shrink:0;opacity:.85}

@@ -725,17 +725,17 @@ function applySplashText(){
 
 // The built-in taxonomy, in the order visitors meet it in Explore and in the
 // Trails. Kept in step with the destination_categories rows in Supabase, which
-// win at runtime. The palette is the partner's: his colours, so the categories
-// read as one family instead of a dozen unrelated hues. Useful Stops covers the
+// win at runtime. The palette is the partner's, at the values from his second
+// sheet, so the categories read as one family. Useful Stops covers the
 // practical places — sari-sari, h24, vulcanizers, small fuel stops.
 const DEFAULT_CAT_STYLE = {
-  beaches:{label:"Beaches",color:"#E6D599",icon:"waves"},
+  beaches:{label:"Beaches",color:"#E6D39B",icon:"waves"},
   islands:{label:"Islands",color:"#6FD3E8",icon:"palmtree"},
-  nature:{label:"Natural Spots",color:"#7DDF83",icon:"trees"},
+  nature:{label:"Natural Spots",color:"#7DFFB3",icon:"trees"},
   adventure:{label:"Adventure Locations",color:"#FF7A5C",icon:"compass"},
-  stays:{label:"Accommodations",color:"#4DE3C1",icon:"bed-double"},
+  stays:{label:"Accommodations",color:"#4DE1C1",icon:"bed-double"},
   waterfalls:{label:"Waterfalls",color:"#7FE3D0",icon:"droplets"},
-  food:{label:"Resto Bar",color:"#FF8F52",icon:"utensils-crossed"},
+  food:{label:"Resto Bar",color:"#FFB357",icon:"utensils-crossed"},
   services:{label:"Services",color:"#7FA8FF",icon:"landmark"},
   stops:{label:"Useful Stops",color:"#D4FF72",icon:"shopping-bag"},
   sport:{label:"Sport",color:"#FFC46B",icon:"medal"},
@@ -4783,11 +4783,11 @@ function adminDestCatPanelHtml(){
       return `
       <div class="admin-list-item">
         <div class="admin-list-item-head">
-          <div onclick="adminEditDestCat('${escapeHtml(key)}')" style="flex:1;cursor:pointer;display:flex;align-items:center;gap:10px;">
-            <span class="sv-pin-preview" style="--pin-color:${escapeHtml(c.color)};width:28px;height:28px;flex-shrink:0;">${ico}</span>
+          <div onclick="adminEditDestCat('${escapeHtml(key)}')" style="flex:1;cursor:pointer;display:flex;align-items:center;gap:14px;">
+            <span class="sv-cat-dot lg" style="--c:${escapeHtml(c.color||'#7FA8FF')}" aria-hidden="true"></span>
             <div>
-              <strong>${escapeHtml(c.label)}</strong><br>
-              <span>${escapeHtml(key)} · ${escapeHtml(c.icon||'map-pin')}</span>
+              <div class="admin-cat-label">${escapeHtml(c.label)}</div>
+              <div class="admin-cat-hex">${escapeHtml(String(c.color||'').toUpperCase())}</div>
             </div>
           </div>
           <div class="admin-row-actions">
