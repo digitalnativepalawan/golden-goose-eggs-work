@@ -37,6 +37,11 @@
     try{ if(typeof lucideSvg === 'function') return lucideSvg(name, size || 18); }catch(e){}
     return '';
   }
+  // Shared with the Today panel, so a suggested place can carry the icon of the
+  // vibe that put it there, and say which choice it came from. Set here at the
+  // top so it exists even for someone who has already answered and never opens
+  // this panel again.
+  try{ window.SANVIC_VIBES = VIBES.map(v => ({ label:v[0], tags:v[1], icon:v[2] })); }catch(e){}
   const PLACEHOLDERS = ['Marco','Luna','IslandCat','The Dutch Guy','SandyFeet','Still Hungover'];
   const state = { step:1, audience:'', nickname:'', vibes:[] };
   let completed = false;

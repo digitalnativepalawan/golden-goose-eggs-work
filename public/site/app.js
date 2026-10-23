@@ -1498,7 +1498,33 @@ function renderExploreContent(){
   if(destinationsSource==='loading'){ body.innerHTML='<div class="explore-empty" role="status">Finding places across San Vicente…</div>'; return; }
   body.innerHTML=matches.length?matches.map(explorePlaceCard).join(''):
     `<div class="explore-empty">${lucideSvg('map-pin',32)}<h3>${destinations.length?(exploreState.query?'Nothing matched that':"No matching places yet"):'The directory is taking shape'}</h3><p>${destinations.length?(exploreState.query?'Try a place name, or say what you feel like, like "quiet beach", "sunset", "waterfall trek" or "seafood dinner".':'Try a different category or barangay.'):'Local businesses and tourist places will appear here as they are added.'}</p>${destinations.length?'<button class="es-action" onclick="resetExploreFilters()">Show all places</button>':''}</div>`;
+  // The filter block's height changes with the ribbon, so it is re-measured on
+  // every render rather than only once.
+  if(typeof window.syncExploreFiltersHeight === 'function') window.syncExploreFiltersHeight();
 }
+// Explore's filter block steps aside while the places scroll, then returns at the
+// top. Its resting height is measured, because the ribbon wraps as categories
+// come and go.
+(function bindExploreFiltersCollapse(){
+  function sync(){
+    const box = document.querySelector('.es-browse-controls');
+    if(!box) return;
+    const h = box.scrollHeight;
+    if(h) box.style.setProperty('--esb-h', h + 'px');
+  }
+  window.syncExploreFiltersHeight = sync;
+  function attach(){
+    const body = document.getElementById('exploreContent');
+    const box = document.querySelector('.es-browse-controls');
+    if(!body || !box || body.dataset.filtersBound) return;
+    body.dataset.filtersBound = '1';
+    sync();
+    body.addEventListener('scroll', ()=>{ box.classList.toggle('is-away', body.scrollTop > 28); }, {passive:true});
+    window.addEventListener('resize', sync);
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach); else attach();
+})();
+
 // True only when the visitor has actually narrowed Explore (search text,
 // category, barangay area, or "near me"). An unfiltered Explore list must not
 // keep the whole municipality pinned to the map at every zoom level.
@@ -1683,25 +1709,54 @@ function escT(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&a
 // used to write this line. It is now built from the vibes the visitor actually
 // picked, matched against real directory places — no answers, no guess, and no
 // invented itinerary.
-function todayPersonalPick(){
+// How many times the visitor has asked for a fresh set today. Rotating through
+// the ranked pool is what makes "generate new pick" give a different answer
+// rather than the same three again.
+let todayPickTurn = 0;
+function todayPickPool(){
   let prof = null;
-  try{ prof = JSON.parse(localStorage.getItem('sanvic_entry_v1') || 'null'); }catch(e){ return null; }
+  try{ prof = JSON.parse(localStorage.getItem('sanvic_entry_v1') || 'null'); }catch(e){ return []; }
   const tags = (prof && Array.isArray(prof.vibeTags)) ? prof.vibeTags.map(t=>String(t||'').toLowerCase()).filter(Boolean) : [];
+  // Only the vibes this visitor actually chose may be cited as the reason. The
+  // card says "You picked: ...", so naming a vibe they never picked would be a
+  // lie on their own screen.
+  const mine = (prof && Array.isArray(prof.vibes)) ? prof.vibes.map(String) : [];
+  const vibes = (Array.isArray(window.SANVIC_VIBES) ? window.SANVIC_VIBES : [])
+    .filter(v => !mine.length || mine.indexOf(v.label) >= 0);
   const list = (Array.isArray(destinations) ? destinations : []).filter(d=>d.lat!=null && d.lng!=null);
-  if(!tags.length || !list.length) return null;
+  if(!tags.length || !list.length) return [];
   const scored = list.map(d=>{
     const hay = [d.name, d.category, d.barangay, d.description, d.tip].filter(Boolean).join(' ').toLowerCase();
     let score = 0;
     tags.forEach(t=>{ if(t.length > 2 && hay.indexOf(t) >= 0) score += 1; });
     if(tags.indexOf(String(d.category||'').toLowerCase()) >= 0) score += 2;   // the category itself counts double
-    return { d, score };
-  }).filter(x=>x.score > 0).sort((a,b)=>b.score - a.score);
-  if(!scored.length) return null;
+    // Which of the visitor's own choices put this place here, so the card can say
+    // why instead of just naming it.
+    let why = null;
+    for(const v of vibes){
+      if(!v.tags) continue;
+      if(v.tags.some(t=>t.length > 2 && hay.indexOf(String(t).toLowerCase()) >= 0)){ why = v; break; }
+    }
+    return { d, score, why };
+  }).filter(x=>x.score > 0).sort((a,b)=>b.score - a.score || String(a.d.name).localeCompare(String(b.d.name)));
   // A resort is somewhere you sleep, not somewhere the day takes you, so it only
   // gets suggested if nothing else matched at all.
   const out = scored.filter(x=>x.d.category !== 'stays');
-  const final = out.length ? out : scored;
-  return final.slice(0,3).map(x=>x.d);
+  return out.length ? out : scored;
+}
+function todayPersonalPick(){
+  const pool = todayPickPool();
+  if(!pool.length) return null;
+  const picked = [];
+  for(let i = 0; i < 3 && i < pool.length; i++) picked.push(pool[(todayPickTurn + i) % pool.length]);
+  return picked;
+}
+function generateNewPick(){
+  const pool = todayPickPool();
+  if(pool.length < 2){ toast('That is everything that fits your answers so far.'); return; }
+  todayPickTurn += 3;
+  renderTodayContent();
+  toast('Fresh picks from your answers.');
 }
 function catLabelFor(cat){
   return (catStyle && catStyle[cat] && catStyle[cat].label) || cat || '';
@@ -1732,19 +1787,33 @@ function renderTodayContent(){
   // Personalised suggestions, built from the vibes the visitor chose in the
   // questionnaire. This replaces the old "TALA's pick of the day".
   const picks = todayPersonalPick();
+  const pickCard = (x, i) => {
+    const p = x.d;
+    const whyIcon = (x.why && x.why.icon) ? x.why.icon : ((catStyle[p.category] && catStyle[p.category].icon) || 'map-pin');
+    // Say why this place is here, using the visitor's own words, and then let the
+    // place's own tip do the describing. "Long Beach · Poblacion · Beaches" read
+    // like a directory line, not a suggestion.
+    const whyLine = x.why
+      ? 'You picked: ' + x.why.label + (p.barangay ? ' · ' + p.barangay : '')
+      : [p.barangay, catLabelFor(p.category)].filter(Boolean).join(' · ');
+    const tip = String(p.tip || '').trim();
+    const tipLine = tip ? (tip.length > 104 ? tip.slice(0, 101).trim() + '…' : tip) : '';
+    return `
+      <div class="today-node" role="button" tabindex="0" style="cursor:pointer" onclick="openDestinationById(${p.id})">
+        <div class="tnode-label">${lucideSvg(whyIcon,15)} ${escT(p.name)}</div>
+        <div class="tnode-sub">${escT(whyLine)}</div>
+        ${tipLine ? `<div class="tnode-tip">${escT(tipLine)}</div>` : ''}
+      </div>
+      ${i<picks.length-1?'<div class="today-arrow">'+lucideSvg('arrow-right',16)+'</div>':''}`;
+  };
   const pick = picks ? `
     <article class="today-card">
       <div class="today-kicker">Picked for you</div>
-      <p class="today-lede">${picks.length === 1 ? 'A place' : picks.length + ' places'} that match what you told us you are into.</p>
+      <p class="today-lede">${picks.length === 1 ? 'One place' : picks.length + ' places'} from what you told us you are into. Ask for another set any time.</p>
       <div class="today-path">
-        ${picks.map((p,i)=>`
-          <div class="today-node" role="button" tabindex="0" style="cursor:pointer" onclick="openDestinationById(${p.id})">
-            <div class="tnode-label">${escT(p.name)}</div>
-            <div class="tnode-sub">${escT([p.barangay, catLabelFor(p.category)].filter(Boolean).join(' · '))}</div>
-          </div>
-          ${i<picks.length-1?'<div class="today-arrow">'+lucideSvg('arrow-right',16)+'</div>':''}
-        `).join('')}
+        ${picks.map(pickCard).join('')}
       </div>
+      <button class="today-newpick" onclick="generateNewPick()">${lucideSvg('refresh-cw',13)} Generate new pick</button>
     </article>` : `
     <article class="today-card">
       <div class="today-kicker">Your day</div>
@@ -4007,6 +4076,27 @@ function centerMapOnPlace(d){
     map.setView([d.lat,d.lng],Math.max(13,map.getZoom()),{animate:false});
     if(!exploreIsSide()) map.panBy([0,Math.min(window.innerHeight*0.3,260)],{animate:false});
   }catch(e){}
+}
+
+// "See this place on the map": lower the sheet to its peek and put the pin in
+// the part of the map that is left. The button used to open a separate panel
+// about the neighbourhood, which is not what someone reading a listing wants.
+function showCurrentPlaceOnMap(){
+  const d = currentDest;
+  if(!d) return;
+  if(typeof SanvicExplore === 'undefined' || !SanvicExplore.hasCoordinates(d)){
+    toast('This place has no map location yet.');
+    return;
+  }
+  const sheet = document.getElementById('destSheet');
+  if(sheet && !exploreIsSide()){
+    sheet.className = 'dest-sheet closed';
+    sheet.style.maxHeight = '';
+  }
+  centerMapOnPlace(d);
+  syncMapViewport();
+  if(typeof map !== 'undefined' && map) map.invalidateSize({animate:false,pan:false});
+  toast('Here it is on the map.');
 }
 
 // The handle lowers the sheet to the compact bar and shows the map, which is the
