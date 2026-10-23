@@ -2842,8 +2842,10 @@ function renderPulseWizard(){
   if(wizStep===0){
     q="What are you planning?";
     const plans = ['Island Hopping','Sunset','Drinks','Surf','Dinner','Shared Ride','Explore'];
-    opts = `<div class="pv2-wiz-opts">${plans.map(p=>`<button class="pv2-wiz-chip${formDraft.plan===p?' on':''}" onclick="wizPick(this,'plan','${p}')">${p}</button>`).join('')}</div>`;
-    hint = formDraft.plan ? '' : 'Choose what you have in mind to continue.';
+    const typed = plans.includes(formDraft.plan) ? '' : formDraft.plan;
+    opts = `<div class="pv2-wiz-opts">${plans.map(p=>`<button class="pv2-wiz-chip${formDraft.plan===p?' on':''}" onclick="wizPick(this,'plan','${p}')">${p}</button>`).join('')}</div>
+      <input class="pv2-wiz-input" id="wizPlanOwn" maxlength="40" placeholder="Or write your own, e.g. sunrise swim" value="${escT(typed)}" oninput="formDraft.plan=this.value">`;
+    hint = String(formDraft.plan||'').trim() ? '' : 'Choose or type what you have in mind to continue.';
   } else if(wizStep===1){
     q="When?";
     opts = `<div class="pv2-wiz-opts">
@@ -2895,9 +2897,34 @@ function renderPulseWizard(){
 // valid, with nothing on screen saying why — that is the "it gets stuck" report.
 // It always responds now: it advances, or it says what is still missing.
 function wizAdvance(){
-  if(wizHintMsg){ toast(wizHintMsg); return; }
+  // Checked when Next is pressed, not when the step was drawn. It used to read a
+  // message computed at render, so typing a location and pressing Next still
+  // said "Type where you want to meet": the message was stale, not the input.
+  const st = wizStepState();
+  if(!st.ok){ toast(st.hint); return; }
   if(wizStep<WIZ_STEPS-1){ wizStep++; renderPulseWizard(); }
   else wizCreate();
+}
+
+// The live answer for the step on screen, read from the form as it stands now.
+function wizStepState(){
+  if(wizStep===0){
+    return String(formDraft.plan||'').trim() ? { ok:true } : { ok:false, hint:'Choose or type what you have in mind to continue.' };
+  }
+  if(wizStep===1){
+    if(!formDraft.when) return { ok:false, hint:'Pick when it happens.' };
+    if(formDraft.when==='custom' && !String(formDraft.whenCustom||'').trim()) return { ok:false, hint:'Pick the date and time.' };
+    return { ok:true };
+  }
+  if(wizStep===2){
+    if(!formDraft.wherePick) return { ok:false, hint:'Pick a meeting point.' };
+    if(formDraft.wherePick==='type' && !String(formDraft.whereText||'').trim()) return { ok:false, hint:'Type where you want to meet.' };
+    return { ok:true };
+  }
+  if(wizStep===3){
+    return formDraft.size ? { ok:true } : { ok:false, hint:'Roughly how many are you?' };
+  }
+  return { ok:true };
 }
 
 function wizRender(){ renderPulseWizard(); }
@@ -2910,6 +2937,9 @@ function wizPick(btn, key, val, reveal){
   if(reveal){ renderPulseWizard(); return; }
   const box = (btn && btn.closest) ? btn.closest('.pv2-wiz-opts') : null;
   if(box) box.querySelectorAll('.pv2-wiz-chip').forEach(b=>b.classList.toggle('on', b===btn));
+  // Picking a chip replaces whatever was typed in the "write your own" field, so
+  // the two cannot disagree about what the plan is.
+  if(key==='plan'){ const own=document.getElementById('wizPlanOwn'); if(own) own.value=''; }
   const hint = document.querySelector('.pv2-wiz-hint');
   if(hint) hint.style.display='none';
   wizHintMsg='';
@@ -8613,10 +8643,18 @@ function huntNearbyTap(idx){
   if(!item) return;
   showHuntOverlay(item.name || 'Nearby find', item.desc || 'Head to this spot to explore it in person.');
 }
+// A trail opens Explore, already filtered to that trail's category, and only
+// that. It used to open the Hunt and the old discover panel together — two
+// windows at once, the list was not the trail the visitor picked, and it would
+// not scroll.
 function huntOpenTrail(catKey){
   closeHuntPanel();
-  if(typeof openDiscoverPanel==='function'){ openDiscoverPanel(); }
-  if(typeof filterDestinations==='function'){ try{ filterDestinations(catKey); }catch(_){ } }
+  if(typeof closeDiscoverPanel === 'function') closeDiscoverPanel();
+  if(typeof openExploreSheet === 'function') openExploreSheet();
+  if(typeof selectExploreCategory === 'function') selectExploreCategory(catKey);
+  // Snap open last: selecting a category re-renders the sheet and resets it to
+  // the smallest size, which left the trail list in a 168px slot.
+  if(typeof setExploreSnap === 'function' && !exploreIsSide()) setExploreSnap(2);
 }
 function huntRedeem(id){
   ensurePerson(person=>{
