@@ -44,3 +44,36 @@ test('successful empty directory is retained when an optional feature fails',asy
  vm.runInContext(functions('loadDataFromSupabase'),c);await c.loadDataFromSupabase();
  assert.equal(c.destinationsSource,'supabase');assert.equal(c.window.destinations.length,0);
 });
+
+test('personal picks require four interests and do not turn a beach-food profile into island-trip suggestions',()=>{
+ const selected=[
+  {label:'Smashed burger after swimming',tags:['food','beach']},
+  {label:'Reading in a hammock',tags:['quiet','slow']},
+  {label:'Chasing sunset',tags:['sunset','photo']},
+  {label:'Meeting someone new',tags:['social','pulse']}
+ ];
+ const profile={vibes:selected.map(v=>v.label)};
+ const destinations=[
+  {id:1,name:'Burger by the Shore',category:'food',barangay:'Poblacion',description:'Fresh grilled burgers and fries',lat:10.4,lng:119.2},
+  {id:2,name:'Long Beach',category:'beaches',barangay:'Long Beach',description:'Quiet sandy beach with sunset views',lat:10.5,lng:119.3},
+  {id:3,name:'German Island Boat Trip',category:'islands',barangay:'Port Barton',description:'Snorkelling reef and boat tour',lat:10.6,lng:119.4}
+ ];
+ const profileContext=()=>context({
+  localStorage:{getItem:()=>JSON.stringify(profile)},
+  window:{SANVIC_VIBES:selected},
+  destinations,
+  catStyle:{food:{label:'Resto Bar'},beaches:{label:'Beaches'},islands:{label:'Islands'}}
+ });
+ const c=profileContext();
+ vm.runInContext(functions('todayPickPool'),c);
+ const picks=vm.runInContext('todayPickPool()',c);
+ assert.ok(picks.length>0);
+ assert.equal(Array.from(picks).some(x=>x.d.name==='German Island Boat Trip'),false);
+ assert.ok(Array.from(picks).some(x=>x.d.name==='Burger by the Shore'));
+ const incomplete=context({
+  localStorage:{getItem:()=>JSON.stringify({vibes:profile.vibes.slice(0,3)})},
+  window:{SANVIC_VIBES:selected.slice(0,3)},destinations,catStyle:{food:{label:'Resto Bar'}}
+ });
+ vm.runInContext(functions('todayPickPool'),incomplete);
+ assert.equal(vm.runInContext('todayPickPool().length',incomplete),0);
+});

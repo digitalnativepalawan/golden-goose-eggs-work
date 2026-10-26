@@ -8,7 +8,8 @@
   function has(tags, group){ return Array.isArray(tags) && tags.some(t => group.includes(t)); }
   function greeting(){ const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; }
 
-  function mood(tags){
+  function mood(tags,audience){
+    if(audience==='local') return { line:'Community plans, local updates, and useful stops around San Vicente.', search:'Local events, services, workshops, and community plans...', nudge:'See what is happening in the community.' };
     if(has(tags, ['social','pulse','local','island'])) return { line:'A few people are already moving around today.', search:'Island hopping, videoke, people nearby...', nudge:'Tribes is warm today.' };
     if(has(tags, ['quiet','private','slow','wellness'])) return { line:'Quiet beaches and slower corners are close by.', search:'Quiet beaches, hammocks, slow mornings...', nudge:'Look for calm spots.' };
     if(has(tags, ['food','market','recovery'])) return { line:'Fresh plates, market stops, and beach snacks are close by.', search:'Seafood, burgers, markets, coffee...', nudge:'Food is a good first stop.' };
@@ -106,7 +107,11 @@
     const entry = getEntry();
     if(!entry) return;
     const tags = Array.isArray(entry.vibeTags) ? entry.vibeTags : [];
-    const m = mood(tags);
+    const audience = entry.audience === 'local' ? 'local' : 'visitor';
+    const m = mood(tags,audience);
+    document.body.dataset.sanvicAudience = audience;
+    document.body.classList.toggle('sanvic-audience-resident', audience === 'local');
+    document.body.classList.toggle('sanvic-audience-traveler', audience !== 'local');
     document.body.dataset.sanvicVibes = tags.join(' ');
     if(entry.nickname) document.body.dataset.sanvicNickname = entry.nickname;
     setHero(entry, m);

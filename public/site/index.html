@@ -215,7 +215,7 @@ body.sanvic-profiled #heroFade{display:none!important}
 .map-util-btn:hover{background:rgba(20,184,166,.18);border-color:rgba(20,184,166,.4)}
 .map-util-btn.locating{color:var(--ocean-teal-light)}
 .map-util-btn.locating svg{animation:svLocateSpin 1s linear infinite}
-body.panel-open .map-util-btn,body.panel-open .map-layer-toggle{opacity:0;pointer-events:none;transition:opacity .3s ease}
+body.panel-open .map-util-btn{opacity:0;pointer-events:none;transition:opacity .3s ease}
 body.explore-open .map-util-btn,body.explore-open .map-layer-toggle{opacity:1;pointer-events:auto}
 /* Barangay tooltips hidden at far zoom so canvas stays clean */
 .leaflet-container.zoom-far .leaflet-tooltip,
@@ -927,6 +927,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
       <label><input type="radio" name="basemap" value="terrain" onchange="switchMapLayer(this.value)"><span>Terrain<small>OpenTopoMap</small></span></label>
     </fieldset>
     <label class="boundary-option"><input id="barangayToggle" type="checkbox" checked onchange="toggleBarangayLayer()"> Barangay boundaries</label>
+    <div class="map-legend" aria-label="Map marker legend"><div class="map-legend-title">Place markers</div><div class="map-legend-items" id="mapLegendItems"></div></div>
   </div>
 </div>
 <div class="map-status" id="mapStatus" role="status" aria-live="polite" hidden></div>
@@ -1238,10 +1239,6 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
       <h2 class="es-heading-title">Explore San Vicente</h2>
       <button class="es-close" onclick="closeExploreSheet()" aria-label="Collapse Explore panel"><svg xmlns="http://www.w3.org/2000/svg" class="lucide" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
-    <div class="es-audience" id="esAudience" aria-label="Choose Explore view">
-      <button class="es-audience-btn active" data-mode="visitor" aria-pressed="true" onclick="setExploreAudience('visitor')">I'm visiting</button>
-      <button class="es-audience-btn" data-mode="local" aria-pressed="false" onclick="setExploreAudience('local')">I'm local</button>
-    </div>
     <label class="es-search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-5-5"/></svg>
       <input id="esSearchInput" type="search" aria-label="Search places" placeholder="Beach, food, waterfall or barangay" oninput="filterExploreResults(this.value)" autocomplete="off">
@@ -1289,6 +1286,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
     <p class="dest-photo-credit" id="deCredit" hidden></p>
     <div style="display:flex;align-items:center;justify-content:space-between;">
       <div class="dest-exp-cat" id="deCat"></div>
+      <button class="dest-map-peek" type="button" onclick="showCurrentPlaceOnMap()" aria-label="Show selected place on map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>Map</button>
       <button class="dest-save-btn" id="deSaveBtn" aria-label="Save this place" onclick="handleDestSaveClick()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
       </button>
@@ -1317,6 +1315,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
         See this place on the map
       </button>
     </div>
+    <div class="dest-community" id="deCommunity" hidden></div>
     <div class="dest-exp-extras" id="deExtras"></div>
     <div class="dest-exp-tips" id="deTipsBox" hidden></div>
     <button class="dest-exp-back" onclick="closeDestSheet()">Back to map</button>
@@ -1404,13 +1403,16 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .pv2-wave{width:34px;height:16px;color:#39ffd0;filter:drop-shadow(0 0 6px rgba(57,255,208,.55))}
   .pv2-sub{font-size:1.02rem;color:#5eead4;margin-top:8px;font-weight:500}
   .pv2-body-copy{font-size:.86rem;color:rgba(255,255,255,.62);margin-top:4px;line-height:1.45;max-width:78%}
-  .pv2-live{position:absolute;right:18px;top:calc(var(--safe-top) + 44px);display:flex;align-items:center;gap:8px;
+  .pv2-live{position:static;display:flex;align-items:center;gap:8px;width:max-content;max-width:100%;margin-top:10px;
     padding:8px 12px;border-radius:14px;background:rgba(6,14,30,.75);border:1px solid rgba(255,255,255,.08);
     backdrop-filter:blur(10px);font-size:.72rem;color:rgba(255,255,255,.92);line-height:1.15}
   .pv2-live-dot{width:8px;height:8px;border-radius:50%;background:#10b981;box-shadow:0 0 0 0 rgba(16,185,129,.6);animation:pv2Pulse 1.6s ease-out infinite}
   @keyframes pv2Pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.6)}70%{box-shadow:0 0 0 8px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
   .pv2-live-t{font-weight:600}
   .pv2-live-s{color:rgba(255,255,255,.6);display:block;font-size:.68rem;margin-top:1px}
+  .pv2-live-dot{background:#39ffd0;box-shadow:0 0 8px rgba(57,255,208,.55);animation:none}
+  .pv2-header-cta{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:11px 16px;border:1px solid rgba(57,255,208,.62);border-radius:999px;background:linear-gradient(120deg,rgba(57,255,208,.2),rgba(20,184,166,.12));color:#d9fff8;font:700 .82rem var(--font-body);letter-spacing:.01em;box-shadow:0 0 18px rgba(57,255,208,.12);cursor:pointer}
+  .pv2-header-cta svg{width:17px;height:17px;color:#39ffd0}
   .pv2-viewtabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;padding:14px 12px 0;flex-shrink:0;
     border-bottom:1px solid rgba(255,255,255,.06)}
   .pv2-vtab{background:none;border:0;color:rgba(255,255,255,.55);cursor:pointer;padding:10px 4px 12px;
@@ -1450,6 +1452,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .pv2-tribe-meta span{display:flex;align-items:center;gap:6px}
   .pv2-tribe-meta svg{width:12px;height:12px;color:rgba(255,255,255,.5);flex-shrink:0}
   .pv2-tribe-sub{font-size:.82rem;color:rgba(255,255,255,.78);line-height:1.35}
+  .pv2-tribe-capacity{display:inline-flex;align-self:flex-start;padding:5px 9px;border-radius:999px;background:rgba(57,255,208,.09);border:1px solid rgba(57,255,208,.23);color:#bafff1;font-size:.7rem;font-weight:700;letter-spacing:.01em}
   .pv2-tribe-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px}
   .pv2-avstack{display:flex;align-items:center;min-width:0}
   .pv2-av{width:22px;height:22px;border-radius:50%;border:2px solid #0a1120;margin-left:-8px;background-size:cover;background-position:center;background-color:rgba(255,255,255,.15)}
@@ -1544,13 +1547,15 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
     </div>
     <div class="pv2-sub">Find your tribe today.</div>
     <div class="pv2-body-copy">Join small groups, local happenings, and live plans around San Vicente.</div>
+    <button class="pv2-header-cta" type="button" onclick="selectPulseView('form')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Form a Tribe</button>
     <div class="pv2-live">
-      <span class="pv2-live-dot"></span>
+      <span class="pv2-live-dot" aria-hidden="true"></span>
       <div>
-        <span class="pv2-live-t">Live now</span>
-        <span class="pv2-live-s" id="pv2LiveCount">8 things happening</span>
+        <span class="pv2-live-t">Plans &amp; events</span>
+        <span class="pv2-live-s" id="pv2LiveCount">Loading listings…</span>
       </div>
     </div>
+
   </div>
 
   <div class="pv2-viewtabs" id="pv2ViewTabs">
@@ -1714,10 +1719,6 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   </div>
   <div class="person-field">
     <input type="text" id="personNameInput" maxlength="40" placeholder="Your name or nickname" autocomplete="nickname" onkeydown="if(event.key==='Enter')confirmPerson()">
-    <div class="person-kinds">
-      <button type="button" class="person-kind" data-kind="traveler" onclick="setPersonKind('traveler')">I'm visiting</button>
-      <button type="button" class="person-kind" data-kind="local" onclick="setPersonKind('local')">I'm local</button>
-    </div>
     <div class="person-status" id="personStatus"></div>
     <button class="person-go" onclick="confirmPerson()">Continue</button>
   </div>
@@ -2244,7 +2245,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-19-partner-r1';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-26-profile-map-tribes-r1';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by app.js and entry-flow.js so the two timers
   // cannot drift apart. Raise it to hold the first page longer.
@@ -2334,7 +2335,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   <div class="carousel-dots" id="carouselDots"></div>
 </div>
 
-<link rel="stylesheet" href="explore-ux.css?v=2026-10-17-today-panel-r1">
+<link rel="stylesheet" href="explore-ux.css?v=2026-10-26-profile-map-tribes-r1">
 <style id="sanvicNoHScroll">
   /* ── Nothing in the product scrolls sideways. ─────────────────────────────
      Chip rows wrap; card strips wrap into uniform full-width rows. The same

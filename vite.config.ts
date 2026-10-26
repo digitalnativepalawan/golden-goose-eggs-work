@@ -15,7 +15,7 @@ export default defineConfig({
   vite: {
     server: {
       // Local-only: allow the Cloudflare quick tunnel host used for partner review.
-      allowedHosts: [".trycloudflare.com"],
+      allowedHosts: [".trycloudflare.com", ".e2b.app"],
     },
   },
 });
