@@ -1,5 +1,5 @@
 // SANVIC Entry Experience
-// First visit flow: nickname -> travel vibe -> welcome.
+// First visit flow: audience -> nickname -> four interests -> welcome.
 (function(){
   const KEY = 'sanvic_entry_v1';
   const MAX = 4;
@@ -61,7 +61,11 @@
       resetEntrySession();
       return true;
     }
-    return !saved();
+    const profile=saved();
+    const validAudience=profile && ['local','visitor'].includes(profile.audience);
+    const choices=profile && Array.isArray(profile.vibes)?profile.vibes:[];
+    const validChoices=choices.length===MAX && new Set(choices).size===MAX && choices.every(choice=>VIBES.some(vibe=>vibe[0]===choice));
+    return !(profile && profile.profileVersion===2 && validAudience && validChoices);
   }
   function tags(){ const out=[]; VIBES.forEach(v=>{ if(state.vibes.includes(v[0])) v[1].forEach(t=>{ if(!out.includes(t)) out.push(t); }); }); return out; }
 
@@ -81,7 +85,7 @@
       .sanvic-entry-input{width:100%;height:54px;border-radius:18px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.055);color:rgba(255,255,255,.92);font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);font-size:1rem;font-weight:400;padding:0 15px;outline:0;user-select:text;-webkit-user-select:text}
       .sanvic-entry-input::placeholder{color:rgba(255,255,255,.32)}
       .sanvic-entry-actions{display:flex;flex-direction:column;gap:8px;flex-shrink:0}.sanvic-entry-primary,.sanvic-entry-secondary{border:0;border-radius:999px;font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}.sanvic-entry-primary{min-height:50px;background:linear-gradient(135deg,var(--sand,#e8dcc8),var(--limestone,#c4a882));color:var(--charcoal-deep,#020e26);font-weight:700;letter-spacing:-.01em}.sanvic-entry-secondary{height:34px;background:transparent;color:rgba(255,255,255,.48);font-weight:600}
-      .sanvic-entry-count{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.34);font-weight:600;flex-shrink:0}.sanvic-vibe-grid{display:grid;grid-template-columns:1fr;gap:8px;overflow-y:auto;max-height:34dvh;min-height:0;padding:1px 2px 8px;overscroll-behavior:contain}.sanvic-vibe-option{display:flex;align-items:center;gap:11px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.045);color:rgba(255,255,255,.84);font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);font-size:.88rem;font-weight:400;line-height:1.25;text-align:left;padding:9px 13px 9px 11px;letter-spacing:-.01em}.sanvic-vibe-ico{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:30px;height:30px;border-radius:11px;background:rgba(255,255,255,.06);color:rgba(232,220,200,.78);transition:background .18s ease,color .18s ease}.sanvic-vibe-label{min-width:0}.sanvic-vibe-option.selected{border-color:rgba(20,184,166,.42);background:rgba(20,184,166,.13);color:rgba(255,255,255,.95);box-shadow:inset 0 0 0 1px rgba(20,184,166,.08)}.sanvic-vibe-option.selected .sanvic-vibe-ico{background:rgba(20,184,166,.22);color:#7fe7dc}.sanvic-vibe-option.disabled{opacity:.45}.sanvic-entry-smile{display:flex;color:var(--limestone,#c4a882)}
+      .sanvic-entry-count{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.7);font-weight:700;flex-shrink:0}.sanvic-entry-primary:disabled{opacity:.42;cursor:not-allowed;filter:saturate(.45)}.sanvic-vibe-grid{display:grid;grid-template-columns:1fr;gap:8px;overflow-y:auto;max-height:34dvh;min-height:0;padding:1px 2px 8px;overscroll-behavior:contain}.sanvic-vibe-option{display:flex;align-items:center;gap:11px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.045);color:rgba(255,255,255,.84);font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);font-size:.88rem;font-weight:400;line-height:1.25;text-align:left;padding:9px 13px 9px 11px;letter-spacing:-.01em}.sanvic-vibe-ico{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:30px;height:30px;border-radius:11px;background:rgba(255,255,255,.06);color:rgba(232,220,200,.78);transition:background .18s ease,color .18s ease}.sanvic-vibe-label{min-width:0}.sanvic-vibe-option.selected{border-color:rgba(20,184,166,.42);background:rgba(20,184,166,.13);color:rgba(255,255,255,.95);box-shadow:inset 0 0 0 1px rgba(20,184,166,.08)}.sanvic-vibe-option.selected .sanvic-vibe-ico{background:rgba(20,184,166,.22);color:#7fe7dc}.sanvic-vibe-option.disabled{opacity:.45}.sanvic-entry-smile{display:flex;color:var(--limestone,#c4a882)}
       .sanvic-entry-choices{display:flex;gap:10px;flex-shrink:0}
       .sanvic-entry-choice{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.05);color:rgba(255,255,255,.9);font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);font-size:.95rem;font-weight:600;cursor:pointer;padding:0 10px;-webkit-tap-highlight-color:transparent}
       .sanvic-entry-choice svg{flex-shrink:0;opacity:.72}
@@ -127,49 +131,48 @@
   function render(){
     const w=document.getElementById('sanvicEntryContent'); if(!w) return;
     if(state.step===1){
-      w.innerHTML=`<div class="sanvic-entry-kicker">SANVIC</div><h1 class="sanvic-entry-title">Do you live here, or are you visiting?</h1><p class="sanvic-entry-sub">It changes what the map puts in front of you first.<br>You can change this later.</p><div class="sanvic-entry-choices"><button type="button" class="sanvic-entry-choice" id="entryResident">${icon('house',17)}<span>I live here</span></button><button type="button" class="sanvic-entry-choice" id="entryVisitor">${icon('luggage',17)}<span>I'm visiting</span></button></div><button type="button" class="sanvic-entry-secondary" id="entrySkip">Skip</button>`;
+      w.innerHTML=`<div class="sanvic-entry-kicker">SANVIC</div><h1 class="sanvic-entry-title">How will you use SANVIC?</h1><p class="sanvic-entry-sub">Choose the experience that fits you.</p><div class="sanvic-entry-choices"><button type="button" class="sanvic-entry-choice" id="entryVisitor">${icon('luggage',17)}<span>Traveller</span></button><button type="button" class="sanvic-entry-choice" id="entryResident">${icon('house',17)}<span>Resident</span></button></div>`;
       bindAction('entryResident', ()=>chooseAudience('local'));
       bindAction('entryVisitor', ()=>chooseAudience('visitor'));
-      bindAction('entrySkip', ()=>{state.step=2;render();});
       return;
     }
     if(state.step===2){
       const ph=PLACEHOLDERS[Math.floor(Math.random()*PLACEHOLDERS.length)];
-      w.innerHTML=`<div class="sanvic-entry-kicker">SANVIC</div><h1 class="sanvic-entry-title">How should we call you?</h1><p class="sanvic-entry-sub">Just a nickname.<br>No account. No email. No drama.</p><input id="sanvicName" class="sanvic-entry-input" maxlength="32" autocomplete="off" placeholder="${esc(ph)}" value="${esc(state.nickname)}"><div class="sanvic-entry-actions"><button type="button" class="sanvic-entry-primary" id="entryNext">Continue</button><button type="button" class="sanvic-entry-secondary" id="entrySkip">Skip</button></div>`;
+      w.innerHTML=`<div class="sanvic-entry-kicker">SANVIC</div><h1 class="sanvic-entry-title">What should we call you?</h1><p class="sanvic-entry-sub">Choose a nickname. No account or email needed.</p><input id="sanvicName" class="sanvic-entry-input" maxlength="32" autocomplete="nickname" placeholder="${esc(ph)}" value="${esc(state.nickname)}"><div class="sanvic-entry-actions"><button type="button" class="sanvic-entry-primary" id="entryNext">Continue</button></div>`;
       const input=document.getElementById('sanvicName');
       input.addEventListener('input',()=>state.nickname=input.value);
       input.addEventListener('keydown',e=>{if(e.key==='Enter') next();});
       bindAction('entryNext', next);
-      bindAction('entrySkip', ()=>{state.nickname='';state.step=3;render();});
       setTimeout(()=>input.focus({preventScroll:true}),80);
       return;
     }
     if(state.step===3){
       const count=state.vibes.length;
-      w.innerHTML=`<div class="sanvic-entry-kicker">Your San Vicente mood</div><h1 class="sanvic-entry-title">Tomorrow at 3 PM, where do you see yourself?</h1><p class="sanvic-entry-sub">Choose up to 4.</p><div class="sanvic-entry-count">${count}/${MAX} chosen</div><div class="sanvic-vibe-grid">${VIBES.map((v,i)=>{const sel=state.vibes.includes(v[0]);const dis=!sel&&count>=MAX;const ic=icon(v[2],18);return `<button type="button" class="sanvic-vibe-option ${sel?'selected':''} ${dis?'disabled':''}" data-i="${i}" aria-pressed="${sel?'true':'false'}">${ic?`<span class="sanvic-vibe-ico">${ic}</span>`:''}<span class="sanvic-vibe-label">${esc(v[0])}</span></button>`;}).join('')}</div><div class="sanvic-entry-actions"><button type="button" class="sanvic-entry-primary" id="entryNext">Continue</button></div>`;
+      w.innerHTML=`<div class="sanvic-entry-kicker">Your SANVIC profile</div><h1 class="sanvic-entry-title">What are you into?</h1><p class="sanvic-entry-sub">Choose exactly 4 interests to personalise places, tips, and plans across SANVIC.</p><div class="sanvic-entry-count" aria-live="polite">${count}/${MAX} selected · ${count===MAX?'ready to continue':'choose '+(MAX-count)+' more'}</div><div class="sanvic-vibe-grid" role="group" aria-label="Choose four travel interests">${VIBES.map((v,i)=>{const sel=state.vibes.includes(v[0]);const dis=!sel&&count>=MAX;const ic=icon(v[2],18);return `<button type="button" class="sanvic-vibe-option ${sel?'selected':''} ${dis?'disabled':''}" data-i="${i}" aria-pressed="${sel?'true':'false'}" aria-disabled="${dis?'true':'false'}" ${dis?'disabled':''}>${ic?`<span class="sanvic-vibe-ico">${ic}</span>`:''}<span class="sanvic-vibe-label">${esc(v[0])}</span></button>`;}).join('')}</div><div class="sanvic-entry-actions"><button type="button" class="sanvic-entry-primary" id="entryNext" ${count===MAX?'':'disabled'}>Continue</button></div>`;
       document.querySelectorAll('.sanvic-vibe-option').forEach(b=>b.onclick=()=>toggle(Number(b.dataset.i)));
       bindAction('entryNext', next);
       return;
     }
-    const name=state.nickname.trim()||'Traveler';
-    w.innerHTML=`<div class="sanvic-entry-kicker">The map is open</div><div class="sanvic-entry-smile">${icon('smile',30)}</div><h1 class="sanvic-entry-title">${esc(name)}, welcome to San Vicente</h1><p class="sanvic-entry-sub">The map is open.<br>The day is still unwritten.</p><p class="sanvic-entry-note">A few things are already happening today.</p><div class="sanvic-entry-actions"><button type="button" class="sanvic-entry-primary" id="entryEnter">Enter San Vicente</button></div>`;
+    const name=state.nickname.trim()||(state.audience==='local'?'Neighbour':'Traveller');
+    w.innerHTML=`<div class="sanvic-entry-kicker">Your SANVIC experience</div><div class="sanvic-entry-smile">${icon('smile',30)}</div><h1 class="sanvic-entry-title">${esc(name)}, welcome to San Vicente</h1><p class="sanvic-entry-sub">Your places, plans, and local updates are ready.</p><p class="sanvic-entry-note">Personalised from the four interests you chose.</p><div class="sanvic-entry-actions"><button type="button" class="sanvic-entry-primary" id="entryEnter">Enter SANVIC</button></div>`;
     bindAction('entryEnter', complete);
   }
 
-  function next(){ if(state.step===2){const i=document.getElementById('sanvicName');state.nickname=(i?i.value:'').trim();state.step=3;} else if(state.step===3){state.step=4;} render(); }
+  function next(){ if(state.step===2){const i=document.getElementById('sanvicName');state.nickname=(i?i.value:'').trim();state.step=3;} else if(state.step===3){if(state.vibes.length!==MAX)return;state.step=4;} render(); }
   // Stored under the same key the Explore sheet already reads, so the answer
   // takes effect immediately and survives a reload.
   function chooseAudience(v){ state.audience=(v==='local')?'local':'visitor'; state.step=2; render(); }
-  function toggle(i){ const v=VIBES[i]; if(!v)return; const k=state.vibes.indexOf(v[0]); if(k>=0)state.vibes.splice(k,1); else if(state.vibes.length<MAX)state.vibes.push(v[0]); render(); }
-  function applyProfile(p){ const x=p||saved(); if(!x)return; document.body.dataset.sanvicVibes=(x.vibeTags||[]).join(' '); if(x.nickname)document.body.dataset.sanvicNickname=x.nickname; const n=document.getElementById('pulseComposeName'); if(n&&x.nickname&&!n.value)n.value=x.nickname;
-    // Answered the questions: the map becomes the landing page, so the hero
-    // stands down and the Explore pill takes over.
+  function toggle(i){ const v=VIBES[i]; if(!v)return; const grid=document.querySelector('.sanvic-vibe-grid'); const scroll=grid?grid.scrollTop:0; const k=state.vibes.indexOf(v[0]); if(k>=0)state.vibes.splice(k,1); else if(state.vibes.length<MAX)state.vibes.push(v[0]); render(); requestAnimationFrame(()=>{const nextGrid=document.querySelector('.sanvic-vibe-grid');if(nextGrid)nextGrid.scrollTop=scroll;const nextOption=document.querySelector('.sanvic-vibe-option[data-i="'+i+'"]');if(nextOption)nextOption.focus({preventScroll:true});}); }
+  function applyProfile(p){ const x=p||saved(); if(!x)return; document.body.dataset.sanvicVibes=(x.vibeTags||[]).join(' '); document.body.dataset.sanvicAudience=x.audience||'visitor'; document.body.classList.toggle('sanvic-audience-resident',x.audience==='local'); document.body.classList.toggle('sanvic-audience-traveler',x.audience!=='local'); if(x.nickname)document.body.dataset.sanvicNickname=x.nickname; const n=document.getElementById('pulseComposeName'); if(n&&x.nickname&&!n.value)n.value=x.nickname;
+    // The selected audience is global profile state; visitor interests flow
+    // through Today, TALA and Explore, while resident-specific surfaces can
+    // branch cleanly from the same profile as that experience is finalized.
     document.body.classList.add('sanvic-profiled'); }
   function unlock(){ document.body.classList.remove('sanvic-entry-lock'); const b=document.getElementById('bottomDock'); if(b)b.classList.add('visible'); const t=document.getElementById('talaOrbWrap'); if(t)t.classList.remove('hidden'); applyProfile(); }
   function complete(){
     if(completed) return;
     completed = true;
-    const p={nickname:state.nickname.trim(),vibes:state.vibes.slice(),vibeTags:tags(),audience:state.audience||'',enteredAt:new Date().toISOString()};
+    const p={profileVersion:2,nickname:state.nickname.trim(),vibes:state.vibes.slice(),vibeTags:tags(),audience:state.audience||'visitor',enteredAt:new Date().toISOString()};
     try{ localStorage.setItem(KEY,JSON.stringify(p)); }catch(e){}
     if(state.audience){
       try{ localStorage.setItem('sanvic_explore_audience',state.audience); }catch(e){}

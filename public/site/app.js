@@ -978,35 +978,19 @@ function markTalaIdle(){
 let map, mapReady=false;
 const markersByCat={};
 let allMarkers=[];
-// Below this zoom a cloud of individual pins reads as noise, so the map swaps
-// them for a single "San Vicente" area label instead.
-const PIN_VISIBLE_ZOOM = 10;
+// Individual place markers are staged by zoom so the map remains legible.
+const PIN_VISIBLE_ZOOM = 13; // barangay overview first; beach/island POIs appear at 13
 const SANVICENTE_CENTER = [10.50,119.22]; // municipality anchor + default view target
-let pinsCurrentlyVisible = true;
 let activeMarkerSet = []; // tracks whichever markers are "supposed" to be on the map right now (all, or a filtered category)
-let pinVisibilityOverride = false; // true once the user explicitly narrows to a category/area — keeps those pins on at any zoom
 let areaLabelMarker = null; // far-zoom "San Vicente" card that stands in for the pin cloud
+let placeClusterMarkers = [];
 
-// Signature neon-dot palette. Reserved functional categories always
-// map to a fixed colour so the map reads at a glance; any other
-// admin-defined category falls through to its configured colour.
-const NEON_CATEGORY_COLORS = {
-  stays: '#facc15',       // Amber — Accommodations
-  food: '#ff3b47',        // Neon Red — F&B
-  beaches: '#39ff88',     // Matrix Green — Beaches
-  nature: '#39ff88',      // Matrix Green — Viewpoints / Waterfalls
-  islands: '#39ff88',     // Matrix Green
-  transport: '#a855f7',   // Cyber Purple — Public Transport
-  airport: '#a855f7'      // Cyber Purple — Airports
-};
-function neonColorForCategory(key){
-  if(NEON_CATEGORY_COLORS[key]) return NEON_CATEGORY_COLORS[key];
-  const label = (catStyle[key] && catStyle[key].label || '').toLowerCase();
-  if(label.includes('food') || label.includes('f&b') || label.includes('restaurant')) return NEON_CATEGORY_COLORS.food;
-  if(label.includes('stay') || label.includes('accommodation') || label.includes('hotel') || label.includes('resort')) return NEON_CATEGORY_COLORS.stays;
-  if(label.includes('beach') || label.includes('waterfall') || label.includes('viewpoint') || label.includes('nature')) return NEON_CATEGORY_COLORS.beaches;
-  if(label.includes('transport') || label.includes('airport') || label.includes('port') || label.includes('station')) return NEON_CATEGORY_COLORS.transport;
-  return (catStyle[key] && catStyle[key].color) || '#39ff88';
+// Category colors are configured in the directory taxonomy (the defaults use
+// sand for beaches, aqua for islands, coral for adventure, etc.). Keep the map,
+// category chips and Layers legend on that same palette.
+function categoryMarkerColor(key){
+  const configured=(catStyle[key]&&catStyle[key].color)||(DEFAULT_CAT_STYLE[key]&&DEFAULT_CAT_STYLE[key].color)||'#7FA8FF';
+  return /^#[0-9a-f]{6}$/i.test(configured)?configured:'#7FA8FF';
 }
 
 function rebuildMarkers(){
@@ -1017,8 +1001,7 @@ function rebuildMarkers(){
   destinations.forEach(d=>{
     if(!SanvicExplore.hasCoordinates(d)) return;
     if(!markersByCat[d.category]) markersByCat[d.category]=[];
-    const style=catStyle[d.category] || DEFAULT_CAT_STYLE[d.category] || {};
-    const color=/^#[0-9a-f]{6}$/i.test(style.color||'') ? style.color : '#0ea5e9';
+    const color=categoryMarkerColor(d.category);
     // The marker is the partner's neon dot: a disc in the category colour with a
     // small white centre and a slight glow. It carried a category icon before,
     // which is what he kept pointing at — no glyph goes in the pin now.
@@ -1035,29 +1018,65 @@ function rebuildMarkers(){
   if(document.body.classList.contains('explore-open')) syncExploreMap();
 }
 
-// Adds/removes activeMarkerSet from the map based on current zoom, without
-// touching which markers are "selected" by a category filter. Zoomed out past
-// PIN_VISIBLE_ZOOM — and not narrowed to a specific category — the pin cloud
-// gives way to a single "San Vicente" area label.
+function mapMarkerGroup(marker){
+  const key=String(marker._d?.category||'').toLowerCase();
+  const label=String(catStyle[key]?.label||'').toLowerCase();
+  const text=key+' '+label;
+  if(/beach|island/.test(text))return 'coast';
+  if(/stay|accommodation|hotel|resort|lodge/.test(text))return 'stays';
+  if(/food|restaurant|resto|dining|cafe|bar/.test(text))return 'food';
+  return 'other';
+}
+function markerVisibleAtZoom(marker,zoom){
+  const group=mapMarkerGroup(marker);
+  if(zoom>=15)return true;
+  if(zoom>=14)return group==='coast'||group==='stays'||group==='food';
+  if(zoom>=13)return group==='coast';
+  return false;
+}
+function updatePlaceClusterLayer(){
+  if(!map)return;
+  placeClusterMarkers.forEach(m=>{if(map.hasLayer(m))map.removeLayer(m);});
+  placeClusterMarkers=[];
+  const zoom=map.getZoom();
+  if(zoom<14||zoom>=15)return;
+  const eligible=activeMarkerSet.filter(m=>['food','stays'].includes(mapMarkerGroup(m))&&markerVisibleAtZoom(m,zoom));
+  const points=eligible.map(marker=>({marker,point:map.project(marker.getLatLng(),zoom),group:mapMarkerGroup(marker)}));
+  const used=new Set();
+  points.forEach(item=>{
+    if(used.has(item.marker))return;
+    const members=points.filter(other=>!used.has(other.marker)&&other.group===item.group&&Math.hypot(other.point.x-item.point.x,other.point.y-item.point.y)<34);
+    if(members.length<2)return;
+    members.forEach(x=>{used.add(x.marker);if(map.hasLayer(x.marker))map.removeLayer(x.marker);});
+    const lat=members.reduce((sum,x)=>sum+x.marker.getLatLng().lat,0)/members.length;
+    const lng=members.reduce((sum,x)=>sum+x.marker.getLatLng().lng,0)/members.length;
+    const label=item.group==='food'?'food and drink':'places to stay';
+    const names=members.map(x=>x.marker._d.name).join(', ');
+    const icon=L.divIcon({className:'place-cluster-icon',html:`<span class="place-cluster-badge" aria-label="${members.length} ${label}">${members.length}</span>`,iconSize:[30,30],iconAnchor:[15,15]});
+    const cluster=L.marker([lat,lng],{icon,keyboard:true,title:`${members.length} nearby ${label}: ${names}`,zIndexOffset:1200});
+    cluster.on('click',()=>map.flyTo([lat,lng],Math.min(18,map.getZoom()+2),{duration:.55}));
+    cluster.addTo(map);placeClusterMarkers.push(cluster);
+  });
+}
+window.updatePlaceClusterLayer=updatePlaceClusterLayer;
+function updateBarangayMarkerVisibility(zoom){
+  if(!map||!barangayMarkerLayer)return;
+  const show=barangayVisible&&zoom>=9&&zoom<13;
+  if(show&&!map.hasLayer(barangayMarkerLayer))barangayMarkerLayer.addTo(map);
+  if(!show&&map.hasLayer(barangayMarkerLayer))map.removeLayer(barangayMarkerLayer);
+}
+
 function applyPinVisibility(){
-  if(!map) return;
-  const z = map.getZoom();
-  const shouldShow = pinVisibilityOverride || z >= PIN_VISIBLE_ZOOM;
-  // Zoom-based label suppression: at zoom <= 11, hide barangay text tooltips
-  // so the canvas reads as clean neon-dot nodes only.
-  const cont = map.getContainer();
-  if(cont) cont.classList.toggle('zoom-far', z <= 11);
-  setAreaLabel(!shouldShow);
-  if(shouldShow === pinsCurrentlyVisible) {
-    if(shouldShow) activeMarkerSet.forEach(m=>{ if(!map.hasLayer(m)) m.addTo(map); });
-    return;
-  }
-  pinsCurrentlyVisible = shouldShow;
-  if(shouldShow){
-    activeMarkerSet.forEach(m=>m.addTo(map));
-  } else {
-    allMarkers.forEach(m=>{ if(map.hasLayer(m)) map.removeLayer(m); });
-  }
+  if(!map)return;
+  const zoom=map.getZoom();
+  const container=map.getContainer();
+  if(container)container.classList.toggle('zoom-far',zoom<=11);
+  setAreaLabel(zoom<9);
+  updateBarangayMarkerVisibility(zoom);
+  allMarkers.forEach(marker=>{if(map.hasLayer(marker))map.removeLayer(marker);});
+  const visible=activeMarkerSet.filter(marker=>markerVisibleAtZoom(marker,zoom));
+  visible.forEach(marker=>marker.addTo(map));
+  updatePlaceClusterLayer();
 }
 
 // ─── FAR-ZOOM AREA LABEL ───
@@ -1145,6 +1164,7 @@ function locateUser(nearby=false){
 }
 function reducedMotion(){return window.matchMedia('(prefers-reduced-motion: reduce)').matches;}
 let barangayLayer=null;
+let barangayMarkerLayer=null;
 let barangayVisible=true;
 async function initMap(){
   if(mapReady)return;
@@ -1177,6 +1197,7 @@ async function initMap(){
   document.getElementById('mapLayerToggle').classList.add('visible');
   initBarangayLayer(); rebuildMarkers();
   map.on('zoomend',applyPinVisibility);
+  map.on('moveend',()=>{if(map.getZoom()<9)setAreaLabel(true);});
   map.on('resize',()=>highlightExplorePlace(exploreState.selected));
   syncMapViewport();
   if(document.body.classList.contains('explore-open'))fitExploreResults();
@@ -1185,18 +1206,41 @@ function getBarangayStyle(){
   const light=['street','terrain'].includes(window._mView);
   return {color:light?'#34556b':'#d1e3ec',weight:1.3,opacity:.55,fillOpacity:.015,dashArray:'5,5'};
 }
+function barangayCenter(feature){
+  const geom=feature&&feature.geometry; if(!geom)return null;
+  const polygons=geom.type==='Polygon'?[geom.coordinates]:geom.type==='MultiPolygon'?geom.coordinates:[];
+  let best=null,bestArea=-1;
+  polygons.forEach(poly=>{
+    const ring=poly&&poly[0];if(!ring||ring.length<3)return;
+    let area=0,cx=0,cy=0;
+    for(let i=0,j=ring.length-1;i<ring.length;j=i++){const cross=ring[j][0]*ring[i][1]-ring[i][0]*ring[j][1];area+=cross;cx+=(ring[j][0]+ring[i][0])*cross;cy+=(ring[j][1]+ring[i][1])*cross;}
+    area*=.5;const abs=Math.abs(area);if(abs>bestArea){bestArea=abs;best=abs>1e-12?[cx/(6*area),cy/(6*area)]:null;}
+  });
+  if(best&&Number.isFinite(best[0])&&Number.isFinite(best[1]))return [best[1],best[0]];
+  const bounds=L.geoJSON(feature).getBounds();return bounds.isValid()?bounds.getCenter():null;
+}
 function initBarangayLayer(){
   if(typeof SAN_VICENTE_BARANGAYS==='undefined')return;
   barangayLayer=L.geoJSON(SAN_VICENTE_BARANGAYS,{style:getBarangayStyle(),onEachFeature:(f,layer)=>{
     const label=document.createElement('span');label.textContent=f.properties?.name||'Barangay';
     layer.bindTooltip(label,{sticky:true,className:'barangay-tooltip'});
   }});
+  barangayMarkerLayer=L.layerGroup();
+  SAN_VICENTE_BARANGAYS.features.forEach(feature=>{
+    const name=feature.properties?.name||'Barangay';const center=barangayCenter(feature);if(!center)return;
+    const marker=L.marker(center,{title:name,keyboard:true,icon:L.divIcon({className:'barangay-point-icon',html:`<span class="barangay-point" aria-hidden="true"></span>`,iconSize:[14,14],iconAnchor:[7,7]})});
+    marker.bindTooltip(name,{direction:'top',offset:[0,-7],className:'barangay-point-tooltip'});
+    marker.on('click',()=>{const bounds=L.geoJSON(feature).getBounds();if(bounds.isValid())map.flyToBounds(bounds,{padding:[80,80],maxZoom:13,duration:.7});});
+    marker.addTo(barangayMarkerLayer);
+  });
   if(barangayVisible)barangayLayer.addTo(map);
+  updateBarangayMarkerVisibility(map.getZoom());
   document.getElementById('barangayToggle').checked=barangayVisible;
 }
 function toggleBarangayLayer(){
   barangayVisible=document.getElementById('barangayToggle').checked;
-  if(barangayLayer && map){if(barangayVisible)barangayLayer.addTo(map);else map.removeLayer(barangayLayer);}
+  if(barangayLayer&&map){if(barangayVisible)barangayLayer.addTo(map);else map.removeLayer(barangayLayer);}
+  updateBarangayMarkerVisibility(map?.getZoom()||0);
   try{sessionStorage.setItem('sanvic_boundaries',barangayVisible?'on':'off');}catch(e){}
 }
 function updateBarangayStyle(){barangayLayer?.setStyle(getBarangayStyle());}
@@ -1215,11 +1259,16 @@ function switchMapLayer(type){
   try{sessionStorage.setItem('sanvic_basemap',type);}catch(e){}
   updateBarangayStyle(); mapNotice('');
 }
+function renderMapLegend(){
+  const host=document.getElementById('mapLegendItems');
+  if(!host)return;
+  host.innerHTML=Object.keys(catStyle).filter(k=>destinations.some(d=>d.category===k)).map(k=>`<div class="map-legend-item"><i class="map-legend-dot" style="--legend-color:${escT(categoryMarkerColor(k))}"></i><span>${escT(catStyle[k].label||k)}</span></div>`).join('');
+}
 function toggleLayersMenu(force){
   const menu=document.getElementById('layersMenu'), trigger=document.getElementById('layersButton');
   const open=typeof force==='boolean'?force:menu.hidden;
   menu.hidden=!open;trigger.setAttribute('aria-expanded',String(open));
-  if(open)menu.querySelector('input:checked')?.focus();
+  if(open){renderMapLegend();menu.querySelector('input:checked')?.focus();}
 }
 document.addEventListener('click',e=>{
   if(!e.target.closest('#mapLayerToggle'))toggleLayersMenu(false);
@@ -1296,13 +1345,15 @@ function timeOfDayGreeting(){
   const h = new Date().getHours();
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
 }
+function todayProfile(){
+  try{return JSON.parse(localStorage.getItem('sanvic_entry_v1')||'null');}catch(e){return null;}
+}
 function todayNickname(){
-  try{
-    const raw = localStorage.getItem('sanvic_entry_v1');
-    if(!raw) return '';
-    const p = JSON.parse(raw);
-    return (p && p.nickname ? String(p.nickname).trim() : '');
-  }catch(e){ return ''; }
+  const profile=todayProfile();
+  return profile&&profile.nickname?String(profile.nickname).trim():'';
+}
+function todayAudience(){
+  return todayProfile()?.audience==='local'?'local':'visitor';
 }
 // The Today header strip and the Pulse "Live now" line carried hardcoded
 // counts that drifted from the real data ("4 tribes forming" while seven were
@@ -1314,7 +1365,7 @@ function updateLiveCounts(){
   setText('tmTribes', String(tribes));
   setText('tmHappening', String(events));
   setText('tmSunset', (TODAY_DATA.snapshot && TODAY_DATA.snapshot.sunset) || '');
-  setText('pv2LiveCount', (tribes + events) + ' things happening');
+  setText('pv2LiveCount', tribes + ' listed tribes · ' + events + ' listed events');
 }
 function updateTodayGreeting(){
   const kicker = document.getElementById('todayGreetingKicker');
@@ -1322,7 +1373,7 @@ function updateTodayGreeting(){
   if(!kicker || !nameEl) return;
   kicker.textContent = timeOfDayGreeting();
   const name = todayNickname();
-  nameEl.textContent = name || 'Traveler';
+  nameEl.textContent = name || (todayAudience()==='local'?'Neighbour':'Traveller');
   updateLiveCounts();
 }
 function openTodaySheet(){
@@ -1356,7 +1407,7 @@ const EXPLORE_AREAS = typeof SAN_VICENTE_BARANGAYS === 'undefined' ? [] :
   SAN_VICENTE_BARANGAYS.features.map(f=>({k:f.properties.name}));
 let exploreAudience = 'visitor';
 try{ exploreAudience = localStorage.getItem('sanvic_explore_audience') === 'local' ? 'local' : 'visitor'; }catch(e){}
-const exploreState = {query:'', category:'all', area:'', snap:1, selected:null, scroll:0, nearby:false};
+const exploreState = {query:'', category:'all', area:'', snap:2, selected:null, scroll:0, nearby:false};
 let exploreReturnView = null;
 let exploreResizeObserver = null;
 // True while a thumb is dragging the Explore sheet. The sheet's ResizeObserver
@@ -1449,11 +1500,11 @@ function exploreResults(){
 // row of categories reads as one family. This is the partner's "neon dots",
 // replacing the icon that sat here and made the list look busy.
 function catDot(key){
-  const c = (catStyle && catStyle[key] && catStyle[key].color) || '#7FA8FF';
+  const c = categoryMarkerColor(key);
   return `<i class="sv-cat-dot" style="--c:${escT(c)}" aria-hidden="true"></i>`;
 }
 function catColour(key){
-  return (catStyle && catStyle[key] && catStyle[key].color) || '#7FA8FF';
+  return categoryMarkerColor(key);
 }
 function explorePlaceCard(d){
   const cat=catStyle[d.category] || {label:d.category||'Place',icon:'map-pin'};
@@ -1480,16 +1531,6 @@ function renderExploreContent(){
   // The visiting/local question is asked once, in the first-visit questions.
   // Once answered there, the Explore sheet stays clean. If it was skipped the
   // toggle remains, so the choice is never unavailable.
-  const audienceBlock=document.getElementById('esAudience');
-  if(audienceBlock){
-    let answered=false;
-    try{ const prof=JSON.parse(localStorage.getItem('sanvic_entry_v1')||'null'); answered=!!(prof&&prof.audience); }catch(e){}
-    audienceBlock.hidden=answered;
-  }
-  document.querySelectorAll('.es-audience-btn').forEach(b=>{
-    const active=b.dataset.mode===exploreAudience;
-    b.classList.toggle('active',active); b.setAttribute('aria-pressed',String(active));
-  });
   const keys=Object.keys(catStyle).filter(k=>destinations.some(d=>d.category===k));
   // Show real categories only; the admin remains free to add or rename them.
   const ribbon=document.getElementById('esRibbon');
@@ -1538,18 +1579,11 @@ function renderExploreContent(){
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', attach); else attach();
 })();
 
-// True only when the visitor has actually narrowed Explore (search text,
-// category, barangay area, or "near me"). An unfiltered Explore list must not
-// keep the whole municipality pinned to the map at every zoom level.
-function exploreIsNarrowed(){
-  return !!(exploreState.query || exploreState.area || exploreState.nearby || (exploreState.category && exploreState.category!=='all'));
-}
 function syncExploreMap(){
   if(!map) return;
   const ids=new Set(exploreResults().filter(SanvicExplore.hasCoordinates).map(d=>String(d.id)));
   allMarkers.forEach(m=>{ if(!ids.has(String(m._d.id))) map.removeLayer(m); });
   activeMarkerSet=allMarkers.filter(m=>ids.has(String(m._d.id)));
-  pinVisibilityOverride=exploreIsNarrowed();
   applyPinVisibility();
   highlightExplorePlace(exploreState.selected);
 }
@@ -1574,7 +1608,6 @@ function fitExploreResults(){
   if(!map) return;
   const coords=exploreResults().filter(SanvicExplore.hasCoordinates).map(d=>[Number(d.lat),Number(d.lng)]);
   if(!coords.length) return;
-  if(!exploreIsSide()) setExploreSnap(1);
   syncMapViewport();
   const bottom=exploreIsSide()?90:Math.min(document.getElementById('exploreSheet').getBoundingClientRect().height+100,window.innerHeight-180);
   map.fitBounds(coords,{paddingTopLeft:[48,100],paddingBottomRight:[70,bottom],maxZoom:14,animate:false});
@@ -1729,39 +1762,92 @@ let todayPickTurn = 0;
 function todayPickPool(){
   let prof = null;
   try{ prof = JSON.parse(localStorage.getItem('sanvic_entry_v1') || 'null'); }catch(e){ return []; }
-  const tags = (prof && Array.isArray(prof.vibeTags)) ? prof.vibeTags.map(t=>String(t||'').toLowerCase()).filter(Boolean) : [];
-  // Only the vibes this visitor actually chose may be cited as the reason. The
-  // card says "You picked: ...", so naming a vibe they never picked would be a
-  // lie on their own screen.
-  const mine = (prof && Array.isArray(prof.vibes)) ? prof.vibes.map(String) : [];
-  const vibes = (Array.isArray(window.SANVIC_VIBES) ? window.SANVIC_VIBES : [])
-    .filter(v => !mine.length || mine.indexOf(v.label) >= 0);
+  const selected = (prof && Array.isArray(prof.vibes)) ? prof.vibes.map(String) : [];
+  const selectedVibes = (Array.isArray(window.SANVIC_VIBES) ? window.SANVIC_VIBES : [])
+    .filter(v => selected.includes(v.label));
   const list = (Array.isArray(destinations) ? destinations : []).filter(d=>d.lat!=null && d.lng!=null);
-  if(!tags.length || !list.length) return [];
-  const scored = list.map(d=>{
-    const hay = [d.name, d.category, d.barangay, d.description, d.tip].filter(Boolean).join(' ').toLowerCase();
-    let score = 0;
-    tags.forEach(t=>{ if(t.length > 2 && hay.indexOf(t) >= 0) score += 1; });
-    if(tags.indexOf(String(d.category||'').toLowerCase()) >= 0) score += 2;   // the category itself counts double
-    // Which of the visitor's own choices put this place here, so the card can say
-    // why instead of just naming it.
-    let why = null;
-    for(const v of vibes){
-      if(!v.tags) continue;
-      if(v.tags.some(t=>t.length > 2 && hay.indexOf(String(t).toLowerCase()) >= 0)){ why = v; break; }
-    }
-    return { d, score, why };
-  }).filter(x=>x.score > 0).sort((a,b)=>b.score - a.score || String(a.d.name).localeCompare(String(b.d.name)));
-  // A resort is somewhere you sleep, not somewhere the day takes you, so it only
-  // gets suggested if nothing else matched at all.
-  const out = scored.filter(x=>x.d.category !== 'stays');
-  return out.length ? out : scored;
+  if(selectedVibes.length!==4 || !list.length) return [];
+  const groups={
+    food:/food|resto|restaurant|cafe|caf[eé]|dining|bar|bakery/i,
+    beach:/beach/i,island:/island|boat/i,nature:/nature|waterfall|falls|wildlife|forest/i,
+    explore:/adventure|explore/i,stay:/stay|accommodation|hotel|resort|lodge/i,
+    service:/service|transport|market|shop/i,surf:/surf|sport/i,nightlife:/nightlife|music|bar/i,
+    social:/community|event|tribe|social/i
+  };
+  const terms={
+    food:/food|eat|eating|restaurant|resto|cafe|caf[eé]|dining|burger|seafood|menu|grill|dish|coffee|drink/i,
+    beach:/beach|shore|coast|sand|swim|swimming|seaside/i,
+    island:/island|boat|hopping|reef|sandbar/i,
+    nature:/nature|waterfall|falls|forest|jungle|wildlife|trek|trail/i,
+    explore:/explore|adventure|hidden|route|scooter|journey/i,
+    stay:/stay|hotel|resort|lodge|accommodation|cottage|homestay/i,
+    service:/service|transport|market|shop|laundry|atm|repair/i,
+    surf:/surf|wave|board|sport/i,
+    nightlife:/night|music|bar|cocktail|videoke/i,
+    social:/social|people|group|friends|local|community|event/i,
+    quiet:/quiet|calm|peaceful|secluded|slow|hammock/i,
+    sunset:/sunset|sunrise|golden hour|viewpoint|dusk/i,
+    photo:/photo|photography|camera|viewpoint|scenic/i,
+    wildlife:/turtle|wildlife|hatchling|reef|animal/i,
+    wellness:/massage|wellness|spa|slow|relax/i,
+    private:/private|boat|couple|intimate/i,
+    hidden:/hidden|secret|remote|wild|quiet/i,
+    couples:/couple|romantic|private/i,
+    local:/local|market|community|barangay|culture/i,
+    market:/market|shop|stall|souvenir/i,
+    routes:/route|road|scooter|transport/i,
+    drink:/drink|bar|wine|cocktail|beer/i,
+    recovery:/coffee|breakfast|food|meal/i,
+    curated:/private|curated|boat|guide/i,
+    boat:/boat|island|sailing|water/i,
+    adventure:/adventure|trek|surf|explore|waterfall/i,
+    viewpoints:/view|viewpoint|scenic|sunset/i
+  };
+  const categoryGroup=(d)=>{
+    const key=String(d.category||'').toLowerCase();
+    const text=String(catStyle[key]?.label||'').toLowerCase();
+    const source=key+' '+text;
+    return Object.keys(groups).find(g=>groups[g].test(source))||'';
+  };
+  return list.map(d=>{
+    const hay=[d.name,d.category,catStyle[d.category]?.label,d.barangay,d.description,d.tip].filter(Boolean).join(' ').toLowerCase();
+    const primaryGroup=categoryGroup(d);
+    let score=0;const matched=[];
+    selectedVibes.forEach(v=>{
+      let vibeScore=0;
+      (v.tags||[]).forEach(tag=>{
+        const group=String(tag).toLowerCase();
+        const categoryMatch=!!(primaryGroup&&groups[group]&&groups[group].test(String(d.category||'')+' '+String(catStyle[d.category]?.label||'')));
+        // If a listing has a strong, unrelated category (e.g. an island) do not
+        // let a generic word such as "beach" turn it into a restaurant pick.
+        const unrelatedStrongCategory=!!(primaryGroup&&groups[group]&&!categoryMatch);
+        if(categoryMatch) vibeScore+=5;
+        else if(!unrelatedStrongCategory && terms[group]&&terms[group].test(hay)) vibeScore+=2;
+        else if(!unrelatedStrongCategory && group.length>3 && hay.includes(group)) vibeScore+=1;
+      });
+      if(vibeScore){score+=vibeScore;matched.push({label:v.label,score:vibeScore});}
+    });
+    return {d,score,why:matched};
+  }).filter(x=>x.score>0)
+    .sort((a,b)=>b.score-a.score||String(a.d.name).localeCompare(String(b.d.name)));
 }
 function todayPersonalPick(){
   const pool = todayPickPool();
   if(!pool.length) return null;
-  const picked = [];
-  for(let i = 0; i < 3 && i < pool.length; i++) picked.push(pool[(todayPickTurn + i) % pool.length]);
+  const offset=todayPickTurn%pool.length;
+  const remaining=pool.slice(offset).concat(pool.slice(0,offset));
+  const picked=[];
+  const covered=new Set();
+  while(picked.length<3&&remaining.length){
+    let bestIndex=0,bestValue=-Infinity;
+    remaining.forEach((item,index)=>{
+      const fresh=(item.why||[]).filter(v=>!covered.has(v.label)).length;
+      const repeated=(item.why||[]).filter(v=>covered.has(v.label)).length;
+      const value=item.score+fresh*4-repeated*1.5;
+      if(value>bestValue){bestValue=value;bestIndex=index;}
+    });
+    const item=remaining.splice(bestIndex,1)[0];picked.push(item);(item.why||[]).forEach(v=>covered.add(v.label));
+  }
   return picked;
 }
 function generateNewPick(){
@@ -1807,7 +1893,7 @@ function renderTodayContent(){
     // place's own tip do the describing. "Long Beach · Poblacion · Beaches" read
     // like a directory line, not a suggestion.
     const whyLine = x.why
-      ? 'You picked: ' + x.why.label + (p.barangay ? ' · ' + p.barangay : '')
+      ? 'Matches: ' + x.why.map(v=>v.label).join(' + ') + (p.barangay ? ' · ' + p.barangay : '')
       : [p.barangay, catLabelFor(p.category)].filter(Boolean).join(' · ');
     const tip = String(p.tip || '').trim();
     const tipLine = tip ? (tip.length > 104 ? tip.slice(0, 101).trim() + '…' : tip) : '';
@@ -1822,7 +1908,7 @@ function renderTodayContent(){
   const pick = picks ? `
     <article class="today-card">
       <div class="today-kicker">Picked for you</div>
-      <p class="today-lede">${picks.length === 1 ? 'One place' : picks.length + ' places'} from what you told us you are into. Ask for another set any time.</p>
+      <p class="today-lede">${picks.length === 1 ? 'One place' : picks.length + ' places'} scored against all four interests in your profile. Ask for another set any time.</p>
       <div class="today-path">
         ${picks.map(pickCard).join('')}
       </div>
@@ -2106,7 +2192,7 @@ const PULSE_TRIBES = [
     thumb:'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=200&h=260&fit=crop&q=70' },
   { id:'t3', title:'Sunset Drinks', where:'Poblacion', when:'Today, 6:00 PM', sub:"Let's catch the golden hour.", cap:5, joined:4, extra:3, tags:['Sunset','Food & Drinks','Nightlife'],
     thumb:'https://images.unsplash.com/photo-1470337458703-46ad1756a187?w=200&h=260&fit=crop&q=70' },
-  { id:'t4', title:'Sunrise Surf Crew', where:'Alimanguan', when:'Tomorrow, 6:00 AM', sub:'Waves, coffee, go!', cap:3, joined:4, extra:1, tags:['Surf'],
+  { id:'t4', title:'Sunrise Surf Crew', where:'Alimanguan', when:'Tomorrow, 6:00 AM', sub:'Waves, coffee, go!', cap:3, joined:2, extra:1, spots:1, tags:['Surf'],
     thumb:'https://images.unsplash.com/photo-1502680390469-be75c86b636f?w=200&h=260&fit=crop&q=70' },
   { id:'t5', title:'Shared Ride to Port Barton', where:'Poblacion', when:'Tomorrow, 10:00 AM', sub:"2 seats open. Let's split gas!", cap:0, joined:4, extra:1, tags:['Transport'], seatsOpen:2, ok:true,
     thumb:'https://images.unsplash.com/photo-1519638831568-d9897f54ed69?w=200&h=260&fit=crop&q=70' },
@@ -2141,6 +2227,7 @@ function openPulsePanel(){
   renderPulseCatRibbon();
   selectPulseView(pulseView || 'tribes');
   updateLiveCounts();
+  maybeShowSectionBriefing('tribes');
   pulseRibbonOnScroll();
   syncPulseRibbonHeight();
 }
@@ -2251,7 +2338,9 @@ function personName(){
   return todayNickname() || '';
 }
 function personSave(name, kind){
-  const p = { id: personId(), name: String(name||'').trim().slice(0,40), kind: kind==='local'?'local':'traveler', at: new Date().toISOString() };
+  let profile=null;try{profile=JSON.parse(localStorage.getItem('sanvic_entry_v1')||'null');}catch(_){}
+  const resolvedKind=kind || (profile&&profile.audience==='local'?'local':'traveler');
+  const p = { id: personId(), name: String(name||'').trim().slice(0,40), kind: resolvedKind==='local'?'local':'traveler', at: new Date().toISOString() };
   try{ localStorage.setItem(PERSON_KEY, JSON.stringify(p)); }catch(_){ }
   pulseSaveName(p.name);
   return p;
@@ -2261,6 +2350,12 @@ function personSave(name, kind){
 function ensurePerson(action){
   const p = personGet();
   if(p && p.name){ action(p); return; }
+  let profile=null;try{profile=JSON.parse(localStorage.getItem('sanvic_entry_v1')||'null');}catch(_){}
+  if(profile && profile.nickname && String(profile.nickname).trim()){
+    const person=personSave(profile.nickname,profile.audience);
+    action(person);
+    return;
+  }
   pendingPersonAction = action;
   openPersonSheet();
 }
@@ -2271,7 +2366,8 @@ function openPersonSheet(){
   const inp = document.getElementById('personNameInput');
   if(inp) inp.value = personName();
   const known = personGet();
-  setPersonKind(known ? known.kind : 'traveler');
+  let profile=null;try{profile=JSON.parse(localStorage.getItem('sanvic_entry_v1')||'null');}catch(_){}
+  setPersonKind(known ? known.kind : (profile&&profile.audience==='local'?'local':'traveler'));
   const st = document.getElementById('personStatus');
   if(st){ st.textContent = ''; st.className = 'person-status'; }
   if(ov) ov.classList.add('active');
@@ -2538,11 +2634,8 @@ function tribeCardHTML(t){
   const total = tribeTotalCount(t);
   const mine = myTribes.has(String(t.id));
   const names = tribeMemberNames(t.id);
-  const metaExtra = t.spots
-    ? `<div class="pv2-metaline warn">${total} travelers • ${t.spots} spots left</div>`
-    : t.seatsOpen
-      ? `<div class="pv2-metaline ok">${total} travelers • ${t.seatsOpen} seats open</div>`
-      : `<div class="pv2-metaline">${total} travelers</div>`;
+  const capacity=Number(t.cap)>0?Math.max(0,Number(t.cap)-total):(Number(t.spots||t.seatsOpen)||0);
+  const metaExtra=capacity>0?`${total} joining · ${capacity} ${capacity===1?'spot':'spots'} open`:total+' joined · Full';
   const namesLine = names.length
     ? `<div class="pv2-metaline names">With ${escapeHtml(names.slice(0,3).join(', '))}${names.length>3 ? ' +'+(names.length-3) : ''}</div>`
     : '';
@@ -2568,13 +2661,10 @@ function tribeCardHTML(t){
         <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${t.where}</span>
         <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${t.when}</span>
       </div>
+      <div class="pv2-tribe-capacity">${metaExtra}</div>
       <div class="pv2-tribe-sub">${t.sub}</div>
       <div class="pv2-tribe-foot">
-        <div>
-          <div style="display:flex;align-items:center">${total ? `<span class="pv2-av-count">${total} joined</span>` : ''}</div>
-          ${metaExtra}
-          ${namesLine}
-        </div>
+        <div>${namesLine}</div>
         <div style="display:flex;gap:6px;flex-shrink:0">
           <button class="pv2-join ghost" onclick="openTribeDetail('${t.id}')">Plan</button>
           <button class="pv2-join${mine?' on':''}" onclick="joinTribe('${t.id}')">${mine ? lucideSvg('check',13)+' Joined' : 'Join Tribe'}</button>
@@ -2640,6 +2730,17 @@ function openInfoSheet(opts){
   document.getElementById('infoOverlay').classList.add('active');
   schedulePanelOpen();
 }
+function maybeShowSectionBriefing(key){
+  const copy={
+    tribes:{title:'Tribes',meta:'Make a plan together',body:'<p>Join a small group by checking where and when they are meeting, how many people are already in, and how many places remain. Or start your own plan with <strong>Form a Tribe</strong>.</p>'},
+    hunt:{title:'The Hunt',meta:'Discover San Vicente by doing',body:'<p>Follow local clues, visit real places, and unlock stories as you go. Check the map and conditions before setting out, and keep your group together.</p>'}
+  }[key];
+  if(!copy)return;
+  const storageKey='sanvic_section_briefing_'+key+'_v1';
+  try{if(localStorage.getItem(storageKey))return;localStorage.setItem(storageKey,'1');}catch(_){}
+  setTimeout(()=>openInfoSheet({kicker:'First time here',title:copy.title,meta:copy.meta,body:`${copy.body}<div class="info-actions"><button class="info-cta" onclick="closeInfoSheet()">Got it</button></div>`}),220);
+}
+
 function closeInfoSheet(){
   const sheet = document.getElementById('infoSheet');
   if(!sheet) return;
@@ -3983,10 +4084,27 @@ async function renderPlaceExtras(d){
   box.innerHTML = html;
 }
 
+function renderPlaceCommunity(d){
+  const box=document.getElementById('deCommunity');
+  if(!box)return;
+  const terms=[d?.name,d?.barangay].filter(Boolean).map(x=>String(x).toLowerCase().trim()).filter(x=>x&&x!=='san vicente');
+  const relatedTribes=(typeof PULSE_TRIBES!=='undefined'?PULSE_TRIBES:[]).filter(t=>terms.some(term=>String(t.where||'').toLowerCase().includes(term)||String(t.title||'').toLowerCase().includes(term)||String(t.sub||'').toLowerCase().includes(term))).slice(0,3);
+  const relatedEvents=(typeof PULSE_EVENTS!=='undefined'?PULSE_EVENTS:[]).filter(e=>terms.some(term=>String(e.where||'').toLowerCase().includes(term)||String(e.title||'').toLowerCase().includes(term))).slice(0,2);
+  const rows=[...relatedTribes.map(t=>({kind:'Tribe',title:t.title,meta:[t.when,t.joined?`${t.joined} joining`:'' ].filter(Boolean).join(' · '),onclick:`openTribeDetail('${escT(t.id)}')`})),...relatedEvents.map(e=>({kind:'Event',title:e.title,meta:e.when||'',onclick:`openEventDetail('${escT(e.id)}')`}))];
+  if(!rows.length){box.hidden=true;box.innerHTML='';return;}
+  box.hidden=false;
+  box.innerHTML=`<div class="dest-community-title">People &amp; plans around ${escT(d.barangay||d.name)}</div>${rows.map(r=>`<button class="dest-community-card" type="button" onclick="${r.onclick}"><span>${escT(r.title)}<small>${escT(r.kind)}${r.meta?' · '+escT(r.meta):''}</small></span>${lucideSvg('chevron-right',16)}</button>`).join('')}`;
+}
+
 function openDest(d,recordHistory=true){
   if(!d)return;
-  if(!document.body.classList.contains('explore-open')){
-    closeAllPanels(); openExploreSheet(); setActiveDock('discover');
+  const fromExplore=document.body.classList.contains('explore-open');
+  if(!fromExplore){
+    closeAllPanels();
+    Object.assign(exploreState,{query:'',category:'all',area:'',nearby:false});
+    const search=document.getElementById('esSearchInput');if(search)search.value='';
+    openExploreSheet();setActiveDock('discover');
+    activeMarkerSet=allMarkers;renderExploreContent();
   }
   if(!exploreReturnView){
     exploreReturnView={center:map?.getCenter(),zoom:map?.getZoom(),snap:exploreState.snap,scroll:document.getElementById('exploreContent').scrollTop};
@@ -4040,6 +4158,7 @@ function openDest(d,recordHistory=true){
     showHeroImage();
   }
   document.getElementById('deTitle').textContent=d.name;
+  renderPlaceCommunity(d);
   document.getElementById('dcName').textContent=d.name;
   document.getElementById('deBarangay').textContent=d.barangay?'Barangay '+d.barangay:'San Vicente, Palawan';
   const cat=document.getElementById('deCat');cat.textContent=category.label;cat.style.background=category.bg;cat.style.color=category.color;
@@ -4066,10 +4185,9 @@ function openDest(d,recordHistory=true){
   if(tipsBox){ tipsBox.hidden = true; tipsBox.innerHTML = ''; }
   closeTalaSheet(false);
   const sheet=document.getElementById('destSheet');sheet.className='dest-sheet expanded';sheet.removeAttribute('inert');
-  // On a phone the sheet is nearly the whole screen, which is why the partner
-  // could not see where the place was. It now stops above the map, and the map
-  // is pushed so the pin sits in the part that is left.
-  sheet.style.maxHeight = exploreIsSide() ? '' : '72vh';
+  // Keep a generous map window visible above the detail sheet on phones, while
+  // preserving the compact-sheet control for anyone who wants more map context.
+  sheet.style.maxHeight = exploreIsSide() ? '' : '58dvh';
   sheet.setAttribute('role','region');sheet.setAttribute('aria-labelledby','deTitle');sheet.style.transform='';
   document.getElementById('destOverlay').classList.remove('active');
   document.body.classList.add('place-open');
@@ -4086,7 +4204,8 @@ function openDest(d,recordHistory=true){
 function centerMapOnPlace(d){
   if(!map || !d || typeof SanvicExplore==='undefined' || !SanvicExplore.hasCoordinates(d)) return;
   try{
-    map.setView([d.lat,d.lng],Math.max(13,map.getZoom()),{animate:false});
+    map.setView([d.lat,d.lng],Math.max(15,map.getZoom()),{animate:false});
+    highlightExplorePlace(d.id);
     if(!exploreIsSide()) map.panBy([0,Math.min(window.innerHeight*0.3,260)],{animate:false});
   }catch(e){}
 }
@@ -4123,7 +4242,7 @@ function toggleDestSheet(){
   if(exploreIsSide()){ if(body) body.scrollTo({top:0,behavior:reducedMotion()?'auto':'smooth'}); return; }
   if(sheet.classList.contains('closed')){
     sheet.className='dest-sheet expanded';
-    sheet.style.maxHeight='72vh';
+    sheet.style.maxHeight='58dvh';
     if(body) body.scrollTop=0;
   } else {
     sheet.className='dest-sheet closed';
@@ -4204,7 +4323,6 @@ function focusSanVicente(){
   closeAllPanels();
   closeDiscoverPanel();
   if(map){
-    pinVisibilityOverride = false;
     activeMarkerSet = allMarkers;
     map.flyTo([10.50,119.22],11,{duration:1});
     applyPinVisibility();
@@ -4475,7 +4593,7 @@ function dockNav(tab){
   }
 
   switch(tab){
-    case 'map': closeAllPanels(); closeDiscoverPanel(); document.getElementById('heroOverlay').classList.remove('hidden'); document.getElementById('heroFade').classList.remove('hidden'); if(map){ pinVisibilityOverride=false; activeMarkerSet=allMarkers; map.flyTo([10.50,119.22],11,{duration:1}); applyPinVisibility(); } openTodaySheet(); break;
+    case 'map': closeAllPanels(); closeDiscoverPanel(); document.getElementById('heroOverlay').classList.remove('hidden'); document.getElementById('heroFade').classList.remove('hidden'); if(map){ activeMarkerSet=allMarkers; map.flyTo([10.50,119.22],11,{duration:1}); applyPinVisibility(); } openTodaySheet(); break;
     case 'discover': closeAllPanels(); closeDiscoverPanel(); openExploreSheet(); break;
     case 'tala': closeAllPanels(); closeDiscoverPanel(); openTalaSheet(); break;
     case 'pulse': closeAllPanels(); closeDiscoverPanel(); openPulsePanel(); break;
@@ -4507,12 +4625,10 @@ function filterCategory(cat){
   allMarkers.forEach(m=>{ if(map.hasLayer(m)) map.removeLayer(m); });
   if(cat==='all'){
     activeMarkerSet = allMarkers;
-    pinVisibilityOverride = false; // back to zoom-based behavior on the default view
     map.flyTo([10.50,119.22],11,{duration:1});
   } else {
     const ms=markersByCat[cat]||[];
     activeMarkerSet = ms;
-    pinVisibilityOverride = true; // user explicitly asked for this category — always show it
     if(ms.length) map.flyToBounds(L.featureGroup(ms).getBounds().pad(.25),{duration:1,maxZoom:15});
   }
   applyPinVisibility();
@@ -8684,6 +8800,7 @@ function openHuntPanel(){
   p.classList.add('open');
   p.setAttribute('aria-hidden','false');
   renderHunt();
+  maybeShowSectionBriefing('hunt');
 }
 function closeHuntPanel(){
   const p = document.getElementById('huntPanel');
