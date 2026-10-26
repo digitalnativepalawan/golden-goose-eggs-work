@@ -4924,7 +4924,7 @@ function adminDestCatFormHtml(){
   const currentIcon = c.icon || 'map-pin';
   const iconGrid = ALL_ICON_KEYS.map(name=>{
     const sel = name === currentIcon ? ' is-selected' : '';
-    return `<button type="button" class="sv-icon-opt${sel}" data-icon="${name}" onclick="adminPickIcon('${name}')" title="${name}">${lucideSvg(name,18)}</button>`;
+    return `<button type="button" class="sv-icon-opt${sel}" data-icon="${name}" onclick="adminPickIcon('${name}')" aria-label="Icon ${name}">${lucideSvg(name,18)}</button>`;
   }).join('');
   return `
     <div class="admin-edit-box">
@@ -5082,7 +5082,7 @@ function adminNearbyFormHtml(){
   const currentNearbyIcon = (p.icon && (EXTRA_ICONS[p.icon] || LUCIDE_ICONS[p.icon])) ? p.icon : 'utensils';
   const nearbyIconGrid = ALL_ICON_KEYS.map(name=>{
     const sel = name === currentNearbyIcon ? ' is-selected' : '';
-    return `<button type="button" class="sv-icon-opt${sel}" data-icon="${name}" onclick="adminPickIcon('${name}','npfIcon')" title="${name}">${lucideSvg(name,18)}</button>`;
+    return `<button type="button" class="sv-icon-opt${sel}" data-icon="${name}" onclick="adminPickIcon('${name}','npfIcon')" aria-label="Icon ${name}">${lucideSvg(name,18)}</button>`;
   }).join('');
   return `
     <div class="admin-edit-box">
@@ -5227,14 +5227,14 @@ function adminDestRowHtml(d){
   const photoLabel = cover ? 'Add another photo' : 'Add a cover photo';
   return `
       <div class="admin-list-item admin-dest-row">
-        <button type="button" class="admin-row-thumb" data-dest-id="${d.id}" onclick="adminQuickPhoto(${d.id})" title="${photoLabel}" aria-label="${photoLabel}">
+        <button type="button" class="admin-row-thumb" data-dest-id="${d.id}" onclick="adminQuickPhoto(${d.id})" aria-label="${photoLabel}">
           ${cover ? `<img src="${escapeHtml(cover)}" alt="" onerror="adminThumbBroken(this)">` : lucideSvg('camera',18)}
           ${cover ? `<span class="admin-thumb-badge">${lucideSvg('camera',10)}</span>` : ''}
         </button>
         <div class="admin-dest-main">
           <div class="admin-list-item-head">
             <div onclick="adminEditDest(${d.id})" class="admin-dest-open">
-              <strong>${escapeHtml(d.name || 'Untitled place')}</strong><span class="admin-feat-toggle ${d.featured?'on':''}" onclick="event.stopPropagation();adminToggleFeatured(${d.id})" title="${d.featured?'Featured in Explore — click to remove':'Click to feature in Explore'}">${lucideSvg('star',12)}</span>${SanvicExplore.safeUrl(d.videoUrl) ? ` <span class="admin-feat-icon" title="Has video">${lucideSvg('film',12)}</span>` : ''}
+              <strong>${escapeHtml(d.name || 'Untitled place')}</strong><span class="admin-feat-toggle ${d.featured?'on':''}" onclick="event.stopPropagation();adminToggleFeatured(${d.id})" aria-label="${d.featured?'Remove from featured':'Feature in Explore'}">${lucideSvg('star',12)}</span>${SanvicExplore.safeUrl(d.videoUrl) ? ` <span class="admin-feat-icon" aria-label="Has video">${lucideSvg('film',12)}</span>` : ''}
               <span class="admin-row-meta">${bits.join(' &middot; ') || 'no details yet'}</span>
               <div class="admin-quality ${issues.length?'needs-work':'ready'}">${issues.length?'Needs: '+escapeHtml(issues.join(', ')):'Ready for Explore'}</div>
             </div>
@@ -5738,7 +5738,7 @@ async function adminWikimediaSuggest(q, results){
     }
     window.__wmPhotos = photos;
     grid.innerHTML = photos.map((ph, i) =>
-      '<button type="button" onclick="adminPickWikimedia(' + i + ')" title="' + escapeHtml((ph.artist||'Photo').replace(/<[^>]+>/g,'').trim() + ' · ' + ph.license) + '" style="border:1px solid var(--glass-border);border-radius:8px;overflow:hidden;padding:0;background:rgba(255,255,255,.04);cursor:pointer">' +
+      '<button type="button" onclick="adminPickWikimedia(' + i + ')" style="border:1px solid var(--glass-border);border-radius:8px;overflow:hidden;padding:0;background:rgba(255,255,255,.04);cursor:pointer">' +
       '<img src="' + ph.thumb + '" alt="" loading="lazy" style="width:100%;height:62px;object-fit:cover;display:block"></button>'
     ).join('');
   }catch(e){
@@ -6621,9 +6621,9 @@ function mediaThumbHtml(url, i, delCall, coverCall){
     <div class="admin-media-thumb">
       <img src="${escT(url)}" alt="" onerror="this.parentElement.style.display='none'">
       ${i === 0
-        ? '<span class="admin-media-cover-tag" title="This image is the cover">Cover</span>'
-        : (coverCall ? `<button class="admin-media-cover-btn" title="Make this the cover" aria-label="Make this the cover" onclick="${coverCall}">${lucideSvg('star',12)}</button>` : '')}
-      <button class="admin-media-del" title="Remove this image" aria-label="Remove this image" onclick="${delCall}">${lucideSvg('x',14)}</button>
+        ? '<span class="admin-media-cover-tag" >Cover</span>'
+        : (coverCall ? `<button class="admin-media-cover-btn" aria-label="Make this the cover" onclick="${coverCall}">${lucideSvg('star',12)}</button>` : '')}
+      <button class="admin-media-del" aria-label="Remove this image" onclick="${delCall}">${lucideSvg('x',14)}</button>
     </div>`;
 }
 
@@ -8631,7 +8631,7 @@ function renderMySanvic(){
       </div>
       <div class="mysv-hscroll">
         ${recent.map(r=>`
-          <button class="mysv-pill" onclick="mysvAction('view','${r.id}')" title="${escapeHtml(r.label)}">
+          <button class="mysv-pill" onclick="mysvAction('view','${r.id}')" aria-label="${escapeHtml(r.label)}">
             <span class="mysv-pill-thumb" style="background-image:url('${escapeHtml(r.image||'')}');background-size:cover;background-position:center;background-color:#2a3247"></span>
             ${escapeHtml(r.label)}
           </button>`).join('')}

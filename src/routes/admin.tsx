@@ -66,12 +66,12 @@ function Admin() {
             value={pin}
             onChange={(e) => setPin(e.target.value)}
             placeholder="Passcode"
-            className="mt-5 w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-white outline-none focus:border-white/40"
+            className="mt-5 min-h-12 w-full rounded-lg border border-white/15 bg-black/30 px-3 py-2 text-base text-white outline-none focus:border-white/40"
           />
           {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
           <button
             type="submit"
-            className="mt-4 w-full rounded-lg bg-emerald-400 px-3 py-2 text-sm font-medium text-[#06281f] hover:bg-emerald-300"
+            className="mt-4 min-h-11 w-full rounded-lg bg-emerald-400 px-3 py-2 text-sm font-medium text-[#06281f] hover:bg-emerald-300"
           >
             Unlock
           </button>
@@ -82,10 +82,10 @@ function Admin() {
 
   return (
     <div className="min-h-screen bg-[#060a10] text-slate-200">
-      <header className="flex items-center justify-between border-b border-white/10 px-5 py-3">
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-semibold text-white">SANVIC Admin</span>
-          <nav className="flex gap-1 text-xs">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-3 py-3 sm:px-5">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <span className="truncate text-sm font-semibold text-white">SANVIC Admin</span>
+          <nav className="order-3 flex w-full gap-1 overflow-x-auto text-xs sm:order-none sm:w-auto" aria-label="Advanced admin tools">
             {([
               ["data", "Data"],
               ["media", "Media"],
@@ -94,16 +94,17 @@ function Admin() {
               <button
                 key={id}
                 onClick={() => setTab(id)}
-                className={`rounded px-3 py-1.5 ${tab === id ? "bg-white/15 text-white" : "text-white/60 hover:text-white"}`}
+                className={`min-h-11 shrink-0 rounded px-3 py-2 ${tab === id ? "bg-white/15 text-white" : "text-white/60 hover:text-white"}`}
               >
                 {label}
               </button>
             ))}
           </nav>
         </div>
-        <div className="flex items-center gap-3">
-          <a href="/" className="text-xs text-white/50 hover:text-white">View site</a>
-          <button onClick={signOut} className="rounded border border-white/15 px-3 py-1.5 text-xs text-white/70 hover:bg-white/5">
+        <div className="flex items-center gap-2">
+          <a href="/site/index.html?admin=1" className="min-h-11 rounded border border-emerald-300/30 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-200 hover:bg-emerald-400/20">Content studio</a>
+          <a href="/" className="hidden min-h-11 items-center px-2 text-xs text-white/50 hover:text-white sm:flex">View site</a>
+          <button onClick={signOut} className="min-h-11 rounded border border-white/15 px-3 py-2 text-xs text-white/70 hover:bg-white/5">
             Lock
           </button>
         </div>

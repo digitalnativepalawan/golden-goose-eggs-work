@@ -105,6 +105,7 @@ function bearer(request: Request) {
   return m ? m[1].trim() : null;
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any -- dynamic table browser */
 function admin() {
   return supabaseAdmin as unknown as {
     from(t: string): any;
@@ -112,6 +113,7 @@ function admin() {
     rpc(n: string, p?: unknown): Promise<any>;
   };
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 const BLOCKED = new Set(["schema_migrations", "supabase_migrations"]);
 
@@ -265,6 +267,11 @@ async function handle(request: Request): Promise<Response> {
 // Used when the admin_list_tables() SQL helper is not installed.
 const FALLBACK_TABLES = [
   "destinations",
+  "place_details",
+  "place_contacts",
+  "place_links",
+  "amenities",
+  "place_amenities",
   "nearby_places",
   "destination_categories",
   "pulse_posts",
