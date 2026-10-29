@@ -8711,6 +8711,76 @@ function huntTodayDest(){
 // clue the visitor has to work out, and unlocks by GPS when they actually reach
 // it — no QR code, no scanning. Until somewhere is flagged there is nothing to
 // hunt, and the panel says so instead of inventing spots.
+// ── THE RIDDLES ───────────────────────────────────────────────────────────
+// Written by the partner, kept in their own table so they never appear as
+// ordinary pins in Explore and give themselves away. Loaded when the Hunt opens
+// rather than at boot, because nobody needs them until then.
+let HUNT_RIDDLES = [];
+let huntRiddlesLoaded = false;
+async function loadHuntRiddles(){
+  if(huntRiddlesLoaded) return HUNT_RIDDLES;
+  try{
+    const { data, error } = await sb.from('hunt_riddles')
+      .select('id,slug,title,verse,lat,lng,difficulty,image_url,hint,sort_order')
+      .eq('active', true)
+      .order('sort_order', { ascending:true });
+    if(error) throw error;
+    HUNT_RIDDLES = data || [];
+    huntRiddlesLoaded = true;
+  }catch(err){
+    console.warn('[SANVIC] Riddles failed to load:', err);
+  }
+  return HUNT_RIDDLES;
+}
+
+// Unlocked by being there, same rule as a hunting spot. Keyed on the riddle slug
+// so it can never collide with a destination id.
+function huntRiddleCard(r, i){
+  const state = huntLoadState();
+  const done = state.unlocked.includes(r.slug);
+  const img = r.image_url || '';
+  const verse = String(r.verse || '').trim();
+  return `
+    <div class="hunt-spot hunt-riddle${done ? ' is-done' : ''}">
+      <div class="hunt-spot-media">
+        ${img
+          ? `<div class="hunt-spot-thumb" style="background-image:url('${escapeHtml(img)}')"></div>`
+          : `<div class="hunt-spot-thumb hunt-spot-thumb-none" title="No photo yet">${lucideSvg('image',20)}</div>`}
+        <span class="hunt-spot-chip">${done ? lucideSvg('circle-check',12)+' Found' : 'Riddle ' + (i+1)}</span>
+      </div>
+      <div class="hunt-spot-body">
+        <div class="hunt-riddle-title">${escapeHtml(r.title || 'Riddle')}</div>
+        ${r.difficulty ? `<div class="hunt-riddle-diff">Difficulty ${escapeHtml(r.difficulty)}</div>` : ''}
+        <div class="hunt-riddle-verse">${escapeHtml(verse)}</div>
+        <button class="hunt-glass-btn" onclick="huntStartRiddle('${escT(r.slug)}')">${done ? 'Visit again' : 'Unlock at the spot'}</button>
+      </div>
+    </div>`;
+}
+
+// The riddle version of huntStart: same GPS rule, coordinates from the riddle.
+function huntStartRiddle(slug){
+  const r = HUNT_RIDDLES.find(x=>String(x.slug)===String(slug));
+  if(!r || r.lat==null || r.lng==null){ showHuntOverlay('No location yet', 'This riddle has no coordinates in the admin yet.'); return; }
+  const onFail = () => showHuntOverlay('Not there yet', 'Get to the place the riddle describes and try again. It unlocks within 200 m.');
+  if(!navigator.geolocation) return onFail();
+  navigator.geolocation.getCurrentPosition(pos => {
+    const R = 6371000, toRad = d => d*Math.PI/180;
+    const dLat = toRad(r.lat - pos.coords.latitude);
+    const dLng = toRad(r.lng - pos.coords.longitude);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(pos.coords.latitude))*Math.cos(toRad(r.lat))*Math.sin(dLng/2)**2;
+    const dist = 2*R*Math.asin(Math.sqrt(a));
+    if(dist > 200) return onFail();
+    const s = huntLoadState();
+    if(!s.unlocked.includes(r.slug)){
+      s.unlocked.push(r.slug);
+      s.points += 100;
+      huntSaveState(s);
+      renderHunt();
+    }
+    showHuntOverlay('Found it!', `${r.title} — 100 points.`);
+  }, () => onFail(), { timeout: 8000 });
+}
+
 function huntSpotList(){
   return (Array.isArray(destinations) ? destinations : [])
     .filter(d=>d.huntSpot && d.lat!=null && d.lng!=null);
@@ -8804,6 +8874,9 @@ function openHuntPanel(){
   p.setAttribute('aria-hidden','false');
   renderHunt();
   maybeShowSectionBriefing('hunt');
+  // Riddles are fetched the first time the Hunt is opened and then cached, so the
+  // rest of the app never pays for them.
+  if(!huntRiddlesLoaded) loadHuntRiddles().then(()=>{ if(document.getElementById('huntPanel')) renderHunt(); });
 }
 function closeHuntPanel(){
   const p = document.getElementById('huntPanel');
@@ -8941,16 +9014,19 @@ function renderHunt(){
 
   // Hunting spots: each one a clue plus a GPS unlock at the place itself.
   const spots = huntSpotList();
-  const spotsFound = spots.filter(d=>huntLoadState().unlocked.includes(String(d.id))).length;
+  const state0 = huntLoadState();
+  const riddleFound = HUNT_RIDDLES.filter(r=>state0.unlocked.includes(r.slug)).length;
+  const spotsFound = spots.filter(d=>state0.unlocked.includes(String(d.id))).length;
+  const totalSpots = HUNT_RIDDLES.length + spots.length;
   const spotsBlock = `
     <div class="hunt-section" id="huntSpots">
       <div class="hunt-sec-head">
-        <div><div class="hunt-sec-title">${lucideSvg('compass',15)} Hunting spots</div><div class="hunt-sec-sub">Read the clue, get to the place, unlock it there.</div></div>
-        ${spots.length ? `<div class="hunt-sec-count">${spotsFound} / ${spots.length}</div>` : ''}
+        <div><div class="hunt-sec-title">${lucideSvg('compass',15)} The riddles</div><div class="hunt-sec-sub">Work out where it is, then get there to unlock it.</div></div>
+        ${totalSpots ? `<div class="hunt-sec-count">${riddleFound + spotsFound} / ${totalSpots}</div>` : ''}
       </div>
-      ${spots.length
-        ? `<div class="hunt-spots">${spots.map(huntSpotCard).join('')}</div>`
-        : `<div class="hunt-empty">No hunting spots published yet. The team flags places for the Hunt and writes a clue for each one.</div>`}
+      ${HUNT_RIDDLES.length ? `<div class="hunt-spots">${HUNT_RIDDLES.map(huntRiddleCard).join('')}</div>` : ''}
+      ${spots.length ? `<div class="hunt-spots" style="margin-top:10px">${spots.map(huntSpotCard).join('')}</div>` : ''}
+      ${totalSpots ? '' : `<div class="hunt-empty">No riddles published yet. The team writes them in the Backoffice.</div>`}
     </div>`;
 
   body.innerHTML = `
