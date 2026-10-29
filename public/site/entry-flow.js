@@ -87,6 +87,10 @@
       .sanvic-entry-actions{display:flex;flex-direction:column;gap:8px;flex-shrink:0}.sanvic-entry-primary,.sanvic-entry-secondary{border:0;border-radius:999px;font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}.sanvic-entry-primary{min-height:50px;background:linear-gradient(135deg,var(--sand,#e8dcc8),var(--limestone,#c4a882));color:var(--charcoal-deep,#020e26);font-weight:700;letter-spacing:-.01em}.sanvic-entry-secondary{height:34px;background:transparent;color:rgba(255,255,255,.48);font-weight:600}
       .sanvic-entry-count{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.7);font-weight:700;flex-shrink:0}.sanvic-entry-primary:disabled{opacity:.42;cursor:not-allowed;filter:saturate(.45)}.sanvic-vibe-grid{display:grid;grid-template-columns:1fr;gap:8px;overflow-y:auto;max-height:34dvh;min-height:0;padding:1px 2px 8px;overscroll-behavior:contain}.sanvic-vibe-option{display:flex;align-items:center;gap:11px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.045);color:rgba(255,255,255,.84);font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);font-size:.88rem;font-weight:400;line-height:1.25;text-align:left;padding:9px 13px 9px 11px;letter-spacing:-.01em}.sanvic-vibe-ico{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:30px;height:30px;border-radius:11px;background:rgba(255,255,255,.06);color:rgba(232,220,200,.78);transition:background .18s ease,color .18s ease}.sanvic-vibe-label{min-width:0}.sanvic-vibe-option.selected{border-color:rgba(20,184,166,.42);background:rgba(20,184,166,.13);color:rgba(255,255,255,.95);box-shadow:inset 0 0 0 1px rgba(20,184,166,.08)}.sanvic-vibe-option.selected .sanvic-vibe-ico{background:rgba(20,184,166,.22);color:#7fe7dc}.sanvic-vibe-option.disabled{opacity:.45}.sanvic-entry-smile{display:flex;color:var(--limestone,#c4a882)}
       .sanvic-entry-choices{display:flex;gap:10px;flex-shrink:0}
+      /* The audience step is now only the sentence and the two answers, so they
+         carry the screen and are the biggest tap targets in the flow. */
+      .sanvic-entry-choices-lg{gap:12px;margin-top:6px}
+      .sanvic-entry-choices-lg .sanvic-entry-choice{min-height:62px;font-size:1.02rem;border-radius:20px;background:rgba(255,255,255,.06)}
       .sanvic-entry-choice{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.05);color:rgba(255,255,255,.9);font-family:var(--font-body,'DM Sans',-apple-system,sans-serif);font-size:.95rem;font-weight:600;cursor:pointer;padding:0 10px;-webkit-tap-highlight-color:transparent}
       .sanvic-entry-choice svg{flex-shrink:0;opacity:.72}
       .sanvic-entry-choice:hover svg,.sanvic-entry-choice:focus-visible svg{opacity:1}
@@ -131,7 +135,10 @@
   function render(){
     const w=document.getElementById('sanvicEntryContent'); if(!w) return;
     if(state.step===1){
-      w.innerHTML=`<div class="sanvic-entry-kicker">SANVIC</div><h1 class="sanvic-entry-title">How will you use SANVIC?</h1><p class="sanvic-entry-sub">Choose the experience that fits you.</p><div class="sanvic-entry-choices"><button type="button" class="sanvic-entry-choice" id="entryVisitor">${icon('luggage',17)}<span>Traveller</span></button><button type="button" class="sanvic-entry-choice" id="entryResident">${icon('house',17)}<span>Resident</span></button></div>`;
+      // Merged: the title from the other agent's version, which reads better,
+      // with the description removed and no skip, both of which the partner
+      // asked for. Two buttons, Traveller and Resident, and nothing else.
+      w.innerHTML=`<div class="sanvic-entry-kicker">SANVIC</div><h1 class="sanvic-entry-title">How will you use SANVIC?</h1><div class="sanvic-entry-choices sanvic-entry-choices-lg"><button type="button" class="sanvic-entry-choice" id="entryVisitor">${icon('luggage',18)}<span>Traveller</span></button><button type="button" class="sanvic-entry-choice" id="entryResident">${icon('house',18)}<span>Resident</span></button></div>`;
       bindAction('entryResident', ()=>chooseAudience('local'));
       bindAction('entryVisitor', ()=>chooseAudience('visitor'));
       return;

@@ -242,12 +242,16 @@ body.explore-open .map-util-btn,body.explore-open .map-layer-toggle{opacity:1;po
 .dock-coachmark.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .dock-coachmark span{background:var(--glass-bg-heavy);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:var(--radius-pill);padding:8px 16px;font-family:var(--font-body);font-size:.72rem;font-weight:500;color:var(--white-soft);white-space:nowrap;box-shadow:0 6px 20px rgba(0,0,0,.3)}
 .dock-coachmark-arrow{width:16px;height:8px;color:var(--glass-bg-heavy);margin-top:-1px;filter:drop-shadow(0 4px 5px rgba(0,0,0,.25))}
-.dock-item{width:56px;height:44px;border-radius:var(--radius-sm);border:none;background:transparent;color:var(--white-muted);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:all .25s;position:relative}
+.dock-item{width:58px;height:46px;border-radius:14px;border:none;background:transparent;color:rgba(214,236,244,.84);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;transition:all .25s;position:relative}
 .dock-item:active{transform:scale(.92)}
-.dock-item.active{color:var(--white-soft);background:rgba(20,184,166,.14)}
-.dock-item.active::after{content:'';position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--ocean-teal-light);box-shadow:0 0 10px var(--ocean-glow)}
-.dock-item svg{width:21px;height:21px}
-.dock-item span{font-size:.6rem;font-weight:500;letter-spacing:.02em}
+/* The partner: the labels were too small and too low-contrast, the active block
+   was too heavy, and the icons should carry a soft turquoise neon with a little
+   more brightness and glow when the tab is the one you are on. */
+.dock-item.active{color:#eafcff;background:rgba(20,184,166,.09)}
+.dock-item.active::after{content:'';position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--ocean-teal-light);box-shadow:0 0 14px rgba(94,234,212,.95)}
+.dock-item svg{width:21px;height:21px;color:#a9eef0;filter:drop-shadow(0 0 5px rgba(94,234,212,.5));transition:color .25s,filter .25s}
+.dock-item.active svg{color:#e2fffb;filter:drop-shadow(0 0 10px rgba(94,234,212,.95))}
+.dock-item span{font-size:.68rem;font-weight:600;letter-spacing:.01em;line-height:1}
 
 /* ═══════════════════════════════════
    TALA ORB (single entry point)
@@ -2126,16 +2130,18 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   /* The category marker, to the partner's sheet: a round dot in the category's
      own colour, a bright core, and a wide soft bloom around it. Sized per
      context rather than one size everywhere. */
-  .sv-cat-dot{--s:18px;display:inline-block;width:var(--s);height:var(--s);border-radius:50%;flex-shrink:0;vertical-align:middle;
+  /* Partner's correction: glow radius down about 40%, dot down about 20%, so a
+     screen of dots reads as a map rather than a fairground. */
+  .sv-cat-dot{--s:14px;display:inline-block;width:var(--s);height:var(--s);border-radius:50%;flex-shrink:0;vertical-align:middle;
     background:radial-gradient(circle closest-side, #ffffff 0 30%, var(--c,#7FA8FF) 31% 100%);
-    box-shadow:0 0 7px var(--c,#7FA8FF),0 0 16px var(--c,#7FA8FF)}
-  .sv-cat-dot.lg{--s:30px}
+    box-shadow:0 0 4px var(--c,#7FA8FF),0 0 10px var(--c,#7FA8FF)}
+  .sv-cat-dot.lg{--s:24px}
   /* The admin's category rows, to the partner's sheet: dot, name, hex. */
   .admin-cat-label{font-size:1rem;font-weight:600;color:#fff;line-height:1.2}
   .admin-cat-hex{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(186,203,235,.6);margin-top:4px}
-  .sv-cat-dot.sm{--s:12px}
-  .es-chip .sv-cat-dot{--s:14px;margin-right:3px}
-  .result-category .sv-cat-dot{--s:11px;margin-right:5px}
+  .sv-cat-dot.sm{--s:10px}
+  .es-chip .sv-cat-dot{--s:11px;margin-right:3px}
+  .result-category .sv-cat-dot{--s:9px;margin-right:5px}
   /* Picked for you: the reason, and something specific about the place. */
   .today-node .tnode-label{display:flex;align-items:center;gap:7px}
   .today-node .tnode-label svg{flex-shrink:0;opacity:.85}
