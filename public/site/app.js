@@ -4093,7 +4093,10 @@ function renderPlaceCommunity(d){
   const rows=[...relatedTribes.map(t=>({kind:'Tribe',title:t.title,meta:[t.when,t.joined?`${t.joined} joining`:'' ].filter(Boolean).join(' · '),onclick:`openTribeDetail('${escT(t.id)}')`})),...relatedEvents.map(e=>({kind:'Event',title:e.title,meta:e.when||'',onclick:`openEventDetail('${escT(e.id)}')`}))];
   if(!rows.length){box.hidden=true;box.innerHTML='';return;}
   box.hidden=false;
-  box.innerHTML=`<div class="dest-community-title">People &amp; plans around ${escT(d.barangay||d.name)}</div>${rows.map(r=>`<button class="dest-community-card" type="button" onclick="${r.onclick}"><span>${escT(r.title)}<small>${escT(r.kind)}${r.meta?' · '+escT(r.meta):''}</small></span>${lucideSvg('chevron-right',16)}</button>`).join('')}`;
+  // Two lines per row, not one run-on: the title on top, the kind and the time
+  // underneath. They used to be adjacent inline elements, so it read
+  // "Sunset ChasersTribe" with no space between them.
+  box.innerHTML=`<div class="dest-community-title">People &amp; plans around ${escT(d.barangay||d.name)}</div>${rows.map(r=>`<button class="dest-community-card" type="button" onclick="${r.onclick}"><span class="dcc-body"><strong class="dcc-t">${escT(r.title)}</strong><small class="dcc-m">${escT(r.kind)}${r.meta?' · '+escT(r.meta):''}</small></span>${lucideSvg('chevron-right',16)}</button>`).join('')}`;
 }
 
 function openDest(d,recordHistory=true){
