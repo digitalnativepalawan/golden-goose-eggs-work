@@ -1445,11 +1445,18 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .pv2-live-dot{background:#39ffd0;box-shadow:0 0 8px rgba(57,255,208,.55);animation:none}
   .pv2-header-cta{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:11px 16px;border:1px solid rgba(57,255,208,.62);border-radius:999px;background:linear-gradient(120deg,rgba(57,255,208,.2),rgba(20,184,166,.12));color:#d9fff8;font:700 .82rem var(--font-body);letter-spacing:.01em;box-shadow:0 0 18px rgba(57,255,208,.12);cursor:pointer}
   .pv2-header-cta svg{width:17px;height:17px;color:#39ffd0}
-  .pv2-viewtabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;padding:14px 12px 0;flex-shrink:0;
+  /* Five views since the feed came back: tribes, feed, events, lounge, form.
+     The columns are even so the row still reads as one control, and the type
+     tightens on a narrow phone rather than dropping a tab. */
+  .pv2-viewtabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;padding:14px 6px 0;flex-shrink:0;
     border-bottom:1px solid rgba(255,255,255,.06)}
-  .pv2-vtab{background:none;border:0;color:rgba(255,255,255,.55);cursor:pointer;padding:10px 4px 12px;
-    display:flex;flex-direction:column;align-items:center;gap:6px;font-size:.72rem;line-height:1.15;text-align:center;position:relative;min-width:0}
+  .pv2-vtab{background:none;border:0;color:rgba(255,255,255,.55);cursor:pointer;padding:10px 2px 12px;
+    display:flex;flex-direction:column;align-items:center;gap:6px;font-size:.7rem;line-height:1.15;text-align:center;position:relative;min-width:0}
   .pv2-vtab svg{width:22px;height:22px}
+  @media (max-width:380px){
+    .pv2-vtab{font-size:.64rem;padding:10px 1px 11px}
+    .pv2-vtab svg{width:20px;height:20px}
+  }
   .pv2-vtab.active{color:#5eead4}
   .pv2-vtab.active::after{content:'';position:absolute;left:12%;right:12%;bottom:-1px;height:2px;background:#5eead4;border-radius:2px}
   /* The resting height is measured in JS (--rib-h), not guessed: a fixed cap
@@ -1464,6 +1471,16 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .pv2-cat{flex-shrink:0;font-size:.78rem;font-weight:500;padding:8px 14px;border-radius:999px;
     background:transparent;border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.85);cursor:pointer;white-space:nowrap}
   .pv2-cat.active{background:rgba(20,184,166,.16);border-color:rgba(20,184,166,.55);color:#5eead4}
+  /* The feed's own composer trigger and channel chips. They live inside the
+     scrolling body, so they are not the shared #pv2CatRibbon (that one filters
+     tribes and events, which use different names). */
+  .pv2-feed-top{padding:6px 0 10px}
+  .pv2-feed-compose{display:flex;align-items:center;gap:10px;width:100%;background:rgba(255,255,255,.045);
+    border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px 14px;color:rgba(255,255,255,.55);
+    font:400 .82rem var(--font-body);cursor:pointer;text-align:left}
+  .pv2-feed-compose svg{width:16px;height:16px;color:#5eead4;flex-shrink:0}
+  .pv2-feed-chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;margin-top:10px}
+  .pv2-feed-chips::-webkit-scrollbar{display:none}
   .pv2-catchev{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:22px;height:22px;
     display:grid;place-items:center;color:rgba(255,255,255,.55);pointer-events:none;
     background:linear-gradient(90deg,transparent,rgba(4,10,26,.92) 40%)}
@@ -1610,11 +1627,11 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
 <div class="pulse-panel" id="pulsePanel" data-view="tribes">
   <div class="pv2-head">
     <div class="pv2-title-row">
-      <span class="pv2-title">Tribes</span>
+      <span class="pv2-title" id="pv2Title">Tribes</span>
       <svg class="pv2-wave" viewBox="0 0 34 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 8 6 8 9 2 14 14 18 8 22 4 26 12 30 8 33 8"/></svg>
     </div>
-    <div class="pv2-sub">Find your tribe today.</div>
-    <div class="pv2-body-copy">Join small groups, local happenings, and tribe chats around San Vicente.</div>
+    <div class="pv2-sub" id="pv2Sub">Find your tribe today.</div>
+    <div class="pv2-body-copy" id="pv2Copy">Join small groups, local happenings, and tribe chats around San Vicente.</div>
     <button class="pv2-header-cta" type="button" onclick="selectPulseView('form')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Form a Tribe</button>
     <div class="pv2-live">
       <span class="pv2-live-dot" aria-hidden="true"></span>
@@ -1630,6 +1647,10 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
     <button class="pv2-vtab active" data-view="tribes" onclick="selectPulseView('tribes')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <span>Active Tribes</span>
+    </button>
+    <button class="pv2-vtab" data-view="feed" onclick="selectPulseView('feed')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="9" x2="17" y2="9"/><line x1="7" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="13" y2="17"/></svg>
+      <span>Feed</span>
     </button>
     <button class="pv2-vtab" data-view="events" onclick="selectPulseView('events')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polygon points="12 13 13 15.5 15.5 15.5 13.5 17.2 14.2 19.7 12 18.3 9.8 19.7 10.5 17.2 8.5 15.5 11 15.5 12 13"/></svg>
@@ -2374,7 +2395,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-30-dom-contract-r1';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-30-pulse-feed-r1';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by app.js and entry-flow.js so the two timers
   // cannot drift apart. Raise it to hold the first page longer.

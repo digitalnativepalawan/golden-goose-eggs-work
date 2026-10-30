@@ -184,17 +184,19 @@ golden-goose-eggs-work/
 │   ├── scripts/
 │   │   ├── 01_backend_health_check.sql
 │   │   ├── 02_make_admin.sql
-│   │   └── 03_verify_admin_publishing.sql
+│   │   ├── 03_verify_admin_publishing.sql
+│   │   └── 04_verify_pulse_feed.sql
 │   ├── seed_images.sql
 │   └── config.toml
 │
-├── tests/                           # node --test, no framework, 55 assertions
+├── tests/                           # node --test, no framework, 64 assertions
 │   ├── explore-model.test.cjs       # unit tests for explore-model.js (skips without typescript)
 │   ├── map-tools.test.cjs           # map-tool switch, dot sizes, tile ceilings
 │   ├── admin-model.test.cjs         # Backoffice publishing/validation rules
 │   ├── admin-ui.test.cjs            # Backoffice markup + a11y contracts
 │   ├── content-policy.test.cjs      # no packaged sample may pose as live data
 │   ├── dom-contract.test.cjs        # no lookup of an element nothing creates
+│   ├── feed.test.cjs                # Pulse feed reachable, honest, own filters
 │   ├── kmz-import.test.mjs
 │   └── tala-server.test.mjs
 │
@@ -225,9 +227,9 @@ golden-goose-eggs-work/
 | Bucket              | Files        | Notes                                      |
 | ------------------- | ------------ | ------------------------------------------ |
 | `src/` (shell)      | 70           | 52 `.tsx` (46 are UI primitives)           |
-| `supabase/`         | 33           | 29 migrations, 2 ops scripts, seed, config |
+| `supabase/`         | 35           | 31 migrations, 4 ops scripts, seed, config |
 | `public/`           | 25           | 13 client files + 12 images                |
-| `tests/`            | 8            | 55 assertions total                        |
+| `tests/`            | 9            | 64 assertions total                        |
 | Code (excl. UI kit) | 16,604 lines | `app.js` alone is 55% of it                |
 
 Largest tracked files: `public/site/app.js` (476 KB), `public/site/index.html`
@@ -273,7 +275,7 @@ separately.
 | `npm run format`            | Prettier                                                       |
 | `npm test`                  | `node --test tests/*.test.*`                                   |
 
-`npm test` reports **55 tests, 48 pass, 7 skipped, 0 failures** in a clean checkout.
+`npm test` reports **64 tests, 57 pass, 7 skipped, 0 failures** in a clean checkout.
 The skips are environment-only: `tests/explore-model.test.cjs` needs the
 `typescript` package for its AST assertions, so those cases skip themselves with
 a reason instead of failing the run.
