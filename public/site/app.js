@@ -2331,7 +2331,7 @@ function renderAroundList(){
 // ═══════════════════════════════════════════════════════
 
 let PULSE_CATEGORIES = {
-  all:    { label: 'All posts',      subtitle: 'Live community in San Vicente' },
+  all:    { label: 'All',            subtitle: 'Live community in San Vicente' },
   hidden: { label: 'Hidden Spots',   subtitle: 'Secret places, shared by locals.' },
   island: { label: 'Island Hopping', subtitle: 'Plan. Connect. Explore together.' },
   food:   { label: 'Food & Nightlife', subtitle: 'Where to eat, drink, and dance tonight.' },
@@ -2372,14 +2372,15 @@ let pulseTab = 'feed';
 // pulseCategory meant switching to "Surf" in Active Tribes silently emptied the
 // feed.
 let pulseFeedCategory = 'all';
-const FEED_CHANNELS = [
-  { key:'all',    label:'All' },
-  { key:'hidden', label:'Hidden spots' },
-  { key:'island', label:'Island hopping' },
-  { key:'food',   label:'Food & nightlife' },
-  { key:'surf',   label:'Surf report' },
-  { key:'events', label:'Events tonight' }
-];
+// The channels are the same set the Backoffice edits (pulse_categories, with the
+// built-in defaults underneath), in a fixed reading order. A second hardcoded
+// list meant a category added in the Backoffice could never be posted to.
+const FEED_CHANNEL_ORDER = ['all','hidden','island','food','surf','events'];
+function feedChannels(){
+  const keys = FEED_CHANNEL_ORDER.filter(k=>PULSE_CATEGORIES[k])
+    .concat(Object.keys(PULSE_CATEGORIES).filter(k=>FEED_CHANNEL_ORDER.indexOf(k)<0));
+  return keys.map(k=>({ key:k, label:(PULSE_CATEGORIES[k] && PULSE_CATEGORIES[k].label) || k }));
+}
 
 // ─── PULSE v2: Tribes / Events / Lounge / Form ───
 const PV2_CATS = ['All','Island Hopping','Sunset','Food & Drinks','Transport','Surf','Nightlife','Explore','Local Life'];
@@ -2431,6 +2432,11 @@ function openPulsePanel(){
   document.getElementById('pulsePanel').classList.add('open');
   renderPulseCatRibbon();
   selectPulseView(pulseView || 'tribes');
+  // Admin-edited channel names arrive slightly later than the panel; redraw the
+  // feed once they do rather than showing the built-in defaults all session.
+  loadPulseCategoriesFromDB().then(()=>{
+    if(pulseView === 'feed') renderPulseFeed();
+  });
   updateLiveCounts();
   maybeShowSectionBriefing('tribes');
   pulseRibbonOnScroll();
@@ -3925,7 +3931,7 @@ async function togglePulseLike(btn, postId){
 // drawn before the query resolves so the panel never looks like it has nothing
 // to offer while it is still thinking.
 function pulseFeedChromeHtml(){
-  const chips = FEED_CHANNELS.map(c=>{
+  const chips = feedChannels().map(c=>{
     const active = pulseFeedCategory===c.key ? ' active' : '';
     return `<button class="pv2-cat${active}" onclick="setPulseFeedCategory('${c.key}')">${escT(c.label)}</button>`;
   }).join('');
@@ -4049,8 +4055,19 @@ let pulseNextPostId = 1000; // mock IDs for session-local posts, won't collide w
 
 let pulseComposeLocation = null;
 
+// The composer's dropdown is rendered from the same list as the chips, so a
+// channel the Backoffice adds is selectable the moment it is saved.
+function renderPulseComposeCategoryMenu(){
+  const menu = document.getElementById('pulseComposeCatMenu');
+  if(!menu) return;
+  menu.innerHTML = feedChannels().map(c=>
+    `<button type="button" data-val="${escT(c.key)}" data-label="${escT(c.label)}" onclick="selectPulseCat(this)">${escT(c.label)}</button>`
+  ).join('');
+}
+
 function openPulseCompose(){
   document.getElementById('pulseComposeText').value = '';
+  renderPulseComposeCategoryMenu();
   const initCat = pulseFeedCategory !== 'all' ? pulseFeedCategory : 'all';
   setPulseCat(initCat);
   const nameEl = document.getElementById('pulseComposeName');
@@ -8718,9 +8735,13 @@ async function adminPulseDeleteCategory(id){
 
 // Called from admin after saving/deleting a category, so any open
 // Pulse panel picks up the new label immediately.
+// Called after a category is added, renamed or deleted in the Backoffice. It used
+// to call a helper that was never written — so saving a category threw and
+// nothing on screen changed.
 async function refreshPulseCategoryChips(){
   await loadPulseCategoriesFromDB();
-  applyPulseCategoryLabelsToChips();
+  renderPulseComposeCategoryMenu();
+  if(pulseView === 'feed') renderPulseFeed();
 }
 
 // ───────────── USERS (mute / ban) ─────────────

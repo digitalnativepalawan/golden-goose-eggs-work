@@ -1722,14 +1722,11 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <input type="hidden" id="pulseComposeCategory" value="all">
-      <div id="pulseComposeCatMenu" class="pulse-custom-menu" style="display:none;">
-        <button type="button" data-val="all" data-label="General" onclick="selectPulseCat(this)">General</button>
-        <button type="button" data-val="hidden" data-label="Hidden Spots" onclick="selectPulseCat(this)">Hidden Spots</button>
-        <button type="button" data-val="island" data-label="Island Hopping" onclick="selectPulseCat(this)">Island Hopping</button>
-        <button type="button" data-val="food" data-label="Food &amp; Nightlife" onclick="selectPulseCat(this)">Food &amp; Nightlife</button>
-        <button type="button" data-val="surf" data-label="Surf Report" onclick="selectPulseCat(this)">Surf Report</button>
-        <button type="button" data-val="events" data-label="Events Tonight" onclick="selectPulseCat(this)">Events Tonight</button>
-      </div>
+      <!-- Filled by renderPulseComposeCategoryMenu() from the same list the feed
+           chips use (pulse_categories over the built-in defaults). A second
+           hardcoded copy here is how Backoffice-added channels used to become
+           unselectable. -->
+      <div id="pulseComposeCatMenu" class="pulse-custom-menu" style="display:none;"></div>
     </div>
 
     <div class="pulse-compose-field">
@@ -2395,7 +2392,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-30-pulse-feed-r1';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-30-feed-channels-r1';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by app.js and entry-flow.js so the two timers
   // cannot drift apart. Raise it to hold the first page longer.

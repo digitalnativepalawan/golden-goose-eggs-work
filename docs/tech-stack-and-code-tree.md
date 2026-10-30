@@ -189,7 +189,7 @@ golden-goose-eggs-work/
 │   ├── seed_images.sql
 │   └── config.toml
 │
-├── tests/                           # node --test, no framework, 64 assertions
+├── tests/                           # node --test, no framework, 66 assertions
 │   ├── explore-model.test.cjs       # unit tests for explore-model.js (skips without typescript)
 │   ├── map-tools.test.cjs           # map-tool switch, dot sizes, tile ceilings
 │   ├── admin-model.test.cjs         # Backoffice publishing/validation rules
@@ -229,7 +229,7 @@ golden-goose-eggs-work/
 | `src/` (shell)      | 70           | 52 `.tsx` (46 are UI primitives)           |
 | `supabase/`         | 35           | 31 migrations, 4 ops scripts, seed, config |
 | `public/`           | 25           | 13 client files + 12 images                |
-| `tests/`            | 9            | 64 assertions total                        |
+| `tests/`            | 9            | 66 assertions total                        |
 | Code (excl. UI kit) | 16,604 lines | `app.js` alone is 55% of it                |
 
 Largest tracked files: `public/site/app.js` (476 KB), `public/site/index.html`
@@ -275,7 +275,7 @@ separately.
 | `npm run format`            | Prettier                                                       |
 | `npm test`                  | `node --test tests/*.test.*`                                   |
 
-`npm test` reports **64 tests, 57 pass, 7 skipped, 0 failures** in a clean checkout.
+`npm test` reports **66 tests, 59 pass, 7 skipped, 0 failures** in a clean checkout.
 The skips are environment-only: `tests/explore-model.test.cjs` needs the
 `typescript` package for its AST assertions, so those cases skip themselves with
 a reason instead of failing the run.
