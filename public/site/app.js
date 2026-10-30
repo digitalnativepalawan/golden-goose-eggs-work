@@ -98,6 +98,26 @@ const DEFAULT_SPLASH_FOOTER = `PALAWAN`;
 let talaAiEnabled = false;
 let talaAiModel = '';
 
+// ─── SAMPLE CONTENT POLICY ────────────────────────────────────────────────
+// The arrays below (PULSE_TRIBES, PULSE_EVENTS, TODAY_DATA) are packaged samples
+// so the app is not blank with no connection. They used to be the fallback
+// whenever the matching table came back empty, which meant a visitor could be
+// shown invented businesses and prices ("Lechon by the Beach — ₱650 / plate")
+// and invented travellers holding seats ("2 seats open. Let's split gas!").
+//
+// That is the same call the Lounge already made: an honest empty room beats
+// inventing company. So samples now survive only when the query itself failed
+// (offline demo). If the database answers, the answer wins — including "none".
+//
+// Set this to true to demo the full experience on a machine with no database.
+const SHOW_SAMPLES_WHEN_DB_IS_EMPTY = false;
+
+// Today keys that describe what is happening in San Vicente right now. If the
+// database has no row for one of these, the card says so instead of falling back
+// to packaged copy. `weather` is exempt: its verdicts are general seasonal advice
+// and the live conditions come from Open-Meteo on the map screen.
+const TODAY_LIVE_KEYS = ['happening','joinable','locals','notices'];
+
 // ─── LIVE DATA (populated from Supabase, falls back to defaults) ───
 let destinations = [];
 let aiData = [];
@@ -593,20 +613,29 @@ async function loadDataFromSupabase(){
     splashSubtext = (splashSubRow && splashSubRow.value != null) ? splashSubRow.value : DEFAULT_SPLASH_SUBTEXT;
     splashFooter = (splashFootRow && splashFootRow.value != null) ? splashFootRow.value : DEFAULT_SPLASH_FOOTER;
 
-    // Load Today content from DB (overrides hardcoded TODAY_DATA)
-    if(todayRes && todayRes.data && todayRes.data.length){
-      todayRes.data.forEach(r=>{
-        if(r.key==='tala_pick') TODAY_DATA.talaPick = r.data;
-        else if(r.key==='happening') TODAY_DATA.happening = r.data;
-        else if(r.key==='joinable') TODAY_DATA.joinable = r.data;
-        else if(r.key==='weather') TODAY_DATA.weather = r.data;
-        else if(r.key==='locals') TODAY_DATA.locals = r.data;
-        else if(r.key==='notices') TODAY_DATA.notices = r.data;
+    // Load Today content from DB. An answered query wins, including "no rows":
+    // a card with nothing in it is better than a packaged status report about
+    // an ATM that was never checked. Samples stand in only when the request
+    // failed (offline demo) or when SHOW_SAMPLES_WHEN_DB_IS_EMPTY is flipped on.
+    if(todayRes && !todayRes.error && Array.isArray(todayRes.data)){
+      const todayByKey = {};
+      todayRes.data.forEach(r=>{ if(r && r.key) todayByKey[r.key] = r.data; });
+      const target = {
+        tala_pick:'talaPick', happening:'happening', joinable:'joinable',
+        weather:'weather', locals:'locals', notices:'notices'
+      };
+      Object.keys(target).forEach(key=>{
+        if(todayByKey[key] !== undefined) TODAY_DATA[target[key]] = todayByKey[key];
+        else if(!SHOW_SAMPLES_WHEN_DB_IS_EMPTY && TODAY_LIVE_KEYS.indexOf(key) >= 0) TODAY_DATA[target[key]] = [];
       });
     }
+    // On a failed query nothing changes: that is offline demo mode, where the
+    // whole app (destinations included) is running on packaged content. The line
+    // we do not cross is mixing the two — real database, invented neighbours.
 
-    // Load tribes from DB (overrides hardcoded PULSE_TRIBES)
-    if(tribesRes && tribesRes.data && tribesRes.data.length){
+    // Load tribes from DB. An answered query replaces the samples even when it
+    // answers "none" — see SHOW_SAMPLES_WHEN_DB_IS_EMPTY at the top of this file.
+    if(tribesRes && !tribesRes.error && Array.isArray(tribesRes.data) && (tribesRes.data.length || !SHOW_SAMPLES_WHEN_DB_IS_EMPTY)){
       PULSE_TRIBES.length = 0;
       tribesRes.data.forEach(t=>{
         PULSE_TRIBES.push({
@@ -629,8 +658,8 @@ async function loadDataFromSupabase(){
       });
     }
 
-    // Load events from DB (overrides hardcoded PULSE_EVENTS / MYSV_EVENTS)
-    if(eventsRes && eventsRes.data && eventsRes.data.length){
+    // Load events from DB. Same rule as tribes: the answer wins, even when empty.
+    if(eventsRes && !eventsRes.error && Array.isArray(eventsRes.data) && (eventsRes.data.length || !SHOW_SAMPLES_WHEN_DB_IS_EMPTY)){
       PULSE_EVENTS.length = 0;
       eventsRes.data.forEach(ev=>{
         PULSE_EVENTS.push({
@@ -2017,6 +2046,13 @@ function catLabelFor(cat){
   return (catStyle && catStyle[cat] && catStyle[cat].label) || cat || '';
 }
 
+// One quiet line where a list would be. Used when the database answered and
+// there is genuinely nothing listed, so the card reads as "nothing yet" rather
+// than showing packaged copy about places that were never checked.
+function todayEmptyRow(text){
+  return `<li class="today-row today-row-empty"><div class="trow-main"><div class="trow-meta">${escT(text)}</div></div></li>`;
+}
+
 function renderTodayContent(){
   const host = document.getElementById('todayScroll');
   if(!host) return;
@@ -2027,8 +2063,10 @@ function renderTodayContent(){
   // Counts must come from the live data: the hardcoded TODAY_DATA.snapshot
   // numbers went stale the moment tribes/events moved into the database
   // ("3 Tribes forming" while seven were live).
-  const tribeCount   = (typeof PULSE_TRIBES !== 'undefined' && PULSE_TRIBES.length) ? PULSE_TRIBES.length : d.snapshot.tribes;
-  const happenCount  = (Array.isArray(d.happening) && d.happening.length) ? d.happening.length : d.snapshot.happenings;
+  // Counts come from the lists on screen, never from the packaged snapshot: the
+  // snapshot said "3 Tribes · 6 Happening" while both lists were empty.
+  const tribeCount   = (typeof PULSE_TRIBES !== 'undefined' && Array.isArray(PULSE_TRIBES)) ? PULSE_TRIBES.length : 0;
+  const happenCount  = Array.isArray(d.happening) ? d.happening.length : 0;
   const snap = `
     <article class="today-card">
       <div class="today-kicker">Daily snapshot</div>
@@ -2091,7 +2129,7 @@ function renderTodayContent(){
     <article class="today-card">
       <div class="today-kicker">Happening today</div>
       <ul class="today-list">
-        ${d.happening.map((e,i)=>{
+        ${d.happening.length ? d.happening.map((e,i)=>{
           const key = todayItemKey(e, i);
           const going = myToday.has(key);
           const count = todayGoingCount(key);
@@ -2115,7 +2153,7 @@ function renderTodayContent(){
               <button class="tbtn" onclick="todayDirectionsHappening(${i})">Directions</button>
             </div>
           </li>`;
-        }).join('')}
+        }).join('') : todayEmptyRow('Nothing listed for today yet.')}
       </ul>
       ${todayCreditsHtml(d.happening)}
     </article>`;
@@ -2124,7 +2162,7 @@ function renderTodayContent(){
       <div class="today-kicker">Joinable today</div>
       <div class="today-title">Open spots, right now</div>
       <ul class="today-list">
-        ${d.joinable.map((j,i)=>{
+        ${d.joinable.length ? d.joinable.map((j,i)=>{
           const on = myToday.has(todayJoinableKey(j));
           return `
           <li class="today-row">
@@ -2137,7 +2175,7 @@ function renderTodayContent(){
               <button class="tbtn tbtn-primary${on?' is-on':''}" onclick="todayJoinJoinable(${i})" aria-pressed="${on?'true':'false'}">${on ? 'On the list' : 'Ask to join'}</button>
             </div>
           </li>`;
-        }).join('')}
+        }).join('') : todayEmptyRow('No open seats posted yet — form a tribe and start one.')}
       </ul>
     </article>`;
   const weather = `
@@ -2157,7 +2195,7 @@ function renderTodayContent(){
     <article class="today-card">
       <div class="today-kicker">Fresh from locals</div>
       <ul class="today-locals">
-        ${d.locals.map(l=>{
+        ${d.locals.length ? d.locals.map(l=>{
           const photo = todayFirstImage(l);
           return `
           <li class="tlocal">
@@ -2165,7 +2203,7 @@ function renderTodayContent(){
             <div><div class="tl-text">${escT(l.text)}</div><div class="tl-meta">${escT(l.biz)} · ${escT(l.meta)}</div></div>
             ${photo ? `<div class="tl-photo"><img src="${escT(photo)}" alt="" loading="lazy" onerror="this.closest('.tl-photo').remove()"></div>` : ''}
           </li>`;
-        }).join('')}
+        }).join('') : todayEmptyRow('No local updates yet.')}
       </ul>
       ${todayCreditsHtml(d.locals)}
     </article>`;
@@ -2173,7 +2211,7 @@ function renderTodayContent(){
     <article class="today-card today-card-muted">
       <div class="today-kicker">Small notices</div>
       <ul class="today-notices">
-        ${d.notices.map(n=>`<li class="tnotice"><span class="tn-glyph">${lucideSvg('triangle-alert',14)}</span><span>${escT(n.text)}</span></li>`).join('')}
+        ${d.notices.length ? d.notices.map(n=>`<li class="tnotice"><span class="tn-glyph">${lucideSvg('triangle-alert',14)}</span><span>${escT(n.text)}</span></li>`).join('') : `<li class="tnotice tnotice-empty"><span>${escT('Nothing to flag today.')}</span></li>`}
       </ul>
     </article>`;
   host.innerHTML = snap + pick + happening + joinable + weather + locals + notices;
@@ -3423,7 +3461,13 @@ function placeMatches(){
 }
 function placeRowsHtml(){
   const rows=placeMatches();
-  if(!rows.length) return `<div class="pv2-place-empty">Nothing matches that. Use “Pick on the map” to drop the meeting point anywhere in San Vicente.</div>`;
+  if(!rows.length){
+    const typed=String(formDraft.whereSearch||'').trim();
+    // An empty directory and a search that found nothing are different problems
+    // and deserve different words.
+    if(!typed) return `<div class="pv2-place-empty">No places in the directory yet. Use “Pick on the map” to drop the meeting point anywhere in San Vicente.</div>`;
+    return `<div class="pv2-place-empty">Nothing in the directory matches “${escT(typed)}”. Try the map instead — you can pin any beach, business or landmark.</div>`;
+  }
   return rows.map(d=>{
     const meta=[d.barangay,(catStyle[d.category]&&catStyle[d.category].label)||d.category].filter(Boolean).join(' · ');
     const on=String(formDraft.whereText||'')===placeLabel(d)?' on':'';
