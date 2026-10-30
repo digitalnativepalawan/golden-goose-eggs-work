@@ -69,3 +69,23 @@ test("the packaged samples are still there for the offline demo", () => {
   assert.match(app, /const PULSE_EVENTS = \[/);
   assert.match(app, /const TODAY_DATA = \{/);
 });
+
+test("each empty list gets its own honest copy", () => {
+  // One shared empty state used to tell people to "start the first tribe" under
+  // the event list, which is the wrong instruction in the wrong place — and the
+  // old samples hid it, because the list was never empty.
+  assert.match(app, /function emptyStateHTML\(kind\)\{/);
+  assert.match(app, /if\(kind === 'events'\)\{/);
+  assert.match(app, /body\.innerHTML = emptyStateHTML\('events'\);/);
+  assert.match(app, /No events listed yet\./);
+  assert.match(app, /No tribes yet\./);
+  // Nothing may still call it with no argument and hope for the best.
+  assert.equal(/emptyStateHTML\(\)/.test(app), false);
+});
+
+test("no control ships without something to do", () => {
+  // "View all" sat in the tribes header with no handler at all. It now only
+  // appears when a category filter is on, and clears it.
+  assert.equal(/<button class="pv2-viewall">/.test(app), false);
+  assert.match(app, /pulseCategory!=='all'\) \? `<button class="pv2-viewall" onclick="selectPulseCategoryV2\('all'\)"/);
+});

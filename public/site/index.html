@@ -1598,6 +1598,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .map-pick-pin::after{content:'';width:9px;height:9px;border-radius:50%;background:#fff}
   /* Empty state */
   .pv2-empty{padding:26px 16px;border-radius:20px;background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.1);text-align:center;color:rgba(255,255,255,.75);display:flex;flex-direction:column;align-items:center;gap:12px}
+  .pv2-empty-s{font-size:.78rem;line-height:1.45;max-width:270px;color:rgba(255,255,255,.5)}
   @media(min-width:900px){
     .pv2-body,.pv2-viewtabs,.pv2-catribbon,.pv2-head{max-width:640px;margin-left:auto;margin-right:auto}
   }
@@ -2373,7 +2374,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-30-content-policy-r1';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-30-honest-empty-states-r1';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by app.js and entry-flow.js so the two timers
   // cannot drift apart. Raise it to hold the first page longer.
