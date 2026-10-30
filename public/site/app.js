@@ -1365,7 +1365,7 @@ function updateLiveCounts(){
   setText('tmTribes', String(tribes));
   setText('tmHappening', String(events));
   setText('tmSunset', (TODAY_DATA.snapshot && TODAY_DATA.snapshot.sunset) || '');
-  setText('pv2LiveCount', tribes + ' listed tribes · ' + events + ' listed events');
+  setText('pv2LiveCount', tribes + ' open tribes · ' + events + ' events listed');
 }
 function updateTodayGreeting(){
   const kicker = document.getElementById('todayGreetingKicker');
@@ -2777,10 +2777,13 @@ function openEventDetail(id){
       <div class="info-copy">${e.description ? escapeHtml(e.description) : '<span class="info-muted">The organiser has not written the details yet.</span>'}</div>
       ${e.imageCredit ? `<div class="info-credit">Photo: ${escapeHtml(e.imageCredit)}</div>` : ''}
       <div class="info-actions">
-        <button class="info-cta" onclick="infoInterested('${escT(String(e.id))}')">${mine ? 'On my list' : "I'm interested"}</button>
+        <button class="info-cta" onclick="infoInterested('${escT(String(e.id))}')">${mine ? 'Joined' : 'Join the event'}</button>
         ${e.where ? `<button class="info-cta ghost" onclick="infoDirections('${escT(e.where)}')">Directions</button>` : ''}
-      </div>`
+      </div>
+      <div class="info-chat" id="infoChatEvent"></div>`
   });
+  // Load event chat first so messages are there when the sheet opens.
+  loadEventChat(id);
 }
 function infoInterested(id){
   interestedEvent(id);   // records the row; asks for a name first if needed
@@ -2874,6 +2877,60 @@ function sendTribeMessage(tribeId){
       await loadTribeChat(tribeId);
     }catch(err){
       console.warn('[SANVIC] Tribe message failed:', err);
+      toast('Could not send that just now.');
+    }
+  });
+}
+
+// ── EVENT CHAT ──────────────────────────────────────────────────────────────
+// Mirrors tribe chat but keyed on event_id.
+async function loadEventChat(eventId){
+  const host = document.getElementById('infoChatEvent');
+  if(!host) return;
+  host.innerHTML = `<div class="info-chat-head">Event chat</div><div class="info-note">Loading…</div>`;
+  let rows = [];
+  try{
+    const { data, error } = await sb.from('event_messages')
+      .select('id,device_id,display_name,body,created_at')
+      .eq('event_id', eventId)
+      .order('created_at', { ascending:true })
+      .limit(200);
+    if(error) throw error;
+    rows = data || [];
+  }catch(err){
+    console.warn('[SANVIC] Event chat load failed:', err);
+    host.innerHTML = `<div class="info-chat-head">Event chat</div><div class="info-note">The chat could not be loaded just now.</div>`;
+    return;
+  }
+  const me = personId();
+  host.innerHTML = `
+    <div class="info-chat-head">Event chat · ${rows.length} message${rows.length===1?'':'s'}</div>
+    ${rows.length ? rows.map(m=>`
+      <div class="info-msg${m.device_id===me ? ' me' : ''}">
+        ${m.device_id===me ? '' : `<div class="info-msg-name">${escapeHtml(m.display_name || 'Traveller')}</div>`}
+        ${escapeHtml(m.body)}
+      </div>`).join('') : '<div class="info-note">Nobody has said anything yet. Start it.</div>'}
+    <div class="info-chat-input">
+      <input id="infoChatEventInput" type="text" maxlength="600" placeholder="Say something about this event…" onkeydown="if(event.key==='Enter')sendEventMessage('${eventId}')">
+      <button onclick="sendEventMessage('${eventId}')">Send</button>
+    </div>`;
+  const scroller = document.getElementById('infoBody');
+  if(scroller) scroller.scrollTop = scroller.scrollHeight;
+}
+function sendEventMessage(eventId){
+  const input = document.getElementById('infoChatEventInput');
+  const typed = (input && input.value ? input.value : '').trim();
+  if(!typed) return;
+  ensurePerson(async person=>{
+    const el = document.getElementById('infoChatEventInput');
+    const body = (el && el.value ? el.value : typed).trim();
+    if(!body) return;
+    try{
+      const { error } = await sb.from('event_messages').insert({ event_id:eventId, device_id:person.id, display_name:person.name, body });
+      if(error) throw error;
+      await loadEventChat(eventId);
+    }catch(err){
+      console.warn('[SANVIC] Event message failed:', err);
       toast('Could not send that just now.');
     }
   });
