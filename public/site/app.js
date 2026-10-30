@@ -2363,6 +2363,10 @@ async function loadPulseCategoriesFromDB(){
 
 let pulseCategory = 'all';
 let pulseView = 'tribes';
+// The v1 feed wrote this; nothing declared it, so any call into the feed path
+// threw ReferenceError before it drew anything. Declared so the code is at least
+// honest about what it expects.
+let pulseTab = 'feed';
 
 // ─── PULSE v2: Tribes / Events / Lounge / Form ───
 const PV2_CATS = ['All','Island Hopping','Sunset','Food & Drinks','Transport','Surf','Nightlife','Explore','Local Life'];
@@ -4222,8 +4226,6 @@ async function submitPulsePost(){
   pulseTab = 'feed';
   document.querySelectorAll('.pulse-cat').forEach(b=>b.classList.toggle('active', b.dataset.cat==='all'));
   document.querySelectorAll('.pulse-tab').forEach(b=>{ if(!b.classList.contains('disabled')) b.classList.toggle('active', b.dataset.tab==='feed'); });
-  document.getElementById('pulseTitle').innerHTML = `${PULSE_CATEGORIES.all.label} <span class="live-dot"></span>`;
-  document.getElementById('pulseSubtitle').textContent = PULSE_CATEGORIES.all.subtitle;
 
   await renderPulseFeed();
   document.getElementById('pulseBody').scrollTo({top:0, behavior:'smooth'});
@@ -5994,10 +5996,12 @@ function adminDestFormHtml(){
     </div>`;
 }
 
+// Superseded by the media gallery, which owns the video fields now
+// (mediaVideoHtml / mediaUploadVideoIfNeeded). This used to reach for
+// #adfVideoType and the two wrappers around it, none of which exist any more, so
+// all it could do was throw. Kept as a guard for stale markup.
 function adminToggleVideoFields(){
-  const type = document.getElementById('adfVideoType').value;
-  document.getElementById('adfVideoYoutubeWrap').style.display = type==='youtube' ? '' : 'none';
-  document.getElementById('adfVideoUploadWrap').style.display = type==='upload' ? '' : 'none';
+  return;
 }
 
 async function adminUploadImageNow(){
@@ -6334,29 +6338,12 @@ async function adminAutoFill(){
   adminWikimediaSuggest(name, results);
 }
 
+// Superseded by mediaUploadVideoIfNeeded(containerId), which the media gallery
+// calls for every form. The old version read #adfVideoType, #adfVideoFile,
+// #adfVideoUploadStatus and #adfVideoUploadedUrl — markup that no longer exists —
+// and would have thrown before anything was uploaded. Kept as a guard.
 async function adminUploadVideoIfNeeded(){
-  const type = document.getElementById('adfVideoType').value;
-  if(type !== 'upload') return null;
-
-  const fileInput = document.getElementById('adfVideoFile');
-  const file = fileInput.files[0];
-  const statusEl = document.getElementById('adfVideoUploadStatus');
-  const existingUrl = document.getElementById('adfVideoUploadedUrl').value;
-
-  if(!file) return existingUrl || null; // keep existing video if no new file chosen
-
-  const ext = (file.name.split('.').pop() || 'mp4').toLowerCase();
-  const path = `dest_${Date.now()}_${Math.random().toString(36).slice(2,8)}.${ext}`;
-
-  statusEl.textContent = 'Uploading...';
-  const { error } = await sb.storage.from('destination-videos').upload(path, file, {
-    cacheControl: '3600', upsert: false, contentType: file.type || 'video/mp4'
-  });
-  if(error){ statusEl.textContent = 'Upload failed: ' + error.message; throw error; }
-
-  const { data } = sb.storage.from('destination-videos').getPublicUrl(path);
-  statusEl.textContent = 'Uploaded.';
-  return data.publicUrl;
+  return null;
 }
 
 // ═══════════════════════════════════════════════════════
