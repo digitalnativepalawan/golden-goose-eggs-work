@@ -143,6 +143,10 @@ body[data-active-tab=discover] #talaOrbWrap{display:none}
 .admin-entry:hover,.admin-entry:focus-visible{color:#b9ebdd;border-color:#71d9c1;outline:none}
 .admin-entry svg{width:17px;height:17px}
 @media (max-width:520px){.admin-entry{top:10px;right:10px;width:38px;height:38px}}
+/* On the map the Layers pill sits in the same top-right corner as the staff gear,
+   so the gear moved across rather than being an invisible tap target underneath. */
+body[data-map-tools="on"] .admin-entry{right:104px}
+@media (max-width:520px){body[data-map-tools="on"] .admin-entry{right:96px;top:10px}}
 /* Phones get exactly the same dot as desktop. The old rule shrank it to 10px on
    phones — the screens the partner was testing on — which is where "the dots are
    too small" came from. */

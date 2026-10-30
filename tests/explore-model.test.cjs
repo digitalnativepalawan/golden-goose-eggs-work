@@ -2,10 +2,14 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const ts=require('typescript');
+// The AST pass needs the TypeScript compiler. It is a devDependency, so a fresh
+// checkout that has not run `npm install` has no node_modules - skip rather than
+// fail with a module error that has nothing to do with the model.
+let ts=null;try{ts=require('typescript');}catch(_){ts=null;}
+const SKIP_TS=ts?false:'typescript is not installed (run npm install)';
 const model=fs.readFileSync('public/site/explore-model.js','utf8');
 const app=fs.readFileSync('public/site/app.js','utf8');
-const parsed=ts.createSourceFile('app.js',app,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS);
+const parsed=ts?ts.createSourceFile('app.js',app,ts.ScriptTarget.Latest,true,ts.ScriptKind.JS):null;
 function functions(...names){return parsed.statements.filter(n=>ts.isFunctionDeclaration(n)&&names.includes(n.name?.text)).map(n=>n.getText(parsed)).join('\n');}
 function context(extra={}){const c=vm.createContext({URL,...extra});vm.runInContext(model,c);return c;}
 // Synthetic fixtures exist only in tests; they are never shipped as directory content.
@@ -26,7 +30,7 @@ test('invalid coordinates and unsafe media URLs are rejected',()=>{
  assert.equal(m.safeUrl('assets/beach.jpg',true),'assets/beach.jpg');
  assert.equal(m.distanceKm(places[0],places[0]),0);
 });
-test('all four basemaps preserve the independent boundary layer and selection',()=>{
+test('all four basemaps preserve the independent boundary layer and selection',{skip:SKIP_TS},()=>{
  const present=new Set();const saved={};const classes=new Set();
  const map={hasLayer:l=>present.has(l),removeLayer:l=>present.delete(l)};
  const layer=()=>({addTo(){present.add(this);return this;}});
@@ -37,7 +41,7 @@ test('all four basemaps preserve the independent boundary layer and selection',(
   c.switchMapLayer(mode);assert.equal(present.has(boundary),true);assert.equal(present.size,2);assert.equal(saved.sanvic_basemap,mode);assert.equal(classes.has('map-dark'),mode==='dark');
  }
 });
-test('successful empty directory is retained when an optional feature fails',async()=>{
+test('successful empty directory is retained when an optional feature fails',{skip:SKIP_TS},async()=>{
  const noop=()=>{};
  const query=table=>{const result=table==='destinations'?{data:[],error:null}:{data:null,error:new Error('Optional unavailable')};const q={select:()=>q,order:()=>q,eq:()=>q,in:()=>q,maybeSingle:()=>q,then:(a,b)=>Promise.resolve(result).then(a,b)};return q;};
  const c=context({sb:{from:query},window:{},console:{warn:noop},document:{getElementById:()=>null},DEFAULT_DESTINATIONS:places,DEFAULT_TALA_DATA:[],DEFAULT_FALLBACK_RESPONSE:'',DEFAULT_SUGGESTIONS:[],DEFAULT_HERO_TITLE:'',DEFAULT_HERO_SUBTITLE:'',DEFAULT_SPLASH_SUBTEXT:'',DEFAULT_SPLASH_FOOTER:'',destRowToObj:x=>x,applyCategoriesFromRows:noop,applyNearbyPlacesFromRows:noop,applyHeroText:noop,applySplashText:noop});
@@ -45,7 +49,7 @@ test('successful empty directory is retained when an optional feature fails',asy
  assert.equal(c.destinationsSource,'supabase');assert.equal(c.window.destinations.length,0);
 });
 
-test('personal picks require four interests and do not turn a beach-food profile into island-trip suggestions',()=>{
+test('personal picks require four interests and do not turn a beach-food profile into island-trip suggestions',{skip:SKIP_TS},()=>{
  const selected=[
   {label:'Smashed burger after swimming',tags:['food','beach']},
   {label:'Reading in a hammock',tags:['quiet','slow']},

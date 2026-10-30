@@ -201,19 +201,20 @@ body.sanvic-profiled #heroFade{display:none!important}
    LAYER TOGGLE (map type)
    ═══════════════════════════════════ */
 .map-layer-toggle{position:fixed;top:calc(var(--safe-top) + 66px);right:16px;z-index:60;display:flex;align-items:center;padding:5px;background:var(--glass-bg-heavy);backdrop-filter:blur(40px);border:1px solid var(--glass-border);border-radius:var(--radius-pill);box-shadow:0 6px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transform:translateY(-8px) scale(.96);transition:all .4s var(--ease-out-expo)}
-  /* Map tools only belong on the map. Tapping Tribes used to leave the Layers button floating in the corner, which read as a button that does nothing.
-     dockNav sets body[data-active-tab] on every tap, so this is the single place that decides when the tools are visible. */
-  body.explore-open .map-layer-toggle,
-  body[data-active-tab="map"] .map-layer-toggle,
-  body[data-active-tab="discover"] .map-layer-toggle{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
-.map-layer-toggle.visible{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
-  /* Map tools belong to the map and nowhere else. The partner kept finding the
-     Layers pill floating over Tribes/The Hunt/My Journey, where it does nothing.
-     panel-open is set by refreshPanelOpen() whenever a full-screen panel is up;
-     an open Explore sheet is the one panel that still has the map behind it, so
-     that case is exempt. */
-  body.panel-open:not(.explore-open) .map-layer-toggle,
-  body.panel-open:not(.explore-open) .map-util-btn{opacity:0!important;pointer-events:none!important;transform:translateY(-8px) scale(.96)!important}
+  /* ── WHEN THE MAP TOOLS ARE VISIBLE ────────────────────────────────────────
+     One switch, set in JavaScript by refreshMapTools(): body[data-map-tools].
+     Everything else here is only a consequence of it.
+
+     This went through two wrong versions before. First the pill was pinned with a
+     one-way `.visible` class at map init, so it stayed on screen over Tribes, The
+     Hunt and My Journey. Then the fix keyed off body.panel-open, which is a
+     guess made by refreshPanelOpen() from DOM selectors - and when that guess was
+     wrong the pill vanished on the map itself, which is the one place it belongs.
+
+     Now the rule is the plain one: the tools show when the dock is on Explore or
+     Today, and no full-screen panel is in front of the map. */
+  body[data-map-tools="on"] .map-layer-toggle{opacity:1!important;pointer-events:auto!important;transform:translateY(0) scale(1)!important}
+  body[data-map-tools="off"] .map-layer-toggle{opacity:0!important;pointer-events:none!important;transform:translateY(-8px) scale(.96)!important}
 .map-layer-toggle .mlt-btn{padding:9px 11px;border-radius:var(--radius-pill);border:none;background:transparent;color:var(--white-dim);font-family:var(--font-body);font-size:.66rem;font-weight:400;letter-spacing:.04em;cursor:pointer;transition:all .3s var(--ease-smooth);white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:4px}
 .mlt-label{display:none}
 .map-layer-toggle .mlt-btn:hover{color:var(--white-muted)}
@@ -227,8 +228,11 @@ body.sanvic-profiled #heroFade{display:none!important}
 .map-util-btn:hover{background:rgba(20,184,166,.18);border-color:rgba(20,184,166,.4)}
 .map-util-btn.locating{color:var(--ocean-teal-light)}
 .map-util-btn.locating svg{animation:svLocateSpin 1s linear infinite}
-body.panel-open .map-util-btn{opacity:0;pointer-events:none;transition:opacity .3s ease}
-body.explore-open .map-util-btn,body.explore-open .map-layer-toggle{opacity:1;pointer-events:auto}
+/* Locate follows the same single switch as the Layers pill. It used to be hidden
+   by body.panel-open, which was permanently true (see refreshPanelOpen), so the
+   button never appeared on the map at all. */
+body[data-map-tools="on"] .map-util-btn{opacity:1!important;pointer-events:auto!important}
+body[data-map-tools="off"] .map-util-btn{opacity:0!important;pointer-events:none!important}
 /* Barangay tooltips hidden at far zoom so canvas stays clean */
 .leaflet-container.zoom-far .leaflet-tooltip,
 .leaflet-container.zoom-far .barangay-tooltip{opacity:0!important;pointer-events:none!important;transition:opacity .3s ease}
@@ -906,10 +910,10 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   <div class="hero-weather" id="heroWeather" style="display:none;"></div>
   <div class="hero-search" id="heroSearch">
     <input type="text" id="heroInput" placeholder="" onkeydown="if(event.key==='Enter')heroAsk()">
-    <button class="hs-mic" onclick="heroMic()" title="Speak">
+    <button class="hs-mic" onclick="heroMic()" aria-label="Speak">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="1" width="6" height="12" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
     </button>
-    <button class="hs-send" onclick="heroAsk()" title="Search">
+    <button class="hs-send" onclick="heroAsk()" aria-label="Search">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
     </button>
   </div>
@@ -925,7 +929,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
 </button>
 
 <!-- ═══ STAFF ADMIN ═══ -->
-<a class="admin-entry" href="/admin" onclick="return openAdminFromButton()" title="Staff admin" aria-label="Staff admin">
+<a class="admin-entry" href="/admin" onclick="return openAdminFromButton()" aria-label="Staff admin">
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 7 2.6h.1A1.7 1.7 0 0 0 8.6 1V1a2 2 0 1 1 4 0v.1A1.7 1.7 0 0 0 15 2.6a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1h.2a2 2 0 1 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg>
 </a>
 
@@ -1004,7 +1008,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
 </div>
 
 <!-- ═══ TOP-RIGHT MAP UTILITIES (Locate + Layers) ═══ -->
-<button id="locateMeBtn" class="map-util-btn" onclick="locateUser()" aria-label="Locate me" title="Center on my location">
+<button id="locateMeBtn" class="map-util-btn" onclick="locateUser()" aria-label="Locate me">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
   <span>Locate</span>
 </button>
@@ -1376,7 +1380,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
       <h4>TALA’s Whisper</h4>
       <p id="tshStatus">What kind of day are we making?</p>
     </div>
-    <button class="tsh-mute" id="tshMute" onclick="toggleMute()" title="Toggle voice">
+    <button class="tsh-mute" id="tshMute" onclick="toggleMute()" aria-label="Toggle voice">
       <svg class="vol-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
       <svg class="vol-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="22" y1="9" x2="16" y2="15"/><line x1="16" y1="9" x2="22" y2="15"/></svg>
     </button>
@@ -1839,70 +1843,91 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   </div>
 </div>
 
-<div class="admin-overlay" id="adminPanelOverlay">
+<div class="admin-overlay" id="adminPanelOverlay" role="dialog" aria-modal="true" aria-labelledby="adminTitle">
   <div class="admin-panel">
     <div class="admin-head">
       <div class="admin-head-left">
-        <h3>SANVIC Admin</h3>
+        <button type="button" class="admin-nav-toggle" id="adminNavToggle" aria-label="Open navigation" aria-controls="adminNav" aria-expanded="false" onclick="adminToggleNav()">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
+        </button>
+        <div>
+          <h3 id="adminTitle">SANVIC Studio</h3>
+          <span id="adminSectionLabel">Admin home</span>
+        </div>
       </div>
       <div class="admin-head-right">
-        <span class="admin-ai-badge" id="adminAiBadge" title="TALA brain status">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2M15 20v2M2 15h2M20 15h2M2 9h2M20 9h2M9 2v2M9 20v2"/></svg>
-          loading…
-        </span>
-        <button class="admin-close" onclick="closeAdminPanel()" title="Close">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        <span class="admin-save-indicator" id="adminSaveIndicator" role="status" aria-live="polite" data-state="saved">All changes saved</span>
+        <span class="admin-ai-badge" id="adminAiBadge"></span>
+        <a href="/" target="_blank" rel="noopener noreferrer" class="admin-header-link">View site</a>
+        <button type="button" class="admin-close" onclick="adminClosePanelGuarded()" aria-label="Close Backoffice">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
         </button>
       </div>
     </div>
-    <div class="admin-shell">
-      <div class="admin-tabs">
-        <button class="admin-tab active" id="adminTabDest" onclick="switchAdminTab('dest')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
-          Places &amp; Businesses
-        </button>
-        <button class="admin-tab" id="adminTabTala" onclick="switchAdminTab('tala')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
-          Tala Answers
-        </button>
-        <button class="admin-tab" id="adminTabTalaAi" onclick="switchAdminTab('ai')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>
-          TALA AI
-        </button>
-        <button class="admin-tab" id="adminTabPulse" onclick="switchAdminTab('pulse')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
-          Tribes
-        </button>
-        <button class="admin-tab" id="adminTabSite" onclick="switchAdminTab('site')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-          Site
-        </button>
-        <button class="admin-tab" id="adminTabToday" onclick="switchAdminTab('today')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          Today
-        </button>
-        <button class="admin-tab" id="adminTabTribes" onclick="switchAdminTab('tribes')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Tribes
-        </button>
-        <button class="admin-tab" id="adminTabEvents" onclick="switchAdminTab('events')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg>
-          Events
-        </button>
-        <button class="admin-tab" id="adminTabMySanvic" onclick="switchAdminTab('mysanvic')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          My Sanvic
-        </button>
-        <button class="admin-tab" id="adminTabHunt" onclick="switchAdminTab('hunt')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="12" y1="1" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="1" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="23" y2="12"/></svg>
-          The Hunt
-        </button>
-      </div>
+    <div id="adminLiveRegion" class="sr-only" role="status" aria-live="polite"></div>
+    <div class="admin-shell" id="adminShell">
+      <button type="button" class="admin-nav-backdrop" id="adminNavBackdrop" aria-label="Close navigation" onclick="adminToggleNav(false)"></button>
+      <nav class="admin-tabs" id="adminNav" aria-label="Backoffice sections">
+        <div class="admin-nav-group">
+          <div class="admin-nav-heading">Workspace</div>
+          <button type="button" class="admin-tab" data-tab="home" id="adminTabHome" aria-label="Admin home" onclick="switchAdminTab('home')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M9 22V12h6v10"/></svg><span class="admin-tab-label">Admin home</span>
+          </button>
+          <button type="button" class="admin-tab active" data-tab="dest" id="adminTabDest" aria-label="Places and businesses" onclick="switchAdminTab('dest')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 5-5.5 10.2-7.4 11.8a1 1 0 0 1-1.2 0C9.5 20.2 4 15 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg><span class="admin-tab-label">Places</span>
+          </button>
+          <button type="button" class="admin-tab" data-tab="map" id="adminTabMap" aria-label="Map and pins" onclick="switchAdminTab('map')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21 3 6"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg><span class="admin-tab-label">Map &amp; pins</span>
+          </button>
+          <button type="button" class="admin-tab" data-tab="photos" id="adminTabPhotos" aria-label="Photos" onclick="switchAdminTab('photos')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg><span class="admin-tab-label">Photos</span>
+          </button>
+          <button type="button" class="admin-tab" data-tab="categories" id="adminTabCategories" aria-label="Categories" onclick="switchAdminTab('categories')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.6 2.6 21 11a2 2 0 0 1 0 2.8l-7.2 7.2a2 2 0 0 1-2.8 0L3 12.8V3h9.6Z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg><span class="admin-tab-label">Categories</span>
+          </button>
+        </div>
+        <div class="admin-nav-group">
+          <div class="admin-nav-heading">Site &amp; community</div>
+          <button type="button" class="admin-tab" data-tab="site" id="adminTabSite" aria-label="Site content" onclick="switchAdminTab('site')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15 15 0 0 1 0 20"/><path d="M12 2a15 15 0 0 0 0 20"/></svg><span class="admin-tab-label">Site content</span>
+          </button>
+          <button type="button" class="admin-tab" data-tab="tribes" id="adminTabTribes" aria-label="Tribes" onclick="switchAdminTab('tribes')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg><span class="admin-tab-label">Tribes</span>
+          </button>
+          <button type="button" class="admin-tab" data-tab="events" id="adminTabEvents" aria-label="Events" onclick="switchAdminTab('events')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/></svg><span class="admin-tab-label">Events</span>
+          </button>
+          <button type="button" class="admin-tab" data-tab="today" id="adminTabToday" aria-label="Today" onclick="switchAdminTab('today')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="admin-tab-label">Today</span>
+          </button>
+          <button type="button" class="admin-tab" data-tab="mysanvic" id="adminTabMySanvic" aria-label="My Sanvic" onclick="switchAdminTab('mysanvic')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21.2l8.8-8.8a5.5 5.5 0 0 0 0-7.8Z"/></svg><span class="admin-tab-label">My Sanvic</span>
+          </button>
+          <button type="button" class="admin-tab" data-tab="hunt" id="adminTabHunt" aria-label="The Hunt" onclick="switchAdminTab('hunt')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/></svg><span class="admin-tab-label">The Hunt</span>
+          </button>
+          <button type="button" class="admin-tab" data-tab="pulse" id="adminTabPulse" aria-label="Pulse posts" onclick="switchAdminTab('pulse')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg><span class="admin-tab-label">Pulse posts</span>
+          </button>
+        </div>
+        <div class="admin-nav-group">
+          <div class="admin-nav-heading">Assistant &amp; tools</div>
+          <button type="button" class="admin-tab" data-tab="tala" id="adminTabTala" aria-label="Tala answers" onclick="switchAdminTab('tala')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg><span class="admin-tab-label">Tala answers</span>
+          </button>
+          <button type="button" class="admin-tab" data-tab="ai" id="adminTabTalaAi" aria-label="TALA AI settings" onclick="switchAdminTab('ai')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z"/><path d="M19 15v4"/><path d="M17 17h4"/></svg><span class="admin-tab-label">TALA AI</span>
+          </button>
+          <a class="admin-tab" href="/admin" aria-label="Advanced data tools">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="admin-tab-label">Advanced data</span>
+          </a>
+        </div>
+      </nav>
       <div class="admin-main">
         <div class="admin-body" id="adminBody"></div>
         <div class="admin-foot">
           <button onclick="adminResetDefaults()" class="reset">Reset to defaults</button>
-          <button onclick="closeAdminPanel()">Done</button>
+          <button onclick="adminClosePanelGuarded()">Done</button>
         </div>
       </div>
     </div>
@@ -2344,7 +2369,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-30-map-legibility-r1';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-30-map-tools-r2';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by app.js and entry-flow.js so the two timers
   // cannot drift apart. Raise it to hold the first page longer.
@@ -2358,7 +2383,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
     var v = encodeURIComponent(window.SANVIC_DEPLOY_VERSION);
     // async=false keeps execution order: supabase-config.js first (defines
     // sb + loads experience modules), then app.js which depends on it.
-    ['supabase-config.js', 'explore-model.js', 'app.js', 'kmz-import.js'].forEach(function (file) {
+    ['supabase-config.js', 'explore-model.js', 'admin-model.js', 'app.js', 'admin-studio.js', 'kmz-import.js'].forEach(function (file) {
       var s = document.createElement('script');
       s.src = file + '?v=' + v;
       s.async = false;
@@ -2434,7 +2459,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   <div class="carousel-dots" id="carouselDots"></div>
 </div>
 
-<link rel="stylesheet" href="explore-ux.css?v=2026-10-30-map-legibility-r1">
+<link rel="stylesheet" href="explore-ux.css?v=2026-10-30-map-tools-r2">
 <style id="sanvicNoHScroll">
   /* ── Nothing in the product scrolls sideways. ─────────────────────────────
      Chip rows wrap; card strips wrap into uniform full-width rows. The same
@@ -2485,5 +2510,6 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   /* The Backoffice sidebar keeps its own single vertical column. */
   @media (min-width:860px){.admin-tabs{flex-wrap:nowrap;overflow-x:hidden}}
 </style>
+<link rel="stylesheet" href="admin-ux.css?v=2026-10-30-map-tools-r2">
 </body>
 </html>

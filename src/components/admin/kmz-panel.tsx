@@ -79,10 +79,22 @@ export function KmzPanel({ token, onDone }: { token: string; onDone: () => void 
           featured: false,
           color: categoryColor(d.category),
         }));
-        await call(token, "insert", { table: "destinations" }, {
-          method: "POST",
-          body: JSON.stringify(batch),
-        });
+        try {
+          await call(token, "insert", { table: "destinations" }, {
+            method: "POST",
+            body: JSON.stringify(batch),
+          });
+        } catch (err) {
+          // Before the publishing migration is applied, `status` is not a
+          // column. Preserve the importer on older databases.
+          const message = err instanceof Error ? err.message : String(err);
+          if (!/status|schema cache|column/i.test(message)) throw err;
+          const legacyBatch = batch.map(({ status: _status, ...row }) => row);
+          await call(token, "insert", { table: "destinations" }, {
+            method: "POST",
+            body: JSON.stringify(legacyBatch),
+          });
+        }
         setBusy(`Imported ${Math.min(i + 50, selected.length)} / ${selected.length}…`);
       }
       setBusy(`Done — ${selected.length} place(s) imported as drafts.`);
