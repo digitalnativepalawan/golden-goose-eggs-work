@@ -207,6 +207,13 @@ body.sanvic-profiled #heroFade{display:none!important}
   body[data-active-tab="map"] .map-layer-toggle,
   body[data-active-tab="discover"] .map-layer-toggle{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
 .map-layer-toggle.visible{opacity:1;pointer-events:auto;transform:translateY(0) scale(1)}
+  /* Map tools belong to the map and nowhere else. The partner kept finding the
+     Layers pill floating over Tribes/The Hunt/My Journey, where it does nothing.
+     panel-open is set by refreshPanelOpen() whenever a full-screen panel is up;
+     an open Explore sheet is the one panel that still has the map behind it, so
+     that case is exempt. */
+  body.panel-open:not(.explore-open) .map-layer-toggle,
+  body.panel-open:not(.explore-open) .map-util-btn{opacity:0!important;pointer-events:none!important;transform:translateY(-8px) scale(.96)!important}
 .map-layer-toggle .mlt-btn{padding:9px 11px;border-radius:var(--radius-pill);border:none;background:transparent;color:var(--white-dim);font-family:var(--font-body);font-size:.66rem;font-weight:400;letter-spacing:.04em;cursor:pointer;transition:all .3s var(--ease-smooth);white-space:nowrap;display:flex;align-items:center;justify-content:center;gap:4px}
 .mlt-label{display:none}
 .map-layer-toggle .mlt-btn:hover{color:var(--white-muted)}
@@ -941,6 +948,15 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
 </div>
 <div class="map-status" id="mapStatus" role="status" aria-live="polite" hidden></div>
 
+<!-- ═══ MAP PICK MODE (used by Form a Tribe: "pick a place on the map") ═══ -->
+<div class="map-pick-bar" id="mapPickBar" role="dialog" aria-label="Pick a meeting point on the map">
+  <span class="map-pick-copy">
+    <span class="map-pick-title" id="mapPickTitle">Tap the map</span>
+    <span class="map-pick-sub" id="mapPickSub">Anywhere in San Vicente — a beach, a business, a landmark.</span>
+  </span>
+  <button type="button" class="map-pick-cancel" onclick="cancelMapPick()">Cancel</button>
+</div>
+
 
 
 
@@ -1537,6 +1553,41 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   .pv2-wiz-photobtn{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:rgba(255,255,255,.82);font-size:.76rem;font-weight:600;cursor:pointer}
   .pv2-wiz-photoprev{width:52px;height:52px;border-radius:13px;flex-shrink:0;background:rgba(255,255,255,.05) center/cover no-repeat;border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.25)}
   .pv2-wiz-photoprev.has{border-color:rgba(20,184,166,.5)}
+  /* Step 2 of Form a Tribe used to offer "Choose Place" and then never ask which
+     place. This is the list it should have opened: every mapped spot, nearest
+     first, with a search box. */
+  .pv2-place-pick{display:flex;flex-direction:column;gap:8px}
+  .pv2-place-search{width:100%;padding:11px 14px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#fff;font-family:var(--font-body);font-size:.86rem;outline:0}
+  .pv2-place-list{max-height:46vh;overflow-y:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:6px;padding-right:2px}
+  .pv2-place-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);color:rgba(255,255,255,.9);font-family:var(--font-body);cursor:pointer}
+  .pv2-place-row.on{background:rgba(20,184,166,.14);border-color:rgba(20,184,166,.5)}
+  .pv2-place-row svg{width:15px;height:15px;color:#5eead4;flex-shrink:0}
+  .pv2-place-main{min-width:0;flex:1}
+  .pv2-place-name{font-size:.9rem;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pv2-place-meta{font-size:.72rem;color:rgba(255,255,255,.55);margin-top:2px}
+  .pv2-place-empty{font-size:.8rem;color:rgba(255,255,255,.5);padding:10px 2px;line-height:1.5}
+  .pv2-picked{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:12px;background:rgba(20,184,166,.12);border:1px solid rgba(20,184,166,.45)}
+  .pv2-picked svg{width:15px;height:15px;color:#5eead4;flex-shrink:0}
+  .pv2-picked-main{flex:1;min-width:0}
+  .pv2-picked-name{font-size:.9rem;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pv2-picked-meta{font-size:.72rem;color:rgba(255,255,255,.6);margin-top:2px}
+  .pv2-picked-change{background:none;border:0;color:#5eead4;font-size:.76rem;font-weight:600;cursor:pointer;padding:6px 2px;flex-shrink:0}
+  /* Map picking mode: the wizard steps aside, the map takes the screen. */
+  .map-pick-bar{position:fixed;left:50%;transform:translateX(-50%) translateY(-12px);top:calc(var(--safe-top) + 12px);z-index:130;display:none;align-items:center;gap:12px;max-width:calc(100vw - 24px);padding:12px 14px;border-radius:16px;background:rgba(8,18,30,.94);backdrop-filter:blur(20px);border:1px solid rgba(94,234,212,.35);box-shadow:0 10px 30px rgba(0,0,0,.45);color:#eafcff;font-family:var(--font-body)}
+  body.map-picking .map-pick-bar{display:flex;transform:translateX(-50%) translateY(0)}
+  body.map-picking .bottom-dock,
+  body.map-picking .tala-orb-wrap,
+  body.map-picking .map-layer-toggle,
+  body.map-picking .map-util-btn,
+  body.map-picking .admin-entry{opacity:0!important;pointer-events:none!important}
+  body.map-picking #map{cursor:crosshair}
+  .map-pick-copy{min-width:0;display:flex;flex-direction:column;gap:2px}
+  .map-pick-title{font-size:.86rem;font-weight:600;color:#fff}
+  .map-pick-sub{font-size:.72rem;color:rgba(255,255,255,.66);margin-top:2px;line-height:1.35}
+  .map-pick-cancel{flex-shrink:0;min-height:38px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#eafcff;font-size:.78rem;font-weight:600;cursor:pointer}
+  /* A dropped pin, so the picked point is visible while the sheet is closed. */
+  .map-pick-pin{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:rgba(94,234,212,.22);border:1.5px solid #5eead4;box-shadow:0 0 0 6px rgba(94,234,212,.12),0 0 18px rgba(94,234,212,.7)}
+  .map-pick-pin::after{content:'';width:9px;height:9px;border-radius:50%;background:#fff}
   /* Empty state */
   .pv2-empty{padding:26px 16px;border-radius:20px;background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.1);text-align:center;color:rgba(255,255,255,.75);display:flex;flex-direction:column;align-items:center;gap:12px}
   @media(min-width:900px){
@@ -1554,7 +1605,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
       <svg class="pv2-wave" viewBox="0 0 34 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 8 6 8 9 2 14 14 18 8 22 4 26 12 30 8 33 8"/></svg>
     </div>
     <div class="pv2-sub">Find your tribe today.</div>
-    <div class="pv2-body-copy">Join small groups, local happenings, and live plans around San Vicente.</div>
+    <div class="pv2-body-copy">Join small groups, local happenings, and tribe chats around San Vicente.</div>
     <button class="pv2-header-cta" type="button" onclick="selectPulseView('form')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Form a Tribe</button>
     <div class="pv2-live">
       <span class="pv2-live-dot" aria-hidden="true"></span>
@@ -1730,7 +1781,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
     <div class="person-status" id="personStatus"></div>
     <button class="person-go" onclick="confirmPerson()">Continue</button>
   </div>
-  <div class="person-fine">Kept on this device only. It is never shown to anyone except as your first name beside the plans you join.</div>
+  <div class="person-fine">Kept on this device only. It is never shown to anyone except as your first name beside the tribes you join.</div>
 </div>
 
 <!-- ═══ DASHBOARD ═══ -->
@@ -2293,7 +2344,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-26-mobile-map-r2';
+  window.SANVIC_DEPLOY_VERSION = '2026-10-30-map-legibility-r1';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by app.js and entry-flow.js so the two timers
   // cannot drift apart. Raise it to hold the first page longer.
@@ -2383,7 +2434,7 @@ body:has(#adminPanelOverlay.active) .login-sheet{z-index:211}
   <div class="carousel-dots" id="carouselDots"></div>
 </div>
 
-<link rel="stylesheet" href="explore-ux.css?v=2026-10-26-mobile-map-r2">
+<link rel="stylesheet" href="explore-ux.css?v=2026-10-30-map-legibility-r1">
 <style id="sanvicNoHScroll">
   /* ── Nothing in the product scrolls sideways. ─────────────────────────────
      Chip rows wrap; card strips wrap into uniform full-width rows. The same

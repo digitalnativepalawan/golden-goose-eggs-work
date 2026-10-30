@@ -82,7 +82,41 @@ body[data-active-tab=discover]:not(.explore-open):not(.place-open) .explore-reop
 .leaflet-bottom.leaflet-right{bottom:max(78px, var(--map-bottom));transition:bottom .2s}.leaflet-control-attribution{max-width:calc(100vw - 20px);font-size:10px!important;background:#fffffff2!important;color:#243b45!important;line-height:1.5!important}.leaflet-control-attribution a{color:#174c57!important}
 .map-dark .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) saturate(.35) brightness(.7) contrast(.9)}
 .map-status{position:fixed;right:72px;top:74px;z-index:84;max-width:min(320px,calc(100vw - 100px));padding:12px 16px;border:1px solid #597776;border-radius:12px;background:#102130;color:#dceae8;font-size:13px;line-height:1.5}
-.place-marker{background:none!important;border:none!important;display:flex!important;align-items:center;justify-content:center}.place-pin{display:block;width:8px;height:8px;border-radius:50%;border:1px solid rgba(255,255,255,.9);background:var(--pin-color,#0ea5e9);box-shadow:0 0 4px var(--pin-color,#0ea5e9),0 0 9px color-mix(in srgb,var(--pin-color,#0ea5e9) 60%,transparent),0 1px 2px rgba(0,0,0,.55);pointer-events:none;box-sizing:border-box;transition:width .15s ease,height .15s ease,box-shadow .15s ease}.place-marker.selected .place-pin{width:12px;height:12px;background:#fff;border:2px solid var(--pin-color,#0ea5e9);box-shadow:0 0 0 3px rgba(255,255,255,.9),0 0 11px var(--pin-color,#0ea5e9),0 0 18px var(--pin-color,#0ea5e9)}.place-marker:focus-visible{outline:2px solid #fff;outline-offset:-10px;border-radius:50%}.leaflet-container .leaflet-tooltip{background:rgba(4,12,30,.94)!important;border:1px solid rgba(255,255,255,.2)!important;border-radius:8px!important;color:#f5fdff!important;box-shadow:0 4px 16px rgba(0,0,0,.4)!important}.leaflet-container .leaflet-tooltip::before{display:none!important}.map-satellite .leaflet-tile-pane{filter:brightness(1.12) saturate(.9)}.place-cluster-icon{background:none!important;border:none!important;display:grid;place-items:center}.place-cluster-badge{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:rgba(5,18,31,.9);border:1.5px solid #e8dcc8;color:#fff;font:700 11px var(--font-body);box-shadow:0 0 6px rgba(232,220,200,.38),0 0 12px rgba(232,220,200,.2);backdrop-filter:blur(5px)}.barangay-point-icon{background:none!important;border:0!important;display:grid!important;place-items:center}.barangay-point{display:block;width:6px;height:6px;border-radius:50%;background:#36d9ff;box-shadow:0 0 3px #36d9ff,0 0 8px rgba(54,217,255,.45);pointer-events:none}.leaflet-container.zoom-far .barangay-point{width:5px;height:5px;box-shadow:0 0 2px #36d9ff,0 0 6px rgba(54,217,255,.35)}.barangay-point-tooltip{background:rgba(4,12,30,.88)!important;border:1px solid rgba(54,217,255,.28)!important;color:#f5fdff!important;border-radius:7px!important;font:.65rem var(--font-body)!important;box-shadow:0 4px 12px rgba(0,0,0,.4)!important}.barangay-point-tooltip::before{display:none!important}.user-location{border-radius:50%;background:#237fea;border:3px solid white;box-shadow:0 0 0 5px #237fea40}
+/* The partner's middle way: the pins had shrunk to an 8px dot with a whisper of a
+   glow ("I can barely see the sand colour for a beach"). They are back up to a
+   12px neon disc — clearly readable against satellite imagery — with a layered
+   halo instead of the flat 4px shadow, and a slightly larger ring for the
+   places that carry the map: featured businesses and the curated landmarks. */
+.place-marker{background:none!important;border:none!important;display:flex!important;align-items:center;justify-content:center}
+.place-pin{display:block;width:12px;height:12px;border-radius:50%;border:1.5px solid rgba(255,255,255,.92);background:var(--pin-color,#0ea5e9);
+  box-shadow:0 0 0 2px color-mix(in srgb,var(--pin-color,#0ea5e9) 24%,transparent),
+             0 0 7px color-mix(in srgb,var(--pin-color,#0ea5e9) 95%,transparent),
+             0 0 16px color-mix(in srgb,var(--pin-color,#0ea5e9) 70%,transparent),
+             0 0 28px color-mix(in srgb,var(--pin-color,#0ea5e9) 38%,transparent),
+             0 1px 3px rgba(0,0,0,.6);
+  pointer-events:none;box-sizing:border-box;transition:width .15s ease,height .15s ease,box-shadow .15s ease}
+.place-pin::after{content:'';display:block;width:3px;height:3px;margin:3.25px auto 0;border-radius:50%;background:rgba(255,255,255,.95);box-shadow:0 0 4px rgba(255,255,255,.9)}
+/* Key places: what a traveller should see from out at sea before zooming in. */
+.place-marker.is-key .place-pin{width:15px;height:15px;
+  box-shadow:0 0 0 3px color-mix(in srgb,var(--pin-color,#0ea5e9) 26%,transparent),
+             0 0 10px color-mix(in srgb,var(--pin-color,#0ea5e9) 100%,transparent),
+             0 0 22px color-mix(in srgb,var(--pin-color,#0ea5e9) 78%,transparent),
+             0 0 38px color-mix(in srgb,var(--pin-color,#0ea5e9) 42%,transparent),
+             0 1px 3px rgba(0,0,0,.6)}
+.place-marker.is-key .place-pin::after{width:4px;height:4px;margin:4px auto 0}
+.place-marker.selected .place-pin{width:16px;height:16px;background:#fff;border:2px solid var(--pin-color,#0ea5e9);box-shadow:0 0 0 4px rgba(255,255,255,.9),0 0 14px var(--pin-color,#0ea5e9),0 0 26px var(--pin-color,#0ea5e9)}.place-marker:focus-visible{outline:2px solid #fff;outline-offset:-10px;border-radius:50%}.leaflet-container .leaflet-tooltip{background:rgba(4,12,30,.94)!important;border:1px solid rgba(255,255,255,.2)!important;border-radius:8px!important;color:#f5fdff!important;box-shadow:0 4px 16px rgba(0,0,0,.4)!important}.leaflet-container .leaflet-tooltip::before{display:none!important}.map-satellite .leaflet-tile-pane{filter:brightness(1.12) saturate(.9)}.place-cluster-icon{background:none!important;border:none!important;display:grid;place-items:center}.place-cluster-badge{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:rgba(5,18,31,.9);border:1.5px solid #e8dcc8;color:#fff;font:700 11px var(--font-body);box-shadow:0 0 6px rgba(232,220,200,.38),0 0 12px rgba(232,220,200,.2);backdrop-filter:blur(5px)}/* Barangay dots mark where the town actually is, so they have to read as towns
+   from 40km out, not as specks. 6px → 12px with a proper cyan halo; they ease to
+   10px at regional zoom instead of disappearing. */
+.barangay-point-icon{background:none!important;border:0!important;display:grid!important;place-items:center}
+.barangay-point{display:block;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 50% 45%,#eaffff 0%,#7ff0ff 40%,#36d9ff 100%);
+  border:1.5px solid rgba(255,255,255,.9);
+  box-shadow:0 0 0 3px rgba(54,217,255,.18),
+             0 0 8px #36d9ff,
+             0 0 18px rgba(54,217,255,.75),
+             0 0 32px rgba(54,217,255,.4);
+  pointer-events:none;box-sizing:border-box;transition:width .2s ease,height .2s ease,box-shadow .2s ease}
+.leaflet-container.zoom-far .barangay-point{width:10px;height:10px;
+  box-shadow:0 0 0 3px rgba(54,217,255,.16),0 0 7px #36d9ff,0 0 16px rgba(54,217,255,.6),0 0 26px rgba(54,217,255,.3)}.barangay-point-tooltip{background:rgba(4,12,30,.88)!important;border:1px solid rgba(54,217,255,.28)!important;color:#f5fdff!important;border-radius:7px!important;font:.65rem var(--font-body)!important;box-shadow:0 4px 12px rgba(0,0,0,.4)!important}.barangay-point-tooltip::before{display:none!important}.user-location{border-radius:50%;background:#237fea;border:3px solid white;box-shadow:0 0 0 5px #237fea40}
 .dest-sheet{visibility:hidden;left:0;right:0;top:auto;bottom:calc(74px + env(safe-area-inset-bottom));width:auto;height:65dvh;max-height:calc(100dvh - 84px);border-radius:24px 24px 0 0;border:1px solid #344956;transform:translateY(calc(100% + 100px));z-index:83;box-shadow:0 -6px 25px #0003}
 .dest-sheet.expanded{visibility:visible;top:auto;bottom:calc(74px + env(safe-area-inset-bottom));left:0;right:0;width:auto;height:65dvh;max-height:calc(100dvh - 84px);transform:none;border-radius:24px 24px 0 0}
 .dest-compact,.dest-handle,.dest-exp-back{display:none!important}.detail-back{min-height:52px;flex:none;text-align:left;padding:12px 20px;background:#101e2b;border:0;border-bottom:1px solid #344956;color:#b9ebdd;font-size:14px}
@@ -109,4 +143,7 @@ body[data-active-tab=discover] #talaOrbWrap{display:none}
 .admin-entry:hover,.admin-entry:focus-visible{color:#b9ebdd;border-color:#71d9c1;outline:none}
 .admin-entry svg{width:17px;height:17px}
 @media (max-width:520px){.admin-entry{top:10px;right:10px;width:38px;height:38px}}
-@media(max-width:700px){.place-pin{width:10px;height:10px;border-width:1.5px;box-shadow:0 0 5px var(--pin-color,#0ea5e9),0 0 12px color-mix(in srgb,var(--pin-color,#0ea5e9) 60%,transparent),0 1px 2px rgba(0,0,0,.55)}.place-marker.selected .place-pin{width:14px;height:14px}}
+/* Phones get exactly the same dot as desktop. The old rule shrank it to 10px on
+   phones — the screens the partner was testing on — which is where "the dots are
+   too small" came from. */
+@media(max-width:700px){.place-pin{width:13px;height:13px}.place-pin::after{width:3px;height:3px;margin:3.5px auto 0}.place-marker.is-key .place-pin{width:16px;height:16px}.place-marker.is-key .place-pin::after{width:4px;height:4px;margin:4.5px auto 0}.place-marker.selected .place-pin{width:17px;height:17px}}
