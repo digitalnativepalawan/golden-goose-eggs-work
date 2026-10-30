@@ -2367,6 +2367,19 @@ let pulseView = 'tribes';
 // threw ReferenceError before it drew anything. Declared so the code is at least
 // honest about what it expects.
 let pulseTab = 'feed';
+// The feed's channels (general, hidden spots, island hopping…) are a different
+// set from the tribe/event tags, so they get their own filter state. Sharing
+// pulseCategory meant switching to "Surf" in Active Tribes silently emptied the
+// feed.
+let pulseFeedCategory = 'all';
+const FEED_CHANNELS = [
+  { key:'all',    label:'All' },
+  { key:'hidden', label:'Hidden spots' },
+  { key:'island', label:'Island hopping' },
+  { key:'food',   label:'Food & nightlife' },
+  { key:'surf',   label:'Surf report' },
+  { key:'events', label:'Events tonight' }
+];
 
 // ─── PULSE v2: Tribes / Events / Lounge / Form ───
 const PV2_CATS = ['All','Island Hopping','Sunset','Food & Drinks','Transport','Surf','Nightlife','Explore','Local Life'];
@@ -2462,14 +2475,38 @@ function pulseDeviceId(){
 function pulseSavedName(){ try{ return localStorage.getItem('pulse_display_name') || (window.todayNickname?todayNickname():'') || 'You'; }catch(_){ return 'You'; } }
 function pulseSaveName(n){ try{ if(n) localStorage.setItem('pulse_display_name',n); }catch(_){ } }
 
+// The panel heading described Tribes while five different things lived under it.
+// Only the feed gets its own heading for now; every other view keeps the copy it
+// shipped with, so nothing else moves.
+const PULSE_VIEW_HEADINGS = {
+  feed: {
+    title: 'Feed',
+    sub: 'What is happening right now.',
+    copy: 'Posts from locals and travellers around San Vicente. No account needed to read or reply.'
+  }
+};
+const PULSE_DEFAULT_HEADING = { title:'Tribes', sub:'Find your tribe today.', copy:'Join small groups, local happenings, and tribe chats around San Vicente.' };
+
+function applyPulseHeading(view){
+  const h = PULSE_VIEW_HEADINGS[view] || PULSE_DEFAULT_HEADING;
+  const t = document.getElementById('pv2Title');
+  const sub = document.getElementById('pv2Sub');
+  const copy = document.getElementById('pv2Copy');
+  if(t) t.textContent = h.title;
+  if(sub) sub.textContent = h.sub;
+  if(copy) copy.textContent = h.copy;
+}
+
 function selectPulseView(view){
   pulseView = view;
   const panel = document.getElementById('pulsePanel');
   if(panel) panel.dataset.view = view;
+  applyPulseHeading(view);
   document.querySelectorAll('.pv2-vtab').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
-  // Hide ribbon on lounge/form
+  // Hide the shared ribbon on lounge/form, and on the feed — the feed carries
+  // its own channel chips, and those names are not tribe tags.
   const rib = document.getElementById('pv2CatRibbon');
-  if(rib) rib.style.display = (view==='lounge'||view==='form') ? 'none' : '';
+  if(rib) rib.style.display = (view==='lounge'||view==='form'||view==='feed') ? 'none' : '';
   if(rib) rib.classList.remove('is-away');
   const body = document.getElementById('pulseBody');
   if(body) body.scrollTop = 0;
@@ -3238,6 +3275,8 @@ function renderPulseBody(){
     body.innerHTML = `
       <div class="pv2-listhead"><div class="pv2-listhead-l"><div class="pv2-listhead-t">${lucideSvg('party-popper',15)} Events &amp; Happenings</div><div class="pv2-listhead-s">Verified organizers only.</div></div></div>
       ${list.map(eventCardHTML).join('')}`;
+  } else if(pulseView==='feed'){
+    renderPulseFeed();
   } else if(pulseView==='lounge'){
     renderPulseLounge();
   } else if(pulseView==='form'){
@@ -3882,27 +3921,52 @@ async function togglePulseLike(btn, postId){
   }
 }
 
+// The feed's own chrome: a way in to the composer and the channel chips. It is
+// drawn before the query resolves so the panel never looks like it has nothing
+// to offer while it is still thinking.
+function pulseFeedChromeHtml(){
+  const chips = FEED_CHANNELS.map(c=>{
+    const active = pulseFeedCategory===c.key ? ' active' : '';
+    return `<button class="pv2-cat${active}" onclick="setPulseFeedCategory('${c.key}')">${escT(c.label)}</button>`;
+  }).join('');
+  return `
+    <div class="pv2-feed-top">
+      <button class="pv2-feed-compose" type="button" onclick="openPulseCompose()">
+        ${lucideSvg('pencil',16)}
+        <span>Say something to San Vicente…</span>
+      </button>
+      <div class="pv2-feed-chips">${chips}</div>
+    </div>`;
+}
+
+function setPulseFeedCategory(cat){
+  pulseFeedCategory = cat;
+  renderPulseFeed();
+}
+
 async function renderPulseFeed(){
   const body = document.getElementById('pulseBody');
   if(!body) return;
 
-  if(pulseTab !== 'feed'){
-    // Only the feed exists today. Anything else falls through to it rather
-    // than printing a placeholder, so a stray pulseTab value can never leave
-    // the visitor looking at an empty panel.
-  }
-
-  body.innerHTML = `<div class="pulse-empty">Loading…</div>`;
+  body.innerHTML = `${pulseFeedChromeHtml()}<div class="pulse-empty">Loading…</div>`;
 
   let query = sb.from('pulse_posts')
     .select('id, user_id, category, text_content, image_url, location_text, tag, display_name, is_anonymous, admin_post, created_at')
     .order('created_at', { ascending: false })
     .limit(100);
-  if(pulseCategory !== 'all') query = query.eq('category', pulseCategory);
+  if(pulseFeedCategory !== 'all') query = query.eq('category', pulseFeedCategory);
 
   const { data: rows, error } = await query;
   if(error){
-    body.innerHTML = `<div class="pulse-empty">Could not load Pulse: ${escapeHtml(error.message)}</div>`;
+    // A failed query is not an empty feed. Say which one it is, and give a way
+    // back rather than a dead panel.
+    body.innerHTML = `${pulseFeedChromeHtml()}
+      <div class="pv2-empty">
+        <div style="display:flex;justify-content:center;color:rgba(255,255,255,.4)">${lucideSvg('cloud',28)}</div>
+        <div>Could not load the feed.</div>
+        <div class="pv2-empty-s">${escapeHtml(error.message || 'The connection dropped.')}</div>
+        <button class="pv2-cta" onclick="renderPulseFeed()">Try again</button>
+      </div>`;
     return;
   }
 
@@ -3956,10 +4020,17 @@ async function renderPulseFeed(){
   });
 
   if(!posts.length){
-    body.innerHTML = `<div class="pulse-empty">No posts yet in this category. Be the first to share something!</div>`;
+    const all = pulseFeedCategory === 'all';
+    body.innerHTML = `${pulseFeedChromeHtml()}
+      <div class="pv2-empty">
+        <div style="display:flex;justify-content:center;color:rgba(255,255,255,.4)">${lucideSvg('message-circle',28)}</div>
+        <div>${all ? 'No posts yet.' : 'Nothing posted in this channel yet.'}</div>
+        <div class="pv2-empty-s">${all ? 'Be the first to say what is happening in San Vicente — a spot worth seeing, a boat with seats, the surf right now.' : 'Try another channel, or start the conversation yourself.'}</div>
+        <button class="pv2-cta" onclick="openPulseCompose()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Write a post</button>
+      </div>`;
     return;
   }
-  body.innerHTML = posts.map(pulseCardHtml).join('');
+  body.innerHTML = `${pulseFeedChromeHtml()}${posts.map(pulseCardHtml).join('')}`;
   // Mark hearts that the current user has already liked
   body.querySelectorAll('.pulse-action').forEach(btn => {
     const m = btn.getAttribute('onclick') && btn.getAttribute('onclick').match(/togglePulseLike\(this,\s*(\d+)\)/);
@@ -3980,7 +4051,7 @@ let pulseComposeLocation = null;
 
 function openPulseCompose(){
   document.getElementById('pulseComposeText').value = '';
-  const initCat = pulseCategory !== 'all' ? pulseCategory : 'all';
+  const initCat = pulseFeedCategory !== 'all' ? pulseFeedCategory : 'all';
   setPulseCat(initCat);
   const nameEl = document.getElementById('pulseComposeName');
   if(nameEl) nameEl.value = pulseSavedName();
@@ -4222,9 +4293,8 @@ async function submitPulsePost(){
   pulseLastPostAt = now;
 
   closePulseCompose();
-  pulseCategory = 'all';
+  pulseFeedCategory = 'all';
   pulseTab = 'feed';
-  document.querySelectorAll('.pulse-cat').forEach(b=>b.classList.toggle('active', b.dataset.cat==='all'));
   document.querySelectorAll('.pulse-tab').forEach(b=>{ if(!b.classList.contains('disabled')) b.classList.toggle('active', b.dataset.tab==='feed'); });
 
   await renderPulseFeed();

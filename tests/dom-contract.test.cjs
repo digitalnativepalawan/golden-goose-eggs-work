@@ -67,6 +67,8 @@ test("feed state is declared before anything reads it", () => {
   // the feed renderer threw ReferenceError instead of drawing a feed.
   const decl = js.indexOf("let pulseTab = 'feed';");
   assert.ok(decl > 0, "pulseTab must be declared");
-  const firstRead = js.indexOf("if(pulseTab !==");
-  assert.ok(firstRead > decl, "declaration must come before the read");
+  // Every mention of it must come after the declaration, or the first one throws.
+  const firstUse = js.indexOf("pulseTab", decl + 1);
+  assert.ok(firstUse > decl, "every use of pulseTab must follow its declaration");
+  assert.equal(/pulseTab/.test(js.slice(0, decl)), false, "pulseTab is read before it is declared");
 });
