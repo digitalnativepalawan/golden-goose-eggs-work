@@ -976,6 +976,9 @@ function markTalaIdle(){
 
 // ─── MAP ───
 let map, mapReady=false;
+// True while Form a Tribe is waiting for a tap on the map. Declared up here with
+// the rest of the map state so the marker code below can read it safely.
+let mapPickActive=false;
 const markersByCat={};
 let allMarkers=[];
 // Individual place markers are staged by zoom so the map remains legible.
@@ -993,11 +996,41 @@ function categoryMarkerColor(key){
   return /^#[0-9a-f]{6}$/i.test(configured)?configured:'#7FA8FF';
 }
 
+// Which places carry the map. Two sources, both admin-owned:
+//   1. destinations.featured — the businesses that pay to be found;
+//   2. the first two places by sort_order in every category — the landmarks and
+//      anchor businesses the team curated to the top.
+// These stay visible from 10km out, so a visitor at regional zoom sees the town,
+// the resorts and the landmarks instead of an empty green coastline.
+function keyPlaceIds(){
+  const ids = new Set();
+  (Array.isArray(destinations)?destinations:[]).forEach(d=>{ if(d && d.featured) ids.add(String(d.id)); });
+  const byCategory = {};
+  (Array.isArray(destinations)?destinations:[]).forEach(d=>{
+    if(!d) return;
+    const k = String(d.category||'other');
+    (byCategory[k] = byCategory[k] || []).push(d);
+  });
+  Object.keys(byCategory).forEach(k=>{
+    byCategory[k]
+      .slice()
+      .sort((a,b)=>orderOf(a)-orderOf(b))
+      .slice(0,2)
+      .forEach(d=>ids.add(String(d.id)));
+  });
+  return ids;
+}
+function orderOf(d){
+  const n = Number(d && d.sort_order);
+  return Number.isFinite(n) ? n : 9999;
+}
+
 function rebuildMarkers(){
   if(!map) return;
   allMarkers.forEach(m=>map.removeLayer(m));
   allMarkers=[];
   for(const k in markersByCat) delete markersByCat[k];
+  const keyIds = keyPlaceIds();
   destinations.forEach(d=>{
     if(!SanvicExplore.hasCoordinates(d)) return;
     if(!markersByCat[d.category]) markersByCat[d.category]=[];
@@ -1006,13 +1039,16 @@ function rebuildMarkers(){
     // small white centre and a slight glow. It carried a category icon before,
     // which is what he kept pointing at — no glyph goes in the pin now.
     const html = `<span class="place-pin" style="--pin-color:${color}"></span>`;
-    const m = L.marker([d.lat,d.lng],{title:d.name,alt:d.name,keyboard:true,icon:L.divIcon({className:'place-marker',html,iconSize:[44,44],iconAnchor:[22,22]})});
+    const m = L.marker([d.lat,d.lng],{title:d.name,alt:d.name,keyboard:true,icon:L.divIcon({className:'place-marker'+(keyIds.has(String(d.id))?' is-key':''),html,iconSize:[44,44],iconAnchor:[22,22]})});
     const label = document.createElement('span'); label.textContent=d.name;
     m.bindTooltip(label,{direction:'top',offset:[0,-11]});
-    m._d=d; m.on('click',()=>openDest(d));
+    m._d=d; m._key=keyIds.has(String(d.id));
+    m.on('click',()=>{ if(mapPickActive){ pickFromMarker(d); return; } openDest(d); });
     markersByCat[d.category].push(m); allMarkers.push(m);
   });
   activeMarkerSet = allMarkers;
+  // Places moved, so the barangay dots may need to move with them.
+  buildBarangayMarkers();
   applyPinVisibility();
   renderDiscoverList(document.querySelector('.discover-cat.active')?.dataset.cat || 'all');
   if(document.body.classList.contains('explore-open')) syncExploreMap();
@@ -1028,6 +1064,13 @@ function mapMarkerGroup(marker){
   return 'other';
 }
 function markerVisibleAtZoom(marker,zoom){
+  // While a meeting point is being picked every pin is a target, so nothing is
+  // hidden: tapping any business or landmark on the map is a valid answer.
+  if(mapPickActive) return true;
+  // Key places never drop off the map: from 10km out they are the only pins a
+  // visitor sees, and that is the point — "at this distance I don't see nothing,
+  // we should see the main businesses and the main landmarks already."
+  if(marker && marker._key) return zoom>=10;
   const group=mapMarkerGroup(marker);
   if(zoom>=15)return true;
   if(zoom>=14)return group==='coast'||group==='stays'||group==='food';
@@ -1194,7 +1237,10 @@ async function initMap(){
   try{preferred=sessionStorage.getItem('sanvic_basemap')||'satellite';barangayVisible=sessionStorage.getItem('sanvic_boundaries')!=='off';}catch(e){}
   switchMapLayer(preferred);
   L.control.zoom({position:'topright'}).addTo(map);
-  document.getElementById('mapLayerToggle').classList.add('visible');
+  // No more permanent `.visible` here. It used to pin the Layers pill to the
+  // corner for the rest of the session, so it floated over Tribes, The Hunt and
+  // My Journey. Visibility is now owned by body[data-active-tab] + panel-open in
+  // the stylesheet — one place, no stale class.
   initBarangayLayer(); rebuildMarkers();
   map.on('zoomend',applyPinVisibility);
   map.on('moveend',()=>{if(map.getZoom()<9)setAreaLabel(true);});
@@ -1219,6 +1265,54 @@ function barangayCenter(feature){
   if(best&&Number.isFinite(best[0])&&Number.isFinite(best[1]))return [best[1],best[0]];
   const bounds=L.geoJSON(feature).getBounds();return bounds.isValid()?bounds.getCenter():null;
 }
+// Where the dot for a barangay sits. A polygon centroid is the wrong answer on
+// this coast: every barangay runs from the shoreline east into the mountains, so
+// the centroid lands in the jungle (or in the sea off a headland) and all ten
+// dots lined up nicely in a diagonal that meant nothing. Port Barton only looked
+// right by accident.
+//
+// The town is where the places are, so the anchor is the median position of the
+// barangay's own mapped places (destinations carry `barangay`, set in admin).
+// Median, not mean: one far-flung island belonging to the barangay cannot drag
+// the dot back out to sea.
+function normalizeBarangayName(v){
+  return String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();
+}
+function medianOf(values){
+  const v=values.slice().sort((a,b)=>a-b);const mid=v.length>>1;
+  return v.length%2 ? v[mid] : (v[mid-1]+v[mid])/2;
+}
+function barangayAnchor(feature){
+  const name=normalizeBarangayName(feature&&feature.properties&&feature.properties.name);
+  const onLand=[],anyPlace=[];
+  (Array.isArray(destinations)?destinations:[]).forEach(d=>{
+    if(!d||d.lat==null||d.lng==null)return;
+    const b=normalizeBarangayName(d.barangay);
+    if(!b)return;
+    const hit = b===name || (name.length>3 && b.includes(name)) || (b.length>3 && name.includes(b));
+    if(!hit)return;
+    const la=Number(d.lat),ln=Number(d.lng);
+    if(!Number.isFinite(la)||!Number.isFinite(ln))return;
+    anyPlace.push([la,ln]);
+    // An island belongs to a barangay but sits offshore, so it never gets to
+    // pull the town dot out to sea (Caruray would otherwise land on Boayan).
+    if(!/island/i.test(String(d.category||''))) onLand.push([la,ln]);
+  });
+  const pool = onLand.length ? onLand : anyPlace;
+  if(pool.length) return [medianOf(pool.map(p=>p[0])), medianOf(pool.map(p=>p[1]))];
+  return barangayCenter(feature);
+}
+function buildBarangayMarkers(){
+  if(!map||!barangayMarkerLayer||typeof SAN_VICENTE_BARANGAYS==='undefined')return;
+  barangayMarkerLayer.clearLayers();
+  SAN_VICENTE_BARANGAYS.features.forEach(feature=>{
+    const name=feature.properties?.name||'Barangay';const center=barangayAnchor(feature);if(!center)return;
+    const marker=L.marker(center,{title:name,keyboard:true,icon:L.divIcon({className:'barangay-point-icon',html:`<span class="barangay-point" aria-hidden="true"></span>`,iconSize:[14,14],iconAnchor:[7,7]})});
+    marker.bindTooltip(name,{direction:'top',offset:[0,-9],className:'barangay-point-tooltip'});
+    marker.on('click',()=>{const bounds=L.geoJSON(feature).getBounds();if(bounds.isValid())map.flyToBounds(bounds,{padding:[80,80],maxZoom:13,duration:.7});});
+    marker.addTo(barangayMarkerLayer);
+  });
+}
 function initBarangayLayer(){
   if(typeof SAN_VICENTE_BARANGAYS==='undefined')return;
   barangayLayer=L.geoJSON(SAN_VICENTE_BARANGAYS,{style:getBarangayStyle(),onEachFeature:(f,layer)=>{
@@ -1226,13 +1320,7 @@ function initBarangayLayer(){
     layer.bindTooltip(label,{sticky:true,className:'barangay-tooltip'});
   }});
   barangayMarkerLayer=L.layerGroup();
-  SAN_VICENTE_BARANGAYS.features.forEach(feature=>{
-    const name=feature.properties?.name||'Barangay';const center=barangayCenter(feature);if(!center)return;
-    const marker=L.marker(center,{title:name,keyboard:true,icon:L.divIcon({className:'barangay-point-icon',html:`<span class="barangay-point" aria-hidden="true"></span>`,iconSize:[14,14],iconAnchor:[7,7]})});
-    marker.bindTooltip(name,{direction:'top',offset:[0,-7],className:'barangay-point-tooltip'});
-    marker.on('click',()=>{const bounds=L.geoJSON(feature).getBounds();if(bounds.isValid())map.flyToBounds(bounds,{padding:[80,80],maxZoom:13,duration:.7});});
-    marker.addTo(barangayMarkerLayer);
-  });
+  buildBarangayMarkers();
   if(barangayVisible)barangayLayer.addTo(map);
   updateBarangayMarkerVisibility(map.getZoom());
   document.getElementById('barangayToggle').checked=barangayVisible;
@@ -1306,12 +1394,17 @@ function closeAllPanels() {
 // can dampen the hero greeting + weather bar and prevent visual bleed.
 function refreshPanelOpen(){
   try{
+    // Pulse, My Journey and The Hunt all open with `.open` and are never given a
+    // `hidden` class, so the old `:not(.hidden)` selectors were true from first
+    // paint. panel-open was therefore permanently on — which is why the Locate
+    // button never appeared on the map and why every panel looked "always open"
+    // to the stylesheet.
     const sel = [
       '.today-panel.open',
       '.explore-sheet.open',
-      '#pulsePanel:not(.hidden)',
-      '#mySanvicPanel:not(.hidden)',
-      '#huntPanel:not(.hidden)',
+      '#pulsePanel.open',
+      '#mySanvicPanel.open',
+      '#huntPanel.open',
       '#discoverPanel.open',
       '#aroundMePanel.open',
       '#destSheet.open',
@@ -1831,23 +1924,22 @@ function todayPickPool(){
   }).filter(x=>x.score>0)
     .sort((a,b)=>b.score-a.score||String(a.d.name).localeCompare(String(b.d.name)));
 }
+// Three picks per page, drawn from the twelve best matches. The old version
+// shuffled the pool and then re-ran the same greedy "highest score wins" loop, so
+// unless two places had exactly the same score the winner was always identical:
+// "generate new picks doesn't work, it's not giving me new picks". Paging
+// through the ranked window guarantees a different set every tap, and still only
+// ever shows places that actually matched the visitor's four vibes.
+const TODAY_PICK_PAGE = 3;
+const TODAY_PICK_WINDOW = 12;
 function todayPersonalPick(){
   const pool = todayPickPool();
   if(!pool.length) return null;
-  const offset=todayPickTurn%pool.length;
-  const remaining=pool.slice(offset).concat(pool.slice(0,offset));
-  const picked=[];
-  const covered=new Set();
-  while(picked.length<3&&remaining.length){
-    let bestIndex=0,bestValue=-Infinity;
-    remaining.forEach((item,index)=>{
-      const fresh=(item.why||[]).filter(v=>!covered.has(v.label)).length;
-      const repeated=(item.why||[]).filter(v=>covered.has(v.label)).length;
-      const value=item.score+fresh*4-repeated*1.5;
-      if(value>bestValue){bestValue=value;bestIndex=index;}
-    });
-    const item=remaining.splice(bestIndex,1)[0];picked.push(item);(item.why||[]).forEach(v=>covered.add(v.label));
-  }
+  const windowItems = pool.slice(0, Math.min(pool.length, TODAY_PICK_WINDOW));
+  if(windowItems.length <= TODAY_PICK_PAGE) return windowItems;
+  const start = (todayPickTurn * TODAY_PICK_PAGE) % windowItems.length;
+  const picked = [];
+  for(let i=0;i<TODAY_PICK_PAGE;i++) picked.push(windowItems[(start+i)%windowItems.length]);
   return picked;
 }
 function generateNewPick(){
@@ -1855,10 +1947,23 @@ function generateNewPick(){
   const selected=(prof&&Array.isArray(prof.vibes))?prof.vibes.map(String):[];
   if(selected.length!==4){ toast('Choose 4 vibes on Today first (the "Choose your vibes" button) — then new picks come through.'); openMyVibes(); return; }
   const pool = todayPickPool();
-  if(pool.length < 2){ toast('That is everything that fits your answers so far.'); return; }
-  todayPickTurn += 3;
+  if(pool.length <= 1){ toast('Only one place matches your four vibes so far. Add another vibe to widen the search.'); return; }
+  const idSet = (list)=> (list||[]).map(x=>String(x.d.id)).join('|');
+  const before = idSet(todayPersonalPick());
+  const windowSize = Math.min(pool.length, TODAY_PICK_WINDOW);
+  const pages = Math.max(1, Math.ceil(windowSize / TODAY_PICK_PAGE));
+  todayPickTurn += 1;
+  let next = todayPersonalPick();
+  // Never hand back the set that is already on screen: keep paging until it
+  // actually changes, or until we have tried every page.
+  let guard = 0;
+  while(idSet(next) === before && guard++ < pages){ todayPickTurn += 1; next = todayPersonalPick(); }
   renderTodayContent();
-  toast('Fresh picks from your answers.');
+  if(idSet(next) === before){
+    toast('That is every place matching your four vibes. Add another vibe to widen it.');
+  } else {
+    toast('Fresh picks from your answers.');
+  }
 }
 function catLabelFor(cat){
   return (catStyle && catStyle[cat] && catStyle[cat].label) || cat || '';
@@ -1867,6 +1972,9 @@ function catLabelFor(cat){
 function renderTodayContent(){
   const host = document.getElementById('todayScroll');
   if(!host) return;
+  // Re-rendering used to jump the panel back to the top, so pressing "Generate
+  // new pick" scrolled you away from the picks you just asked for.
+  const keepScroll = host.scrollTop;
   const d = TODAY_DATA;
   // Counts must come from the live data: the hardcoded TODAY_DATA.snapshot
   // numbers went stale the moment tribes/events moved into the database
@@ -2021,6 +2129,7 @@ function renderTodayContent(){
       </ul>
     </article>`;
   host.innerHTML = snap + pick + happening + joinable + weather + locals + notices;
+  if(keepScroll) host.scrollTop = keepScroll;
 }
 
 // ─── DESTINATION SHEET ───
@@ -2733,9 +2842,14 @@ function openInfoSheet(opts){
   document.getElementById('infoOverlay').classList.add('active');
   schedulePanelOpen();
 }
+// The first-visit briefing is suppressed when a panel is reopened mid-flow (for
+// example coming back from picking a meeting point on the map), so it cannot
+// cover the wizard the visitor is in the middle of.
+let suppressSectionBriefing = false;
 function maybeShowSectionBriefing(key){
+  if(suppressSectionBriefing){ suppressSectionBriefing=false; return; }
   const copy={
-    tribes:{title:'Tribes',meta:'Make a plan together',body:'<p>Join a small group by checking where and when they are meeting, how many people are already in, and how many places remain. Or start your own plan with <strong>Form a Tribe</strong>.</p>'},
+    tribes:{title:'Tribes',meta:'Chat with your tribe',body:'<p>Join a small group by checking where and when they are meeting, how many people are already in, and how many places remain. Every tribe has its own chat room. Or start your own with <strong>Form a Tribe</strong>.</p>'},
     hunt:{title:'The Hunt',meta:'Discover San Vicente by doing',body:'<p>Follow local clues, visit real places, and unlock stories as you go. Check the map and conditions before setting out, and keep your group together.</p>'}
   }[key];
   if(!copy)return;
@@ -2805,7 +2919,7 @@ function openTribeDetail(id){
     meta:[t.where, t.when, t.by ? 'Started by ' + t.by : ''].filter(Boolean).join('   ·   '),
     body:`
       ${imgs.length ? `<div class="info-media" style="background-image:url('${escapeHtml(imgs[0])}')"></div>` : ''}
-      <div class="info-copy">${desc ? escapeHtml(desc) : '<span class="info-muted">No plan written yet.</span>'}</div>
+      <div class="info-copy">${desc ? escapeHtml(desc) : '<span class="info-muted">The organiser has not written the details yet — say hello in the tribe chat below.</span>'}</div>
       <div class="info-actions">
         <button class="info-cta" onclick="infoJoinTribe('${escT(String(t.id))}')">${mine ? 'Leave this tribe' : 'Join this tribe'}</button>
         ${tribeIsMine(t.id) ? `<button class="info-cta ghost" onclick="cancelMyTribe('${escT(String(t.id))}')">Cancel this tribe</button>` : ''}
@@ -3014,7 +3128,7 @@ function renderPulseBody(){
       <div class="pv2-listhead">
         <div class="pv2-listhead-l">
           <div class="pv2-listhead-t">${lucideSvg('users',15)} Active Tribes</div>
-          <div class="pv2-listhead-s">Groups of travelers planning something together.</div>
+          <div class="pv2-listhead-s">Small groups, each with their own tribe chat.</div>
         </div>
         <button class="pv2-viewall">View all ${lucideSvg('chevron-right',13)}</button>
       </div>
@@ -3075,8 +3189,9 @@ function sendLoungeMsg(){
 // ── WIZARD ──
 const WIZ_STEPS = 5;
 let wizStep = 0;
-let formDraft = { name:'', plan:'', when:'', whenCustom:'', wherePick:'', whereText:'', size:'', note:'', imageFile:null, imagePreview:'' };
-function selectPulseView_reset(){ wizStep=0; formDraft={name:'',plan:'',when:'',whenCustom:'',wherePick:'',whereText:'',size:'',note:'',imageFile:null,imagePreview:''}; }
+const EMPTY_FORM_DRAFT = { name:'', plan:'', when:'', whenCustom:'', wherePick:'', whereText:'', whereSearch:'', whereLat:null, whereLng:null, whereBarangay:'', size:'', note:'', imageFile:null, imagePreview:'' };
+let formDraft = Object.assign({}, EMPTY_FORM_DRAFT);
+function selectPulseView_reset(){ wizStep=0; formDraft=Object.assign({}, EMPTY_FORM_DRAFT); }
 let wizHintMsg = '';
 function renderPulseWizard(){
   const body = document.getElementById('pulseBody');
@@ -3098,13 +3213,31 @@ function renderPulseWizard(){
     </div>${formDraft.when==='custom'?`<input class="pv2-wiz-input" type="datetime-local" value="${formDraft.whenCustom}" oninput="formDraft.whenCustom=this.value">`:''}`;
     hint = (formDraft.when && (formDraft.when!=='custom' || formDraft.whenCustom)) ? '' : (formDraft.when==='custom' ? 'Pick the date and time.' : 'Pick when it happens.');
   } else if(wizStep===2){
-    q="Where?";
-    opts = `<div class="pv2-wiz-opts">
-      <button class="pv2-wiz-chip${formDraft.wherePick==='choose'?' on':''}" onclick="wizPick(this,'wherePick','choose')">Choose Place</button>
-      <button class="pv2-wiz-chip${formDraft.wherePick==='current'?' on':''}" onclick="wizPick(this,'wherePick','current')">Use Current Map Location</button>
-      <button class="pv2-wiz-chip${formDraft.wherePick==='type'?' on':''}" onclick="wizPick(this,'wherePick','type',true)">Type Location</button>
-    </div>${formDraft.wherePick==='type'?`<input class="pv2-wiz-input" placeholder="Type a place…" value="${escT(formDraft.whereText)}" oninput="formDraft.whereText=this.value">`:''}`;
-    hint = (formDraft.wherePick && (formDraft.wherePick!=='type' || formDraft.whereText.trim())) ? '' : (formDraft.wherePick==='type' ? 'Type where you want to meet.' : 'Pick a meeting point.');
+    // "Choose Place" used to be a dead chip. It set a flag, never asked which
+    // place, and saved the tribe at the literal string "Chosen place" — so a
+    // tribe could exist with no idea where it was meeting. Every option here
+    // now ends in a real answer: a mapped place, a point tapped on the map, or
+    // text the organiser typed.
+    q="Where will your tribe meet?";
+    const chosen=String(formDraft.whereText||'').trim();
+    const pickedRow = chosen ? `
+      <div class="pv2-picked">
+        ${lucideSvg('map-pin',15)}
+        <span class="pv2-picked-main">
+          <span class="pv2-picked-name">${escT(chosen)}</span>
+          <span class="pv2-picked-meta">${escT(formDraft.wherePick==='map'?'Dropped on the map':(formDraft.wherePick==='choose'?'San Vicente place':'Typed by you'))}</span>
+        </span>
+        <button type="button" class="pv2-picked-change" onclick="wizClearWhere()">Change</button>
+      </div>` : '';
+    opts = `${pickedRow}
+      <div class="pv2-wiz-opts">
+        <button type="button" class="pv2-wiz-chip${formDraft.wherePick==='choose'?' on':''}" onclick="wizPick(this,'wherePick','choose',true)">${lucideSvg('map-pin',13)} Pick a place</button>
+        <button type="button" class="pv2-wiz-chip${formDraft.wherePick==='map'?' on':''}" onclick="startTribeMapPick()">${lucideSvg('compass',13)} Pick on the map</button>
+        <button type="button" class="pv2-wiz-chip${formDraft.wherePick==='type'?' on':''}" onclick="wizPick(this,'wherePick','type',true)">${lucideSvg('map-pin',13)} Type it</button>
+      </div>
+      ${formDraft.wherePick==='choose'?placePickerHtml():''}
+      ${formDraft.wherePick==='type'?`<input class="pv2-wiz-input" placeholder="Type a place or meeting point…" value="${escT(formDraft.whereText)}" oninput="formDraft.whereText=this.value">`:''}`;
+    hint = chosen ? '' : (formDraft.wherePick==='choose' ? 'Pick one from the list.' : (formDraft.wherePick==='map' ? 'Tap the map to drop your meeting point.' : (formDraft.wherePick==='type' ? 'Type where you want to meet.' : 'Pick a meeting point.')));
   } else if(wizStep===3){
     q="How many people?";
     const sizes = ['2–4','5–10','10+'];
@@ -3161,7 +3294,10 @@ function wizStepState(){
   }
   if(wizStep===2){
     if(!formDraft.wherePick) return { ok:false, hint:'Pick a meeting point.' };
-    if(formDraft.wherePick==='type' && !String(formDraft.whereText||'').trim()) return { ok:false, hint:'Type where you want to meet.' };
+    const where=String(formDraft.whereText||'').trim();
+    if(formDraft.wherePick==='choose' && !where) return { ok:false, hint:'Pick the place from the list.' };
+    if(formDraft.wherePick==='map' && !where) return { ok:false, hint:'Tap the map to drop your meeting point.' };
+    if(formDraft.wherePick==='type' && !where) return { ok:false, hint:'Type where you want to meet.' };
     return { ok:true };
   }
   if(wizStep===3){
@@ -3208,6 +3344,181 @@ function wizPickImage(input){
 }
 function wizNext(){ if(wizStep<WIZ_STEPS-1) wizStep++; renderPulseWizard(); }
 function wizBack(){ if(wizStep>0) wizStep--; renderPulseWizard(); }
+
+// ── WHERE? — PICK A PLACE OR DROP A PIN ────────────────────────────────────
+// The wizard's third step had three chips and none of them asked a follow-up
+// question, which is the report: "you can select a place but it never actually
+// asks you what place". This is the picker it should have opened — every mapped
+// spot, searchable — plus a real map mode for anything that is not in the
+// directory yet.
+function placeLabel(d){
+  if(!d) return '';
+  return d.barangay ? d.name + ', ' + d.barangay : String(d.name||'');
+}
+function placePickerHtml(){
+  return `<div class="pv2-place-pick">
+    <input class="pv2-place-search" id="wizPlaceSearch" type="search" autocomplete="off" placeholder="Search a beach, a business, a barangay…" value="${escT(formDraft.whereSearch||'')}" oninput="wizPlaceSearch(this.value)">
+    <div class="pv2-place-list" id="wizPlaceList">${placeRowsHtml()}</div>
+  </div>`;
+}
+function placeMatches(){
+  const q=String(formDraft.whereSearch||'').trim().toLowerCase();
+  return (Array.isArray(destinations)?destinations:[])
+    .filter(d=>d && d.name)
+    .filter(d=>{
+      if(!q) return true;
+      const hay=[d.name,d.barangay,d.category,(catStyle[d.category]&&catStyle[d.category].label)].filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    })
+    .sort((a,b)=>String(a.name).localeCompare(String(b.name)))
+    .slice(0,60);
+}
+function placeRowsHtml(){
+  const rows=placeMatches();
+  if(!rows.length) return `<div class="pv2-place-empty">Nothing matches that. Use “Pick on the map” to drop the meeting point anywhere in San Vicente.</div>`;
+  return rows.map(d=>{
+    const meta=[d.barangay,(catStyle[d.category]&&catStyle[d.category].label)||d.category].filter(Boolean).join(' · ');
+    const on=String(formDraft.whereText||'')===placeLabel(d)?' on':'';
+    return `<button type="button" class="pv2-place-row${on}" onclick="wizChoosePlace('${escT(String(d.id))}')">
+      ${lucideSvg('map-pin',15)}
+      <span class="pv2-place-main">
+        <span class="pv2-place-name">${escT(d.name)}</span>
+        <span class="pv2-place-meta">${escT(meta)}</span>
+      </span>
+    </button>`;
+  }).join('');
+}
+// Only the list is redrawn as you type, so the search box keeps focus and the
+// keyboard stays up on a phone.
+function wizPlaceSearch(v){
+  formDraft.whereSearch=v;
+  const host=document.getElementById('wizPlaceList');
+  if(host) host.innerHTML=placeRowsHtml();
+}
+function wizChoosePlace(id){
+  const d=(Array.isArray(destinations)?destinations:[]).find(x=>String(x.id)===String(id));
+  if(!d) return;
+  formDraft.wherePick='choose';
+  formDraft.whereText=placeLabel(d);
+  formDraft.whereLat=Number(d.lat);
+  formDraft.whereLng=Number(d.lng);
+  formDraft.whereBarangay=d.barangay||'';
+  formDraft.whereSearch='';
+  renderPulseWizard();
+}
+function wizClearWhere(){
+  formDraft.whereText='';
+  formDraft.whereLat=null;
+  formDraft.whereLng=null;
+  formDraft.whereBarangay='';
+  formDraft.whereSearch='';
+  renderPulseWizard();
+}
+
+// ── MAP PICKING ────────────────────────────────────────────────────────────
+// The wizard steps aside, the map takes the screen, the next tap becomes the
+// meeting point. Tapping an existing pin picks that place; tapping open water
+// or a hillside picks the point and names the nearest landmark or barangay.
+let mapPickPin=null;
+function distanceKm(lat1,lng1,lat2,lng2){
+  const R=6371, toRad=v=>v*Math.PI/180;
+  const dLat=toRad(lat2-lat1), dLng=toRad(lng2-lng1);
+  const a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return 2*R*Math.asin(Math.min(1,Math.sqrt(a)));
+}
+function describeMapPoint(latlng){
+  const lat=Number(latlng.lat), lng=Number(latlng.lng);
+  let nearest=null, nearestKm=Infinity;
+  (Array.isArray(destinations)?destinations:[]).forEach(d=>{
+    if(!d || d.lat==null || d.lng==null) return;
+    const km=distanceKm(lat,lng,Number(d.lat),Number(d.lng));
+    if(km<nearestKm){nearestKm=km;nearest=d;}
+  });
+  if(nearest && nearestKm<=0.25) return {label:placeLabel(nearest), barangay:nearest.barangay||''};
+  if(nearest && nearestKm<=1.2) return {label:'Near '+nearest.name, barangay:nearest.barangay||''};
+  let bName='', bKm=Infinity;
+  if(typeof SAN_VICENTE_BARANGAYS!=='undefined' && SAN_VICENTE_BARANGAYS.features){
+    SAN_VICENTE_BARANGAYS.features.forEach(f=>{
+      const c=barangayAnchor(f); if(!c) return;
+      const km=distanceKm(lat,lng,c[0],c[1]);
+      if(km<bKm){bKm=km;bName=(f.properties&&f.properties.name)||'';}
+    });
+  }
+  if(bName && bKm<=10) return {label:'Near Brgy. '+bName, barangay:bName};
+  if(nearest) return {label:'Near '+nearest.name, barangay:nearest.barangay||''};
+  return {label:lat.toFixed(4)+', '+lng.toFixed(4), barangay:bName};
+}
+function startTribeMapPick(){
+  if(!map){ toast('The map is still loading. Give it a second and try again.'); return; }
+  mapPickActive=true;
+  document.body.classList.add('map-picking');
+  const title=document.getElementById('mapPickTitle');
+  const sub=document.getElementById('mapPickSub');
+  if(title) title.textContent='Tap where your tribe meets';
+  if(sub) sub.textContent='Tap a pin to choose that place, or tap anywhere else to drop a point.';
+  closePulsePanel();
+  schedulePanelOpen();
+  if(map.getZoom()<11) map.flyTo(SANVICENTE_CENTER,11,{duration:.6});
+  applyPinVisibility();          // every pin on the map is now a valid target
+  map.once('click', onMapPickClick);
+}
+function endMapPick(){
+  mapPickActive=false;
+  document.body.classList.remove('map-picking');
+  if(map) map.off('click', onMapPickClick);
+  applyPinVisibility();          // back to the normal zoom rules
+}
+function clearMapPickPin(){
+  if(mapPickPin && map && map.hasLayer(mapPickPin)) map.removeLayer(mapPickPin);
+  mapPickPin=null;
+}
+function dropMapPickPin(latlng){
+  clearMapPickPin();
+  if(!map) return;
+  mapPickPin=L.marker(latlng,{icon:L.divIcon({className:'',html:'<span class="map-pick-pin"></span>',iconSize:[30,30],iconAnchor:[15,15]}),keyboard:false,zIndexOffset:2000});
+  mapPickPin.addTo(map);
+}
+function applyTribePlace(label, lat, lng, barangay, mode){
+  formDraft.wherePick=mode;
+  formDraft.whereText=String(label||'');
+  formDraft.whereLat=(lat==null?null:Number(lat));
+  formDraft.whereLng=(lng==null?null:Number(lng));
+  formDraft.whereBarangay=barangay||'';
+  formDraft.whereSearch='';
+  wizStep=2;
+}
+function finishMapPick(){
+  endMapPick();
+  pulseView='form';
+  suppressSectionBriefing = true;
+  openPulsePanel();   // renderPulseBody() draws the wizard at the step it was on
+}
+function onMapPickClick(e){
+  if(!mapPickActive) return;
+  const picked=describeMapPoint(e.latlng);
+  applyTribePlace(picked.label, e.latlng.lat, e.latlng.lng, picked.barangay, 'map');
+  dropMapPickPin(e.latlng);
+  toast('Meeting point set: '+picked.label);
+  // Let the pin land before the sheet comes back over it.
+  setTimeout(()=>{ clearMapPickPin(); finishMapPick(); }, 420);
+}
+// Tapping an existing pin during picking selects that business or landmark
+// instead of opening its detail sheet.
+function pickFromMarker(d){
+  applyTribePlace(placeLabel(d), d.lat, d.lng, d.barangay, 'choose');
+  endMapPick();
+  clearMapPickPin();
+  toast('Meeting point set: '+placeLabel(d));
+  setTimeout(finishMapPick, 260);
+}
+function cancelMapPick(){
+  endMapPick();
+  clearMapPickPin();
+  if(pulseView==='form') finishMapPick();
+}
+window.startTribeMapPick=startTribeMapPick;
+window.cancelMapPick=cancelMapPick;
+window.pickFromMarker=pickFromMarker;
 // ── WHO MADE THIS TRIBE ───────────────────────────────────────────────────
 // Visitors have no login, so authorship is proved with a capability instead of
 // an identity: the row carries a random delete_token, the browser that created
@@ -3229,7 +3540,7 @@ function tribeIsMine(id){ return !!tribeTokens()[String(id)]; }
 async function cancelMyTribe(id){
   const token = tribeTokens()[String(id)];
   if(!token){ toast('Only the person who started a tribe can cancel it.'); return; }
-  if(!confirm('Cancel this tribe? Its plan, members and chat go with it. This cannot be undone.')) return;
+  if(!confirm('Cancel this tribe? Its tribe chat and members go with it. This cannot be undone.')) return;
   try{
     const { data, error } = await sb.rpc('cancel_tribe', { p_tribe_id:String(id), p_token:token });
     if(error) throw error;
@@ -3251,7 +3562,11 @@ async function cancelMyTribe(id){
 
 function wizCreate(){
   ensurePerson(async person=>{
-    const whereLabel = formDraft.wherePick==='current' ? 'Current map area' : (formDraft.wherePick==='type' ? formDraft.whereText : 'Chosen place');
+    // Never "Chosen place" again: a tribe is saved with the place the organiser
+    // actually picked (a mapped spot), the point they tapped on the map, or the
+    // words they typed.
+    const whereLabel = String(formDraft.whereText||'').trim()
+      || (formDraft.wherePick==='current' ? 'Current map area' : 'San Vicente');
     const whenLabel = formDraft.when==='custom' ? formDraft.whenCustom.replace('T',', ') : formDraft.when;
     // The organiser names their own tribe; the plan they picked becomes the tag
     // instead of the title.
@@ -3306,7 +3621,7 @@ function wizCreate(){
       const msg = String((err && (err.message || err.details || err.hint)) || err);
       // The database refuses these two outright, so say why rather than "failed".
       if(/TRIBE_LIMIT/.test(msg)) return toast('That is two tribes today. You can start another tomorrow.');
-      if(/TRIBE_DUPLICATE/.test(msg)) return toast('You already have a tribe with that name and the same plan.');
+      if(/TRIBE_DUPLICATE/.test(msg)) return toast('You already have a tribe with that name. Give it a different name so people can tell them apart.');
       console.warn('[SANVIC] Tribe create failed:', err);
       toast('Could not create that tribe just now. Try again.');
     }
@@ -4156,7 +4471,7 @@ function renderPlaceCommunity(d){
   // Two lines per row, not one run-on: the title on top, the kind and the time
   // underneath. They used to be adjacent inline elements, so it read
   // "Sunset ChasersTribe" with no space between them.
-  box.innerHTML=`<div class="dest-community-title">People &amp; plans around ${escT(d.barangay||d.name)}</div>${rows.map(r=>`<button class="dest-community-card" type="button" onclick="${r.onclick}"><span class="dcc-body"><strong class="dcc-t">${escT(r.title)}</strong><small class="dcc-m">${escT(r.kind)}${r.meta?' · '+escT(r.meta):''}</small></span>${lucideSvg('chevron-right',16)}</button>`).join('')}`;
+  box.innerHTML=`<div class="dest-community-title">People &amp; tribe chats around ${escT(d.barangay||d.name)}</div>${rows.map(r=>`<button class="dest-community-card" type="button" onclick="${r.onclick}"><span class="dcc-body"><strong class="dcc-t">${escT(r.title)}</strong><small class="dcc-m">${escT(r.kind)}${r.meta?' · '+escT(r.meta):''}</small></span>${lucideSvg('chevron-right',16)}</button>`).join('')}`;
 }
 
 function openDest(d,recordHistory=true){
@@ -7288,7 +7603,7 @@ async function adminEditTribe(id){
       </div>
       <div class="admin-field"><label>Subtitle</label><input id="atbfSub" value="${escapeHtml(t.sub||'')}"></div>
       <div class="admin-field">
-        <label>Full plan — this is what opens the tribe window</label>
+        <label>Full text — this is what opens the tribe window</label>
         <textarea id="atbfDesc" rows="4" placeholder="What this tribe is doing, who should join, what to bring. Shown on the tribe window above its chat.">${escapeHtml(t.description||'')}</textarea>
       </div>
       <div class="admin-grid-2">
@@ -8510,7 +8825,7 @@ function renderMySanvic(){
         <h1 class="mysv-title">My Journey</h1>
         <svg class="mysv-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
       </div>
-      <div class="mysv-sub">Your saves, tribes, plans and discoveries.</div>
+      <div class="mysv-sub">Your saves, tribes, chat rooms and discoveries.</div>
       <div class="mysv-tag">Your San Vicente, quietly collected.</div>
     </div>`;
 

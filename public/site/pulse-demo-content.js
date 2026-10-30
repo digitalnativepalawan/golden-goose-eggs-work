@@ -18,7 +18,7 @@
   }
 
   function emptyText(cat){
-    if(cat === 'island') return 'No island posts yet. A boat plan usually starts with one message.';
+    if(cat === 'island') return 'No island posts yet. A boat chat usually starts with one message.';
     if(cat === 'food') return 'No food posts yet. Share what smells good nearby.';
     if(cat === 'hidden') return 'No hidden spots yet. Keep your eyes open.';
     if(cat === 'surf') return 'No surf notes yet. First one in the water can report back.';
