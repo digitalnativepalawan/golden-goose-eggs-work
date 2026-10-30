@@ -1851,6 +1851,9 @@ function todayPersonalPick(){
   return picked;
 }
 function generateNewPick(){
+  let prof=null;try{prof=JSON.parse(localStorage.getItem('sanvic_entry_v1')||'null');}catch(_){}
+  const selected=(prof&&Array.isArray(prof.vibes))?prof.vibes.map(String):[];
+  if(selected.length!==4){ toast('Choose 4 vibes on Today first (the "Choose your vibes" button) — then new picks come through.'); openMyVibes(); return; }
   const pool = todayPickPool();
   if(pool.length < 2){ toast('That is everything that fits your answers so far.'); return; }
   todayPickTurn += 3;
@@ -2658,15 +2661,15 @@ function tribeCardHTML(t){
     <div class="pv2-tribe-body">
       <div class="pv2-tribe-title" role="button" tabindex="0" style="cursor:pointer" onclick="openTribeDetail('${t.id}')">${t.title}</div>
       <div class="pv2-tribe-meta">
+        <span class="when"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${t.when}</span>
         <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${t.where}</span>
-        <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${t.when}</span>
       </div>
       <div class="pv2-tribe-capacity">${metaExtra}</div>
       <div class="pv2-tribe-sub">${t.sub}</div>
       <div class="pv2-tribe-foot">
         <div>${namesLine}</div>
         <div style="display:flex;gap:6px;flex-shrink:0">
-          <button class="pv2-join ghost" onclick="openTribeDetail('${t.id}')">Plan</button>
+          <button class="pv2-join ghost" onclick="openTribeDetail('${t.id}')">Tribe Chat</button>
           <button class="pv2-join${mine?' on':''}" onclick="joinTribe('${t.id}')">${mine ? lucideSvg('check',13)+' Joined' : 'Join Tribe'}</button>
         </div>
       </div>
