@@ -130,6 +130,9 @@ golden-goose-eggs-work/
 │   ├── map-pin-boost.js             # marker performance tuning
 │   ├── pulse-demo-content.js        # Tribes/Pulse seed content
 │   ├── kmz-import.js                # KMZ upload + preview UI
+│   ├── admin-model.js               # pure Backoffice rules (publishing, validation)
+│   ├── admin-studio.js              # SANVIC Studio: task-oriented Backoffice layer
+│   ├── admin-ux.css                 # Backoffice layout (phone drawer → desktop)
 │   ├── barangays.geojson.js         # PSA Dec-2023 barangay geometry (32 KB)
 │   ├── supabase-config.js           # public project URL + publishable key
 │   ├── explore-ux.css               # Explore-specific styling
@@ -177,20 +180,25 @@ golden-goose-eggs-work/
 │   └── tala.js                      # Vercel Function → server/tala.js
 │
 ├── supabase/
-│   ├── migrations/                  # 29 historical SQL files (NOT replayable)
+│   ├── migrations/                  # 30 historical SQL files (NOT replayable)
 │   ├── scripts/
 │   │   ├── 01_backend_health_check.sql
-│   │   └── 02_make_admin.sql
+│   │   ├── 02_make_admin.sql
+│   │   └── 03_verify_admin_publishing.sql
 │   ├── seed_images.sql
 │   └── config.toml
 │
-├── tests/                           # node --test, no framework
-│   ├── explore-model.test.cjs       # unit tests for explore-model.js (needs typescript)
+├── tests/                           # node --test, no framework, 43 assertions
+│   ├── explore-model.test.cjs       # unit tests for explore-model.js (skips without typescript)
+│   ├── map-tools.test.cjs           # map-tool switch, dot sizes, tile ceilings
+│   ├── admin-model.test.cjs         # Backoffice publishing/validation rules
+│   ├── admin-ui.test.cjs            # Backoffice markup + a11y contracts
 │   ├── kmz-import.test.mjs
 │   └── tala-server.test.mjs
 │
 ├── docs/
 │   ├── tech-stack-and-code-tree.md  # this file
+│   ├── admin-backoffice-audit.md    # Backoffice audit and publishing workflow
 │   ├── explore-ux-v2-review.md
 │   ├── images/explore-map.png
 │   └── screenshots/README.md
@@ -273,7 +281,7 @@ does `require("typescript")`, so it fails until dependencies are installed
 
 The product README is out of date in several places:
 
-- Says **11 migrations** — there are **29**.
+- Says **11 migrations** — there are **30**.
 - Says **22 tables** — the static client alone queries **32** distinct tables.
 - Code tree omits `src/routes/admin.tsx`, `src/routes/api/admin.ts`,
   `src/lib/admin-helpers.ts`, `src/lib/kmz-parser.ts`,

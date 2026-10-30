@@ -221,8 +221,9 @@ function kmzFinish(collected, list) {
 
   // Flag duplicates against what is already on the map, and mark
   // anything outside San Vicente so it starts unticked.
+  const directory = (typeof window !== 'undefined' && typeof window.adminAllPlaces === 'function') ? window.adminAllPlaces() : (destinations || []);
   kmzRows = collected.map(row => {
-    const near = (destinations || []).find(d =>
+    const near = (directory || []).find(d =>
       (String(d.name || '').toLowerCase() === row.name.toLowerCase()) ||
       (kmzHaversineM(row.lat, row.lng, Number(d.lat), Number(d.lng)) < 75)
     );
@@ -297,7 +298,7 @@ async function adminKmzImport() {
     return;
   }
 
-  if (!confirm('Create ' + chosen.length + ' new listing' + (chosen.length === 1 ? '' : 's') + ' on the Explore map?')) return;
+  if (!confirm('Create ' + chosen.length + ' new draft listing' + (chosen.length === 1 ? '' : 's') + ' for review?')) return;
 
   kmzBusy = true;
   kmzMsg = 'Importing…';
@@ -305,25 +306,31 @@ async function adminKmzImport() {
 
   let created = 0;
   const failures = [];
-  let sortBase = (destinations || []).length;
+  const directory = (typeof window !== 'undefined' && typeof window.adminAllPlaces === 'function') ? window.adminAllPlaces() : (destinations || []);
+  let sortBase = (directory || []).length;
+  const supportsStatus = typeof window !== 'undefined' && typeof window.adminPublishingEnabled === 'function' && window.adminPublishingEnabled();
 
   // Chunks keep a single bad row from failing the whole batch, while
   // still avoiding one round trip per placemark.
   for (let i = 0; i < chosen.length; i += 25) {
-    const chunk = chosen.slice(i, i + 25).map((r, n) => ({
-      name: r.name,
-      lat: Number(r.lat),
-      lng: Number(r.lng),
-      category: r.category,
-      color: (catStyle[r.category] || {}).color || '#0ea5e9',
-      barangay: r.barangay,
-      description: r.description || '',
-      tip: '',
-      image: '',
-      images: [],
-      featured: false,
-      sort_order: sortBase + i + n,
-    }));
+    const chunk = chosen.slice(i, i + 25).map((r, n) => {
+      const row = {
+        name: r.name,
+        lat: Number(r.lat),
+        lng: Number(r.lng),
+        category: r.category,
+        color: (catStyle[r.category] || {}).color || '#0ea5e9',
+        barangay: r.barangay,
+        description: r.description || '',
+        tip: '',
+        image: '',
+        images: [],
+        featured: false,
+        sort_order: sortBase + i + n,
+      };
+      if (supportsStatus) row.status = 'draft';
+      return row;
+    });
 
     const { data, error } = await sb.from('destinations').insert(chunk).select('id');
     if (error) failures.push(error.message);

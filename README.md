@@ -226,6 +226,19 @@ governed by Row Level Security policies in the database.
 path. The authoritative source for the current schema is the PostgreSQL dump.
 Applying the migration files to a fresh project is not supported.
 
+### Backoffice
+
+The task-oriented **SANVIC Studio** opens from the site's Staff admin control,
+or directly at `/site/index.html?admin=1`. It uses Supabase Auth and RLS for
+places, map pins, photos, categories and the existing content editors. The
+separate `/admin` route remains available for raw table/media tooling.
+
+Before using Draft, Published and Archived states, apply
+`supabase/migrations/20261026120000_destination_publishing.sql` in the Supabase
+SQL Editor and verify it with
+`supabase/scripts/03_verify_admin_publishing.sql`. See
+`docs/admin-backoffice-audit.md` for the full audit and workflow notes.
+
 ---
 
 ## Project Status

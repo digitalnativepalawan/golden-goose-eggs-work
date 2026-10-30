@@ -1214,13 +1214,21 @@ async function initMap(){
   mapReady=true;
   if(!dataReady)await loadDataFromSupabase();
   if(typeof L==='undefined'){mapNotice('The map could not load. You can still browse the directory. Reload when your connection returns.');return;}
-  map=L.map('map',{center:[10.50,119.22],zoom:11,minZoom:8,maxZoom:19,zoomControl:false,attributionControl:true,
+  // 18, not 19: past that there is no imagery anywhere in this municipality, and
+  // the map was letting people zoom into artwork that does not exist.
+  map=L.map('map',{center:[10.50,119.22],zoom:11,minZoom:8,maxZoom:18,zoomControl:false,attributionControl:true,
     maxBounds:[[6.5,116.6],[12.9,121.0]],maxBoundsViscosity:1,worldCopyJump:false});
   const attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>';
-  window._mS=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution,maxZoom:19});
+  window._mS=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution,maxZoom:19,maxNativeZoom:19});
   window._mTerrain=L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',{attribution:attribution+', SRTM | Style &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',maxNativeZoom:17,maxZoom:19,subdomains:'abc'});
+  // Esri World Imagery has no detail past ~z17 along this coast, and instead of a
+  // 404 it answers with a grey "Map data not yet available" tile. Leaflet drew
+  // that tile happily, so zooming past 17 on satellite — or on street/terrain,
+  // which inherit the map's own ceiling — filled the screen with grey boxes.
+  // maxNativeZoom tells Leaflet the truth: fetch z17 and scale it up, which stays
+  // sharp enough to navigate by and never shows the placeholder.
   window._mSatellite=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{
-    attribution:'Tiles &copy; Esri — Esri, Maxar, Earthstar Geographics, and the GIS User Community',maxZoom:19});
+    attribution:'Tiles &copy; Esri — Esri, Maxar, Earthstar Geographics, and the GIS User Community',maxZoom:19,maxNativeZoom:17});
   [window._mS,window._mTerrain,window._mSatellite].forEach(layer=>{
     let errors=0;
     layer.on('tileerror',()=>{
@@ -1414,9 +1422,49 @@ function refreshPanelOpen(){
     const open = !!document.querySelector(sel);
     document.body.classList.toggle('panel-open', open);
   }catch(e){}
+  // Same trigger, separate question: is the map the surface in front right now?
+  refreshMapTools();
 }
 // Re-check on next frame so class mutations settle before we read them.
 function schedulePanelOpen(){ requestAnimationFrame(refreshPanelOpen); }
+
+// ─── MAP TOOLS VISIBILITY ───
+// Where the Layers pill and the Locate button belong. Not a guess about panels:
+// the dock knows which surface is open, so it says so, and the CSS follows
+// body[data-map-tools]. The tools are for the map, and the map is the Explore
+// and Today tabs — they stay up over the Explore sheet (the map is still behind
+// it, that is the whole point of the sheet) and go away the moment a full-screen
+// panel covers it.
+const MAP_TOOL_TABS = ['map','discover'];
+const COVERING_PANELS = [
+  '.today-panel.open',
+  '#pulsePanel.open',
+  '#mySanvicPanel.open',
+  '#huntPanel.open',
+  '#dashboard.open',
+  '#talaSheet.open',
+  '.dest-sheet.expanded',   // a place detail sheet open over the map
+  '#infoSheet.open',
+  '#adminPanelOverlay.active'
+].join(',');
+function refreshMapTools(){
+  try{
+    const tab = document.body.dataset.activeTab || '';
+    const onTab = MAP_TOOL_TABS.includes(tab);
+    const covered = !!document.querySelector(COVERING_PANELS);
+    const on = onTab && !covered;
+    if(document.body.dataset.mapTools !== (on ? 'on' : 'off')){
+      document.body.dataset.mapTools = on ? 'on' : 'off';
+      // The Layers menu is a child of the pill; hiding the pill with the menu
+      // still expanded left an orphaned list of basemaps on screen.
+      if(!on && typeof toggleLayersMenu === 'function'){
+        const menu = document.getElementById('layersMenu');
+        if(menu && !menu.hidden) toggleLayersMenu(false);
+      }
+    }
+  }catch(e){}
+}
+window.refreshMapTools = refreshMapTools;
 // Observe body subtree for class changes on the panel roots and auto-sync.
 if(typeof window!=='undefined'){
   window.addEventListener('DOMContentLoaded', ()=>{
@@ -4983,6 +5031,9 @@ function dockNav(tab){
 
 function setActiveDock(tab){
   document.body.dataset.activeTab=tab;
+  // data-active-tab is an attribute write; the class-filtered MutationObserver
+  // does not fire for it, so the map tools are refreshed explicitly here.
+  refreshMapTools();
   document.querySelectorAll('.dock-item').forEach(d=>{
     const active=d.dataset.tab===tab || (tab==='hunt'&&d.dataset.tab==='discover');
     d.classList.toggle('active',active);
@@ -5048,6 +5099,7 @@ window.addEventListener('load',()=>{
     // Explore one tap away.
     setActiveDock('discover');
     closeAllPanels();
+    refreshMapTools();
     if(!localStorage.getItem(DOCK_SEEN_KEY)){
       setTimeout(()=>{
         document.getElementById('bottomDock').classList.add('intro-pulse');
@@ -5302,7 +5354,7 @@ function adminDestCatFormHtml(){
   const currentIcon = c.icon || 'map-pin';
   const iconGrid = ALL_ICON_KEYS.map(name=>{
     const sel = name === currentIcon ? ' is-selected' : '';
-    return `<button type="button" class="sv-icon-opt${sel}" data-icon="${name}" onclick="adminPickIcon('${name}')" title="${name}">${lucideSvg(name,18)}</button>`;
+    return `<button type="button" class="sv-icon-opt${sel}" data-icon="${name}" onclick="adminPickIcon('${name}')" aria-label="Icon ${name}">${lucideSvg(name,18)}</button>`;
   }).join('');
   return `
     <div class="admin-edit-box">
@@ -5460,7 +5512,7 @@ function adminNearbyFormHtml(){
   const currentNearbyIcon = (p.icon && (EXTRA_ICONS[p.icon] || LUCIDE_ICONS[p.icon])) ? p.icon : 'utensils';
   const nearbyIconGrid = ALL_ICON_KEYS.map(name=>{
     const sel = name === currentNearbyIcon ? ' is-selected' : '';
-    return `<button type="button" class="sv-icon-opt${sel}" data-icon="${name}" onclick="adminPickIcon('${name}','npfIcon')" title="${name}">${lucideSvg(name,18)}</button>`;
+    return `<button type="button" class="sv-icon-opt${sel}" data-icon="${name}" onclick="adminPickIcon('${name}','npfIcon')" aria-label="Icon ${name}">${lucideSvg(name,18)}</button>`;
   }).join('');
   return `
     <div class="admin-edit-box">
@@ -5605,14 +5657,14 @@ function adminDestRowHtml(d){
   const photoLabel = cover ? 'Add another photo' : 'Add a cover photo';
   return `
       <div class="admin-list-item admin-dest-row">
-        <button type="button" class="admin-row-thumb" data-dest-id="${d.id}" onclick="adminQuickPhoto(${d.id})" title="${photoLabel}" aria-label="${photoLabel}">
+        <button type="button" class="admin-row-thumb" data-dest-id="${d.id}" onclick="adminQuickPhoto(${d.id})" aria-label="${photoLabel}">
           ${cover ? `<img src="${escapeHtml(cover)}" alt="" onerror="adminThumbBroken(this)">` : lucideSvg('camera',18)}
           ${cover ? `<span class="admin-thumb-badge">${lucideSvg('camera',10)}</span>` : ''}
         </button>
         <div class="admin-dest-main">
           <div class="admin-list-item-head">
             <div onclick="adminEditDest(${d.id})" class="admin-dest-open">
-              <strong>${escapeHtml(d.name || 'Untitled place')}</strong><span class="admin-feat-toggle ${d.featured?'on':''}" onclick="event.stopPropagation();adminToggleFeatured(${d.id})" title="${d.featured?'Featured in Explore — click to remove':'Click to feature in Explore'}">${lucideSvg('star',12)}</span>${SanvicExplore.safeUrl(d.videoUrl) ? ` <span class="admin-feat-icon" title="Has video">${lucideSvg('film',12)}</span>` : ''}
+              <strong>${escapeHtml(d.name || 'Untitled place')}</strong><span class="admin-feat-toggle ${d.featured?'on':''}" onclick="event.stopPropagation();adminToggleFeatured(${d.id})" aria-label="${d.featured?'Remove from featured':'Feature in Explore'}">${lucideSvg('star',12)}</span>${SanvicExplore.safeUrl(d.videoUrl) ? ` <span class="admin-feat-icon" aria-label="Has video">${lucideSvg('film',12)}</span>` : ''}
               <span class="admin-row-meta">${bits.join(' &middot; ') || 'no details yet'}</span>
               <div class="admin-quality ${issues.length?'needs-work':'ready'}">${issues.length?'Needs: '+escapeHtml(issues.join(', ')):'Ready for Explore'}</div>
             </div>
@@ -6116,7 +6168,7 @@ async function adminWikimediaSuggest(q, results){
     }
     window.__wmPhotos = photos;
     grid.innerHTML = photos.map((ph, i) =>
-      '<button type="button" onclick="adminPickWikimedia(' + i + ')" title="' + escapeHtml((ph.artist||'Photo').replace(/<[^>]+>/g,'').trim() + ' · ' + ph.license) + '" style="border:1px solid var(--glass-border);border-radius:8px;overflow:hidden;padding:0;background:rgba(255,255,255,.04);cursor:pointer">' +
+      '<button type="button" onclick="adminPickWikimedia(' + i + ')" style="border:1px solid var(--glass-border);border-radius:8px;overflow:hidden;padding:0;background:rgba(255,255,255,.04);cursor:pointer">' +
       '<img src="' + ph.thumb + '" alt="" loading="lazy" style="width:100%;height:62px;object-fit:cover;display:block"></button>'
     ).join('');
   }catch(e){
@@ -6999,9 +7051,9 @@ function mediaThumbHtml(url, i, delCall, coverCall){
     <div class="admin-media-thumb">
       <img src="${escT(url)}" alt="" onerror="this.parentElement.style.display='none'">
       ${i === 0
-        ? '<span class="admin-media-cover-tag" title="This image is the cover">Cover</span>'
-        : (coverCall ? `<button class="admin-media-cover-btn" title="Make this the cover" aria-label="Make this the cover" onclick="${coverCall}">${lucideSvg('star',12)}</button>` : '')}
-      <button class="admin-media-del" title="Remove this image" aria-label="Remove this image" onclick="${delCall}">${lucideSvg('x',14)}</button>
+        ? '<span class="admin-media-cover-tag" >Cover</span>'
+        : (coverCall ? `<button class="admin-media-cover-btn" aria-label="Make this the cover" onclick="${coverCall}">${lucideSvg('star',12)}</button>` : '')}
+      <button class="admin-media-del" aria-label="Remove this image" onclick="${delCall}">${lucideSvg('x',14)}</button>
     </div>`;
 }
 
@@ -9009,7 +9061,7 @@ function renderMySanvic(){
       </div>
       <div class="mysv-hscroll">
         ${recent.map(r=>`
-          <button class="mysv-pill" onclick="mysvAction('view','${r.id}')" title="${escapeHtml(r.label)}">
+          <button class="mysv-pill" onclick="mysvAction('view','${r.id}')" aria-label="${escapeHtml(r.label)}">
             <span class="mysv-pill-thumb" style="background-image:url('${escapeHtml(r.image||'')}');background-size:cover;background-position:center;background-color:#2a3247"></span>
             ${escapeHtml(r.label)}
           </button>`).join('')}
@@ -9120,7 +9172,7 @@ function huntRiddleCard(r, i){
       <div class="hunt-spot-media">
         ${img
           ? `<div class="hunt-spot-thumb" style="background-image:url('${escapeHtml(img)}')"></div>`
-          : `<div class="hunt-spot-thumb hunt-spot-thumb-none" title="No photo yet">${lucideSvg('image',20)}</div>`}
+          : `<div class="hunt-spot-thumb hunt-spot-thumb-none" aria-hidden="true">${lucideSvg('image',20)}</div>`}
         <span class="hunt-spot-chip">${done ? lucideSvg('circle-check',12)+' Found' : 'Riddle ' + (i+1)}</span>
       </div>
       <div class="hunt-spot-body">

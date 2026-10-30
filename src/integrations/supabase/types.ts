@@ -46,21 +46,28 @@ export type Database = {
       }
       destinations: {
         Row: {
+          archived_at: string | null
           barangay: string | null
           category: string
+          clue: string | null
           color: string | null
           created_at: string | null
           description: string | null
           featured: boolean | null
+          google_business_url: string | null
+          hunt_spot: boolean | null
           id: number
           image: string | null
+          image_credit: string | null
           images: Json | null
-          lat: number
-          lng: number
+          lat: number | null
+          lng: number | null
           name: string
+          published_at: string | null
           rating: string | null
           season: string | null
           sort_order: number | null
+          status: string
           temp: string | null
           tip: string | null
           travel: string | null
@@ -69,21 +76,28 @@ export type Database = {
           video_url: string | null
         }
         Insert: {
+          archived_at?: string | null
           barangay?: string | null
           category: string
+          clue?: string | null
           color?: string | null
           created_at?: string | null
           description?: string | null
           featured?: boolean | null
+          google_business_url?: string | null
+          hunt_spot?: boolean | null
           id?: never
           image?: string | null
+          image_credit?: string | null
           images?: Json | null
-          lat: number
-          lng: number
+          lat?: number | null
+          lng?: number | null
           name: string
+          published_at?: string | null
           rating?: string | null
           season?: string | null
           sort_order?: number | null
+          status?: string
           temp?: string | null
           tip?: string | null
           travel?: string | null
@@ -92,21 +106,28 @@ export type Database = {
           video_url?: string | null
         }
         Update: {
+          archived_at?: string | null
           barangay?: string | null
           category?: string
+          clue?: string | null
           color?: string | null
           created_at?: string | null
           description?: string | null
           featured?: boolean | null
+          google_business_url?: string | null
+          hunt_spot?: boolean | null
           id?: never
           image?: string | null
+          image_credit?: string | null
           images?: Json | null
-          lat?: number
-          lng?: number
+          lat?: number | null
+          lng?: number | null
           name?: string
+          published_at?: string | null
           rating?: string | null
           season?: string | null
           sort_order?: number | null
+          status?: string
           temp?: string | null
           tip?: string | null
           travel?: string | null
