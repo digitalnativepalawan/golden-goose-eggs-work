@@ -33,7 +33,8 @@ test("the feed has a way in to the composer", () => {
 test("feed channels are not tribe tags", () => {
   // Sharing pulseCategory meant picking "Surf" in Active Tribes emptied the feed.
   assert.match(app, /let pulseFeedCategory = 'all';/);
-  assert.match(app, /const FEED_CHANNELS = \[/);
+  assert.match(app, /const FEED_CHANNEL_ORDER = \[/);
+  assert.match(app, /function feedChannels\(\)\{/);
   const feed = app.slice(app.indexOf("async function renderPulseFeed()"), app.indexOf("// Pulse photos were previously"));
   assert.match(feed, /pulseFeedCategory !== 'all'/);
   assert.equal(/pulseCategory/.test(feed), false, "renderPulseFeed must not read the tribe filter");
@@ -84,4 +85,31 @@ test("the heading follows the view it is describing", () => {
   assert.match(app, /title: 'Feed',/);
   // Everything that is not the feed keeps the copy it shipped with.
   assert.match(app, /const PULSE_DEFAULT_HEADING = \{ title:'Tribes', sub:'Find your tribe today\.'/);
+});
+
+test("the feed's channels are the categories the Backoffice edits", () => {
+  // A second hardcoded list meant a category added in the Backoffice could never
+  // be posted to, and a renamed one never showed up in the feed.
+  assert.match(app, /function feedChannels\(\)\{/);
+  assert.match(app, /FEED_CHANNEL_ORDER\.filter\(k=>PULSE_CATEGORIES\[k\]\)/);
+  assert.equal(/const FEED_CHANNELS = \[/.test(app), false, "no duplicate channel list");
+  // The chips and the composer dropdown both read it.
+  assert.match(app, /const chips = feedChannels\(\)\.map/);
+  assert.match(app, /function renderPulseComposeCategoryMenu\(\)\{/);
+  assert.match(app, /menu\.innerHTML = feedChannels\(\)\.map/);
+  // And the markup no longer carries its own copy of the six channels.
+  assert.equal(/data-val="hidden" data-label="Hidden Spots"/.test(html), false);
+  assert.match(html, /<div id="pulseComposeCatMenu" class="pulse-custom-menu" style="display:none;"><\/div>/);
+});
+
+test("saving a category in the Backoffice refreshes what visitors see", () => {
+  // refreshPulseCategoryChips() called applyPulseCategoryLabelsToChips(), which
+  // was never written: the save threw and nothing on screen changed.
+  assert.equal(/applyPulseCategoryLabelsToChips/.test(app), false, "no call to a function that does not exist");
+  const fn = app.slice(app.indexOf("async function refreshPulseCategoryChips()"), app.indexOf("async function refreshPulseCategoryChips()") + 400);
+  assert.match(fn, /await loadPulseCategoriesFromDB\(\);/);
+  assert.match(fn, /renderPulseComposeCategoryMenu\(\);/);
+  assert.match(fn, /if\(pulseView === 'feed'\) renderPulseFeed\(\);/);
+  // The labels are loaded when Pulse opens, not only when an admin saves.
+  assert.match(app, /loadPulseCategoriesFromDB\(\)\.then\(\(\)=>\{/);
 });

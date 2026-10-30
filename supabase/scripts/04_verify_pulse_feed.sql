@@ -35,6 +35,13 @@ WITH checks(area, item, ok, fix) AS (
     -- Storage for post photos
     ('feed', 'bucket pulse-media exists',     EXISTS (SELECT 1 FROM storage.buckets WHERE id='pulse-media'), '20261030120000_pulse_feed_schema.sql'),
 
+    -- The rest of the Pulse surface the Backoffice edits (these tables predate
+    -- the repo's migrations, so this is the only way to know they are there)
+    ('backoffice', 'table pulse_categories',   to_regclass('public.pulse_categories')   IS NOT NULL, 'created outside the repo - see note below'),
+    ('backoffice', 'table traveler_profiles',  to_regclass('public.traveler_profiles')  IS NOT NULL, 'created outside the repo - see note below'),
+    ('backoffice', 'table saved_places',       to_regclass('public.saved_places')       IS NOT NULL, 'created outside the repo - see note below'),
+    ('backoffice', 'RPC get_public_profiles',  EXISTS (SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname='get_public_profiles'), '20260627051015 migration'),
+
     -- Backoffice publishing
     ('admin', 'destinations.status column',   EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='destinations' AND column_name='status'), '20261026120000_destination_publishing.sql'),
     ('admin', 'destinations.published_at',    EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='destinations' AND column_name='published_at'), '20261026120000_destination_publishing.sql'),
