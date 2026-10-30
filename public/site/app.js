@@ -2355,21 +2355,11 @@ async function loadPulseCategoriesFromDB(){
   }
 }
 
-const PULSE_POSTS = [
-  { id:1, cat:'food', name:'Alex', avatar:'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=100&h=100&fit=crop&q=70', time:'3m ago', text:'Fresh tuna arrived at the market!', location:'Poblacion Public Market', image:'assets/pulse/street-food-skewers.jpg', likes:12, comments:5 },
-  { id:2, cat:'hidden', name:'Sophie', avatar:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&q=70', time:'8m ago', text:'Crystal clear water today at Bigaho Falls', location:'Bigaho Falls', image:'assets/pulse/kayak-lagoon.jpg', likes:18, comments:7 },
-  { id:3, cat:'island', name:'Jon', avatar:'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&q=70', time:'12m ago', text:'Looking for 2 more people to share a private boat tomorrow.', tag:'Island Hopping', avatars:3, likes:6, comments:3 },
-  { id:4, cat:'all', name:'Local Guide – Jun', time:'15m ago', admin:true, text:'If you\'re heading to Port Barton, bring cash. ATM offline.', location:'Port Barton', likes:9, comments:2 },
-  { id:5, cat:'all', name:'Maya', avatar:'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&fit=crop&q=70', time:'18m ago', text:'Best sunset right now at Long Beach. Come and join!', location:'Long Beach', image:'assets/pulse/island-boats-beach.jpg', likes:24, comments:11 },
-  { id:6, cat:'surf', name:'Diego', avatar:'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop&q=70', time:'24m ago', text:'Clean 2-3ft sets at Alimanguan this morning, light offshore wind. Good for beginners right now.', location:'Alimanguan Beach', likes:15, comments:4 },
-  { id:7, cat:'events', name:'Beach Bar Co.', time:'35m ago', admin:true, text:'Live acoustic set tonight from 7pm, free entry. Come early for sunset seats.', location:'Long Beach', likes:21, comments:6 },
-  { id:8, cat:'food', name:'Pia', avatar:'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&q=70', time:'41m ago', text:'Night market has the best halo-halo right now, ube version is back.', location:'Poblacion Night Market', image:'assets/pulse/bulalo-boodle.jpg', likes:14, comments:3 },
-  { id:9, cat:'hidden', name:'Marco', avatar:'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&q=70', time:'52m ago', text:'Found a quiet tide pool past the rocks at Bato ni Ningning, perfect for sunset photos and almost nobody there.', location:'Bato ni Ningning', likes:19, comments:8 },
-  { id:10, cat:'island', name:'Tara', avatar:'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop&q=70', time:'1h ago', text:'Anyone heading to Port Barton this weekend? Let\'s share a ride and explore together!', location:'Port Barton', image:'assets/pulse/island-boats-aerial.jpg', likes:8, comments:6 },
-  { id:11, cat:'all', name:'Carlos', avatar:'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=100&h=100&fit=crop&q=70', time:'1h ago', text:'Lost a small black drone near Long Beach this afternoon. If found please message — happy to reward!', location:'Long Beach', likes:5, comments:9 },
-  { id:12, cat:'surf', name:'Diego', avatar:'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop&q=70', time:'2h ago', text:'Tide is dropping fast, current picking up past the point. Be careful past 5pm today.', location:'Alimanguan Beach', likes:11, comments:1 },
-  { id:13, cat:'food', name:'Reyna', avatar:'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&fit=crop&q=70', time:'3h ago', text:'Boodle fight with the whole barangay tonight! Bring your appetite, everyone\'s welcome.', location:'Poblacion', image:'assets/pulse/boodle-fight-fish.jpg', likes:27, comments:9 }
-];
+// There used to be a PULSE_POSTS array here: thirteen invented travellers with
+// invented timestamps ("3m ago"), likes and comments, left over from the sample
+// feed. Nothing rendered it — the feed was never wired to a table — so it was dead
+// weight that only invited someone to display it later. Real posts would come from
+// a table, and an empty feed gets an empty state.
 
 let pulseCategory = 'all';
 let pulseView = 'tribes';
@@ -2901,10 +2891,21 @@ function eventCardHTML(e){
   </div>`;
 }
 
-function emptyStateHTML(){
+// One empty state, two meanings. "Start the first tribe" is the right nudge
+// under an empty tribe list and the wrong one under an empty event list, so the
+// caller says which list it is.
+function emptyStateHTML(kind){
+  if(kind === 'events'){
+    return `<div class="pv2-empty">
+      <div style="display:flex;justify-content:center;color:rgba(255,255,255,.4)">${lucideSvg('calendar',28)}</div>
+      <div>No events listed yet.</div>
+      <div class="pv2-empty-s">Verified organisers post here. Nothing on the calendar for now — meanwhile you can gather people yourself.</div>
+      <button class="pv2-cta" onclick="selectPulseView('form')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Form Your Tribe</button>
+    </div>`;
+  }
   return `<div class="pv2-empty">
     <div style="display:flex;justify-content:center;color:rgba(255,255,255,.4)">${lucideSvg('eye-off',28)}</div>
-    <div>Quiet for now. Start the first tribe and see who joins!</div>
+    <div>No tribes yet. Start the first one and see who joins!</div>
     <button class="pv2-cta" onclick="selectPulseView('form')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Form Your Tribe</button>
   </div>`;
 }
@@ -3209,14 +3210,14 @@ function renderPulseBody(){
   if(!body) return;
   if(pulseView==='tribes'){
     const list = PULSE_TRIBES.filter(matchesCat);
-    if(!list.length){ body.innerHTML = emptyStateHTML(); return; }
+    if(!list.length){ body.innerHTML = emptyStateHTML('tribes'); return; }
     body.innerHTML = `
       <div class="pv2-listhead">
         <div class="pv2-listhead-l">
           <div class="pv2-listhead-t">${lucideSvg('users',15)} Active Tribes</div>
           <div class="pv2-listhead-s">Small groups, each with their own tribe chat.</div>
         </div>
-        <button class="pv2-viewall">View all ${lucideSvg('chevron-right',13)}</button>
+        ${(pulseCategory && pulseCategory!=='all') ? `<button class="pv2-viewall" onclick="selectPulseCategoryV2('all')">View all ${lucideSvg('chevron-right',13)}</button>` : ''}
       </div>
       ${list.map(tribeCardHTML).join('')}
       <div class="pv2-footbanner">
@@ -3229,7 +3230,7 @@ function renderPulseBody(){
       </div>`;
   } else if(pulseView==='events'){
     const list = PULSE_EVENTS.filter(matchesCat);
-    if(!list.length){ body.innerHTML = emptyStateHTML(); return; }
+    if(!list.length){ body.innerHTML = emptyStateHTML('events'); return; }
     body.innerHTML = `
       <div class="pv2-listhead"><div class="pv2-listhead-l"><div class="pv2-listhead-t">${lucideSvg('party-popper',15)} Events &amp; Happenings</div><div class="pv2-listhead-s">Verified organizers only.</div></div></div>
       ${list.map(eventCardHTML).join('')}`;
