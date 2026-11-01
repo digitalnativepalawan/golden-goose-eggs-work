@@ -12,18 +12,19 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const { read, client, canon, has, after, between, canonCss } = require("./support/client.cjs");
 
-const app = fs.readFileSync("public/site/app.js", "utf8");
+const app = client();
 const html = fs.readFileSync("public/site/index.html", "utf8");
-const css = fs.readFileSync("public/site/explore-ux.css", "utf8");
+const css = canonCss(read("explore-ux.css"));
 
 test("map tools are driven by one explicit switch, not by a panel guess", () => {
   // The switch exists and covers both surfaces that own the map.
-  assert.match(app, /const MAP_TOOL_TABS = \['map','discover'\]/);
-  assert.match(app, /function refreshMapTools\(\)/);
-  assert.match(app, /document\.body\.dataset\.mapTools = on \? 'on' : 'off'/);
+  assert.ok(has(app, "const MAP_TOOL_TABS = ['map','discover']"));
+  assert.ok(has(app, "function refreshMapTools()"));
+  assert.ok(has(app, "document.body.dataset.mapTools = on ? 'on' : 'off'"));
   // It is re-evaluated on dock taps and on every panel class change.
-  assert.match(app, /refreshMapTools\(\);/);
+  assert.ok(has(app, "refreshMapTools();"));
 
   // Both controls obey it, in both directions.
   assert.match(html, /body\[data-map-tools="on"\] \.map-layer-toggle/);
@@ -33,16 +34,13 @@ test("map tools are driven by one explicit switch, not by a panel guess", () => 
 
   // The old failure modes must not come back: no permanent `.visible` pin, and
   // no rule that hides the tools because some panel is open.
-  assert.equal(/mapLayerToggle'\)\.classList\.add\('visible'\)/.test(app), false);
+  assert.equal(has(app, "mapLayerToggle').classList.add('visible')"), false);
   assert.equal(/body\.panel-open[^}{\n]*\.map-layer-toggle/.test(html), false);
   assert.equal(/body\.panel-open[^}{\n]*\.map-util-btn/.test(html), false);
 });
 
 test("a full-screen panel hides the tools, the Explore sheet does not", () => {
-  const covering = app.slice(
-    app.indexOf("const COVERING_PANELS"),
-    app.indexOf("].join(',');", app.indexOf("const COVERING_PANELS")),
-  );
+  const covering = between(app, "const COVERING_PANELS", "].join(',');");
   for (const sel of [
     ".today-panel.open",
     "#pulsePanel.open",
@@ -51,10 +49,10 @@ test("a full-screen panel hides the tools, the Explore sheet does not", () => {
     ".dest-sheet.expanded",
     "#infoSheet.open",
   ]) {
-    assert.ok(covering.includes(sel), `expected ${sel} to count as covering`);
+    assert.ok(covering.includes(canon(`'${sel}'`)), `expected ${sel} to count as covering`);
   }
   // The Explore sheet is the one panel with the map still behind it.
-  assert.equal(covering.includes(".explore-sheet.open"), false);
+  assert.equal(covering.includes(canon("'.explore-sheet.open'")), false);
 });
 
 test("marker dots stay big enough to read on a phone", () => {
@@ -67,11 +65,11 @@ test("marker dots stay big enough to read on a phone", () => {
   assert.ok(Number(barangay[1]) >= 12, `barangay dot is ${barangay[1]}px`);
 
   // The mobile override must not shrink them again.
-  const mobile = css.match(/@media\(max-width:700px\)\{([^@]*)\}\s*$/);
+  const mobile = css.match(/@media\(max-width:700px\)\{([^@]*)\}/);
   assert.ok(mobile, "mobile pin override missing");
   const mobileWidths = [
     ...mobile[1].matchAll(
-      /\.place-pin\{[^}]*width:(\d+)px|\.place-marker\.is-key \.place-pin\{[^}]*width:(\d+)px/g,
+      /\.place-pin\{[^}]*width:(\d+)px|\.place-marker\.is-key\.place-pin\{[^}]*width:(\d+)px/g,
     ),
   ];
   mobileWidths.forEach((m) => {
@@ -80,27 +78,27 @@ test("marker dots stay big enough to read on a phone", () => {
   });
 
   // A neon dot needs a halo, not a 3px shadow.
-  assert.match(css, /\.place-pin\{[\s\S]*?0 0 16px/);
-  assert.match(css, /\.barangay-point\{[\s\S]*?0 0 18px/);
+  assert.match(css, /\.place-pin\{[^}]*0016px/);
+  assert.match(css, /\.barangay-point\{[^}]*0018px/);
 });
 
 test("tile layers declare what detail they actually have", () => {
   // Esri imagery stops at z17 along this coast and returns a grey placeholder
   // past it; maxNativeZoom makes Leaflet scale the real tile instead.
-  const satellite = app.match(/_mSatellite=L\.tileLayer\([\s\S]*?\}\);/);
+  const satellite = after(app, "_mSatellite=L.tileLayer(", 600);
   assert.ok(satellite, "satellite layer missing");
-  assert.match(satellite[0], /maxNativeZoom:17/);
+  assert.ok(satellite.includes(canon("maxNativeZoom:17")), "satellite must declare maxNativeZoom");
 
   // The map itself must not invite zooming past the best imagery available.
-  assert.match(app, /L\.map\('map',\{[^}]*maxZoom:18/);
+  assert.ok(after(app, "L.map('map',{", 300).includes(canon("maxZoom:18")));
 
   // Street and terrain keep their own declared ceilings too.
-  assert.match(app, /_mS=L\.tileLayer\([\s\S]*?maxNativeZoom:19/);
-  assert.match(app, /_mTerrain=L\.tileLayer\([\s\S]*?maxNativeZoom:17/);
+  assert.ok(after(app, "_mS=L.tileLayer(", 600).includes(canon("maxNativeZoom:19")));
+  assert.ok(after(app, "_mTerrain=L.tileLayer(", 600).includes(canon("maxNativeZoom:17")));
 });
 
 test("featured places and landmarks survive regional zoom", () => {
-  assert.match(app, /function keyPlaceIds\(\)/);
-  assert.match(app, /d && d\.featured/);
-  assert.match(app, /if\(marker && marker\._key\) return zoom>=10/);
+  assert.ok(has(app, "function keyPlaceIds(){"));
+  assert.ok(has(app, "d && d.featured"));
+  assert.ok(has(app, "if(marker && marker._key) return zoom>=10"));
 });

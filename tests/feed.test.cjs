@@ -7,8 +7,9 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const { client, canon, has, after, between } = require("./support/client.cjs");
 
-const app = fs.readFileSync("public/site/app.js", "utf8");
+const app = client();
 const html = fs.readFileSync("public/site/index.html", "utf8");
 
 test("the feed is one of the Pulse views", () => {
@@ -20,63 +21,56 @@ test("the feed is one of the Pulse views", () => {
 });
 
 test("selecting the feed renders the feed", () => {
-  assert.match(app, /else if\(pulseView==='feed'\)\{\s*\n\s*renderPulseFeed\(\);/);
+  assert.ok(has(app, "else if(pulseView==='feed'){ renderPulseFeed();"));
 });
 
 test("the feed has a way in to the composer", () => {
-  assert.match(app, /onclick="openPulseCompose\(\)"/);
-  assert.match(app, /function openPulseCompose\(\)\{/);
+  assert.ok(has(app, 'onclick="openPulseCompose()"'));
+  assert.ok(has(app, "function openPulseCompose(){"));
   // The empty state must not be a dead end either.
-  assert.match(app, /Write a post/);
+  assert.ok(has(app, "Write a post"));
 });
 
 test("feed channels are not tribe tags", () => {
   // Sharing pulseCategory meant picking "Surf" in Active Tribes emptied the feed.
-  assert.match(app, /let pulseFeedCategory = 'all';/);
-  assert.match(app, /const FEED_CHANNEL_ORDER = \[/);
-  assert.match(app, /function feedChannels\(\)\{/);
-  const feed = app.slice(
-    app.indexOf("async function renderPulseFeed()"),
-    app.indexOf("// Pulse photos were previously"),
+  assert.ok(has(app, "let pulseFeedCategory = 'all';"));
+  assert.ok(has(app, "const FEED_CHANNEL_ORDER = ["));
+  assert.ok(has(app, "function feedChannels(){"));
+  const feed = between(app, "async function renderPulseFeed()", "// Pulse photos were previously");
+  assert.ok(feed.includes(canon("pulseFeedCategory !== 'all'")));
+  assert.equal(
+    feed.includes(canon("pulseCategory")),
+    false,
+    "renderPulseFeed must not read the tribe filter",
   );
-  assert.match(feed, /pulseFeedCategory !== 'all'/);
-  assert.equal(/pulseCategory/.test(feed), false, "renderPulseFeed must not read the tribe filter");
-  assert.match(app, /pulseFeedCategory = 'all';\n  pulseTab = 'feed';/);
+  assert.ok(has(app, "pulseFeedCategory = 'all';\n  pulseTab = 'feed';"));
 });
 
 test("an empty feed says it is empty, a failed one says it failed", () => {
-  assert.match(app, /No posts yet\./);
-  assert.match(app, /Could not load the feed\./);
-  assert.match(app, /Try again/);
+  assert.ok(has(app, "No posts yet."));
+  assert.ok(has(app, "Could not load the feed."));
+  assert.ok(has(app, "Try again"));
   // The two states must not be the same screen.
-  const failed = app.slice(app.indexOf("Could not load the feed."), app.indexOf("No posts yet."));
-  assert.equal(/No posts yet/.test(failed), false);
+  const failed = between(app, "Could not load the feed.", "No posts yet.");
+  assert.equal(failed.includes(canon("No posts yet")), false);
 });
 
 test("the feed still shows nothing it was not given", () => {
   // Content-policy rule, applied to the newest surface.
-  assert.equal(/const PULSE_POSTS/.test(app), false);
-  const feed = app.slice(
-    app.indexOf("async function renderPulseFeed()"),
-    app.indexOf("// Pulse photos were previously"),
-  );
+  assert.equal(has(app, "const PULSE_POSTS"), false);
+  const feed = between(app, "async function renderPulseFeed()", "// Pulse photos were previously");
   assert.equal(
-    /PULSE_POSTS\b|SAMPLE_\w+/.test(feed),
+    feed.includes(canon("PULSE_POSTS")) || feed.includes(canon("SAMPLE_")),
     false,
     "no packaged posts may be substituted",
   );
 });
 
 test("posting resets the channel and lands back on the feed", () => {
-  const submit = app.slice(
-    app.indexOf("async function submitPulsePost()"),
-    app.indexOf(
-      "// ═══════════════════════════════════════════════════════\n// HERO WEATHER WIDGET",
-    ),
-  );
-  assert.match(submit, /closePulseCompose\(\);/);
-  assert.match(submit, /pulseFeedCategory = 'all';/);
-  assert.match(submit, /await renderPulseFeed\(\);/);
+  const submit = between(app, "async function submitPulsePost()", "// HERO WEATHER WIDGET");
+  assert.ok(submit.includes(canon("closePulseCompose();")));
+  assert.ok(submit.includes(canon("pulseFeedCategory = 'all';")));
+  assert.ok(submit.includes(canon("await renderPulseFeed();")));
 });
 
 test("the feed schema ships as a migration the user can run", () => {
@@ -100,27 +94,26 @@ test("the feed schema ships as a migration the user can run", () => {
 test("the heading follows the view it is describing", () => {
   // Five views used to sit under a heading that said "Tribes".
   assert.match(html, /<span class="pv2-title" id="pv2Title">Tribes<\/span>/);
-  assert.match(app, /function applyPulseHeading\(view\)\{/);
-  assert.match(app, /const PULSE_VIEW_HEADINGS = \{/);
-  assert.match(app, /applyPulseHeading\(view\);/);
-  assert.match(app, /title: 'Feed',/);
+  assert.ok(has(app, "function applyPulseHeading(view){"));
+  assert.ok(has(app, "const PULSE_VIEW_HEADINGS = {"));
+  assert.ok(has(app, "applyPulseHeading(view);"));
+  assert.ok(has(app, "title: 'Feed',"));
   // Everything that is not the feed keeps the copy it shipped with.
-  assert.match(
-    app,
-    /const PULSE_DEFAULT_HEADING = \{ title:'Tribes', sub:'Find your tribe today\.'/,
+  assert.ok(
+    has(app, "const PULSE_DEFAULT_HEADING = { title:'Tribes', sub:'Find your tribe today.'"),
   );
 });
 
 test("the feed's channels are the categories the Backoffice edits", () => {
   // A second hardcoded list meant a category added in the Backoffice could never
   // be posted to, and a renamed one never showed up in the feed.
-  assert.match(app, /function feedChannels\(\)\{/);
-  assert.match(app, /FEED_CHANNEL_ORDER\.filter\(k=>PULSE_CATEGORIES\[k\]\)/);
-  assert.equal(/const FEED_CHANNELS = \[/.test(app), false, "no duplicate channel list");
+  assert.ok(has(app, "function feedChannels(){"));
+  assert.ok(has(app, "FEED_CHANNEL_ORDER.filter(k=>PULSE_CATEGORIES[k])"));
+  assert.equal(has(app, "const FEED_CHANNELS = ["), false, "no duplicate channel list");
   // The chips and the composer dropdown both read it.
-  assert.match(app, /const chips = feedChannels\(\)\.map/);
-  assert.match(app, /function renderPulseComposeCategoryMenu\(\)\{/);
-  assert.match(app, /menu\.innerHTML = feedChannels\(\)\.map/);
+  assert.ok(has(app, "const chips = feedChannels().map"));
+  assert.ok(has(app, "function renderPulseComposeCategoryMenu(){"));
+  assert.ok(has(app, "menu.innerHTML = feedChannels().map"));
   // And the markup no longer carries its own copy of the six channels.
   assert.equal(/data-val="hidden" data-label="Hidden Spots"/.test(html), false);
   assert.match(
@@ -133,17 +126,14 @@ test("saving a category in the Backoffice refreshes what visitors see", () => {
   // refreshPulseCategoryChips() called applyPulseCategoryLabelsToChips(), which
   // was never written: the save threw and nothing on screen changed.
   assert.equal(
-    /applyPulseCategoryLabelsToChips/.test(app),
+    has(app, "applyPulseCategoryLabelsToChips"),
     false,
     "no call to a function that does not exist",
   );
-  const fn = app.slice(
-    app.indexOf("async function refreshPulseCategoryChips()"),
-    app.indexOf("async function refreshPulseCategoryChips()") + 400,
-  );
-  assert.match(fn, /await loadPulseCategoriesFromDB\(\);/);
-  assert.match(fn, /renderPulseComposeCategoryMenu\(\);/);
-  assert.match(fn, /if\(pulseView === 'feed'\) renderPulseFeed\(\);/);
+  const fn = after(app, "async function refreshPulseCategoryChips()", 400);
+  assert.ok(fn.includes(canon("await loadPulseCategoriesFromDB();")));
+  assert.ok(fn.includes(canon("renderPulseComposeCategoryMenu();")));
+  assert.ok(fn.includes(canon("if(pulseView === 'feed') renderPulseFeed();")));
   // The labels are loaded when Pulse opens, not only when an admin saves.
-  assert.match(app, /loadPulseCategoriesFromDB\(\)\.then\(\(\)=>\{/);
+  assert.ok(has(app, "loadPulseCategoriesFromDB().then(()=>{"));
 });

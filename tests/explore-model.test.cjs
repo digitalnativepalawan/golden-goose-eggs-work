@@ -12,10 +12,13 @@ try {
   ts = null;
 }
 const SKIP_TS = ts ? false : "typescript is not installed (run npm install)";
-const model = fs.readFileSync("public/site/explore-model.js", "utf8");
-const app = fs.readFileSync("public/site/app.js", "utf8");
+const { read, client } = require("./support/client.cjs");
+const model = read("explore-model.js");
+// The whole shipped client, in load order: these cases pull named functions out
+// of it, so they keep working when a file is split.
+const app = client();
 const parsed = ts
-  ? ts.createSourceFile("app.js", app, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS)
+  ? ts.createSourceFile("client.js", app, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS)
   : null;
 function functions(...names) {
   return parsed.statements
