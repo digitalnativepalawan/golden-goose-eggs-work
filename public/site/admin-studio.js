@@ -257,7 +257,6 @@
   window.openAdminPanel = async function () {
     if (typeof dataReady === "undefined" || !dataReady) await window.loadDataFromSupabase();
     syncViewport();
-    adminWriteWarned = false;
     await window.refreshAdminAccess();
     document.getElementById("adminPanelOverlay").classList.add("active");
     if (typeof refreshAdminAiBadge === "function") refreshAdminAiBadge();
