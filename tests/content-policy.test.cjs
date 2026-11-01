@@ -25,9 +25,18 @@ test("an answered query replaces samples even when it answers none", () => {
     ["tribes", "tribesRes"],
     ["events", "eventsRes"],
   ]) {
-    const block = app.slice(app.indexOf(`if(${row} && !${row}.error`), app.indexOf(`if(${row} && !${row}.error`) + 260);
-    assert.ok(block.includes(`Array.isArray(${row}.data)`), `${name}: must require an array answer`);
-    assert.ok(block.includes(`|| !SHOW_SAMPLES_WHEN_DB_IS_EMPTY`), `${name}: empty answer must clear the samples`);
+    const block = app.slice(
+      app.indexOf(`if(${row} && !${row}.error`),
+      app.indexOf(`if(${row} && !${row}.error`) + 260,
+    );
+    assert.ok(
+      block.includes(`Array.isArray(${row}.data)`),
+      `${name}: must require an array answer`,
+    );
+    assert.ok(
+      block.includes(`|| !SHOW_SAMPLES_WHEN_DB_IS_EMPTY`),
+      `${name}: empty answer must clear the samples`,
+    );
   }
   // The old unconditional length check is the bug; make sure it is gone.
   assert.equal(/if\(tribesRes && tribesRes\.data && tribesRes\.data\.length\)\{/.test(app), false);
@@ -37,14 +46,23 @@ test("an answered query replaces samples even when it answers none", () => {
 test("Today cards describe today, so they are live or empty", () => {
   assert.match(app, /const TODAY_LIVE_KEYS = \['happening','joinable','locals','notices'\];/);
   // Missing rows for those keys must clear the packaged copy.
-  assert.match(app, /else if\(!SHOW_SAMPLES_WHEN_DB_IS_EMPTY && TODAY_LIVE_KEYS\.indexOf\(key\) >= 0\) TODAY_DATA\[target\[key\]\] = \[\];/);
+  assert.match(
+    app,
+    /else if\(!SHOW_SAMPLES_WHEN_DB_IS_EMPTY && TODAY_LIVE_KEYS\.indexOf\(key\) >= 0\) TODAY_DATA\[target\[key\]\] = \[\];/,
+  );
   // A failed query is offline demo mode and leaves the samples alone.
   assert.match(app, /On a failed query nothing changes/);
 });
 
 test("Today never reports counts it cannot see", () => {
-  assert.match(app, /const tribeCount\s*=\s*\(typeof PULSE_TRIBES !== 'undefined' && Array\.isArray\(PULSE_TRIBES\)\) \? PULSE_TRIBES\.length : 0;/);
-  assert.match(app, /const happenCount\s*=\s*Array\.isArray\(d\.happening\) \? d\.happening\.length : 0;/);
+  assert.match(
+    app,
+    /const tribeCount\s*=\s*\(typeof PULSE_TRIBES !== 'undefined' && Array\.isArray\(PULSE_TRIBES\)\) \? PULSE_TRIBES\.length : 0;/,
+  );
+  assert.match(
+    app,
+    /const happenCount\s*=\s*Array\.isArray\(d\.happening\) \? d\.happening\.length : 0;/,
+  );
   // The packaged snapshot numbers must not be a fallback for either count.
   assert.equal(/tribeCount[\s\S]{0,160}d\.snapshot\.tribes/.test(app), false);
   assert.equal(/happenCount[\s\S]{0,160}d\.snapshot\.happenings/.test(app), false);
@@ -87,5 +105,8 @@ test("no control ships without something to do", () => {
   // "View all" sat in the tribes header with no handler at all. It now only
   // appears when a category filter is on, and clears it.
   assert.equal(/<button class="pv2-viewall">/.test(app), false);
-  assert.match(app, /pulseCategory!=='all'\) \? `<button class="pv2-viewall" onclick="selectPulseCategoryV2\('all'\)"/);
+  assert.match(
+    app,
+    /pulseCategory!=='all'\) \? `<button class="pv2-viewall" onclick="selectPulseCategoryV2\('all'\)"/,
+  );
 });

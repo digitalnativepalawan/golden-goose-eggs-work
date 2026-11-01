@@ -2,7 +2,7 @@
 
 # SANVIC
 
-### *Explore San Vicente, Palawan*
+### _Explore San Vicente, Palawan_
 
 **An interactive destination guide and community platform for San Vicente, Palawan.**
 
@@ -25,12 +25,12 @@ spread across a coastline most visitors never navigate well.
 The app is built around four connected surfaces, reachable from a persistent
 bottom navigation bar:
 
-| Surface | What it does |
-| --- | --- |
-| **Explore** | A layered, interactive map of the municipality. Switch between Street, Dark, Satellite and Terrain basemaps, toggle barangay boundaries, and search beaches, food, waterfalls and barangays. Every place is a marker; every marker opens a full detail sheet. |
-| **Today** | A daily briefing — live local conditions, sunset times, what's happening, and **Tala**, a San Vicente concierge assistant with voice output that answers questions about destinations, timing, routes and hidden gems. |
-| **Tribes** | *Pulse.* Small groups, live plans and local happenings. Travellers join existing tribes or start their own, with live participation counts and category filters. |
-| **The Hunt** | A discovery game. Find hidden spots, unlock stories, collect badges and earn rewards across San Vicente, with progress tracking and discoverable nearby finds. |
+| Surface      | What it does                                                                                                                                                                                                                                                  |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Explore**  | A layered, interactive map of the municipality. Switch between Street, Dark, Satellite and Terrain basemaps, toggle barangay boundaries, and search beaches, food, waterfalls and barangays. Every place is a marker; every marker opens a full detail sheet. |
+| **Today**    | A daily briefing — live local conditions, sunset times, what's happening, and **Tala**, a San Vicente concierge assistant with voice output that answers questions about destinations, timing, routes and hidden gems.                                        |
+| **Tribes**   | _Pulse._ Small groups, live plans and local happenings. Travellers join existing tribes or start their own, with live participation counts and category filters.                                                                                              |
+| **The Hunt** | A discovery game. Find hidden spots, unlock stories, collect badges and earn rewards across San Vicente, with progress tracking and discoverable nearby finds.                                                                                                |
 
 Place detail sheets carry the full editorial record: photography, video,
 barangay, access and season information, ratings, coordinates, and tappable
@@ -42,18 +42,18 @@ booking links.
 
 ![Explore San Vicente](docs/images/explore-map.png)
 
-*Explore — the layered map of San Vicente with category filters, barangay
-selection and 33 mapped places.*
+_Explore — the layered map of San Vicente with category filters, barangay
+selection and 33 mapped places._
 
 <details>
 <summary><strong>More screenshots</strong></summary>
 
-| | |
-| --- | --- |
+|                                                |                                                  |
+| ---------------------------------------------- | ------------------------------------------------ |
 | **Tribes** — Pulse, live groups and happenings | **The Hunt** — daily hunt and nearby discoveries |
-| ![Tribes](docs/screenshots/tribes.png) | ![The Hunt](docs/screenshots/hunt.png) |
-| **Place detail** — media, editorial, booking | **Today** — Tala, the San Vicente concierge |
-| ![Place](docs/screenshots/place.png) | ![Today](docs/screenshots/today.png) |
+| ![Tribes](docs/screenshots/tribes.png)         | ![The Hunt](docs/screenshots/hunt.png)           |
+| **Place detail** — media, editorial, booking   | **Today** — Tala, the San Vicente concierge      |
+| ![Place](docs/screenshots/place.png)           | ![Today](docs/screenshots/today.png)             |
 
 </details>
 
@@ -63,13 +63,13 @@ selection and 33 mapped places.*
 
 ### Languages
 
-| Language | Where it's used | Share of the codebase |
-| --- | --- | --- |
-| **TypeScript / TSX** | Application shell, components, hooks, Supabase integration | 31 files |
-| **JavaScript** | The SANVIC client in `public/site/` — map engine, views, personalization | 10 modules |
-| **CSS** | Design system in `src/styles.css` and `explore-ux.css` | Tailwind + custom |
-| **SQL** | PostgreSQL schema, RLS policies, functions and seed data | 32 migrations |
-| **HTML** | `public/site/index.html` — the application document | 1 |
+| Language             | Where it's used                                                          | Share of the codebase |
+| -------------------- | ------------------------------------------------------------------------ | --------------------- |
+| **TypeScript / TSX** | Application shell, components, hooks, Supabase integration               | 31 files              |
+| **JavaScript**       | The SANVIC client in `public/site/` — map engine, views, personalization | 10 modules            |
+| **CSS**              | Design system in `src/styles.css` and `explore-ux.css`                   | Tailwind + custom     |
+| **SQL**              | PostgreSQL schema, RLS policies, functions and seed data                 | 32 migrations         |
+| **HTML**             | `public/site/index.html` — the application document                      | 1                     |
 
 ### Frontend
 
@@ -204,13 +204,13 @@ from `public/site/`.
 
 ### Scripts
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Development server |
-| `npm run build` | Production build |
+| Command           | Purpose                      |
+| ----------------- | ---------------------------- |
+| `npm run dev`     | Development server           |
+| `npm run build`   | Production build             |
 | `npm run preview` | Preview the production build |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier |
+| `npm run lint`    | ESLint                       |
+| `npm run format`  | Prettier                     |
 
 ### Configuration
 
@@ -297,6 +297,7 @@ Built by **[Palawan Collective](https://github.com/digitalnativepalawan)** and
 **[MerQato.digital](https://merqato.digital)**.
 
 ### Palawan Collective + MerQato.digital
+
 **DESIGN · DEVELOPMENT · AUTOMATION**
 
 Palawan Collective and MerQato.digital work together to connect local businesses,
@@ -338,7 +339,7 @@ systems, direct bookings, digital marketing, and scalable business solutions.
 and emerging destinations, starting in Palawan and creating solutions with the
 potential to reach far beyond it.
 
-> *Local businesses. Distinct digital worlds. Rooted in Palawan. Built for what's next.*
+> _Local businesses. Distinct digital worlds. Rooted in Palawan. Built for what's next._
 
 ---
 

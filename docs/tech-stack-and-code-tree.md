@@ -15,10 +15,10 @@ The Hunt, stories (Pulse) and a Backoffice for the people who edit the content.
 
 One repository, **two surfaces**:
 
-| Surface | Path | Status |
-|---|---|---|
-| **The product** — vanilla-JS single page | `public/site/` | Live, all real work happens here |
-| **React/TanStack shell** (SSR, `/`, `/admin`, `/api/admin`) | `src/` | Deployed, but only used for `/` → redirect and the leftover `/admin` page |
+| Surface                                                     | Path           | Status                                                                    |
+| ----------------------------------------------------------- | -------------- | ------------------------------------------------------------------------- |
+| **The product** — vanilla-JS single page                    | `public/site/` | Live, all real work happens here                                          |
+| **React/TanStack shell** (SSR, `/`, `/admin`, `/api/admin`) | `src/`         | Deployed, but only used for `/` → redirect and the leftover `/admin` page |
 
 The client is **static files with no build step**. `app.js` and `index.html` are
 loaded as written. There is no bundler, no TypeScript, no framework in the product.
@@ -75,11 +75,11 @@ stopped from running yesterday's `app.js`.
 Three files that were present but never loaded have been removed. They are gone
 from the tree, not disabled. Do not recreate them from memory:
 
-| File | Why it was dead |
-|---|---|
-| `entry-polish.js` | CSS-only refinement of an entry card that no longer exists; nothing referenced it |
-| `map-pin-boost.js` | Polygon visual-centre maths for pins. `app.js` has its own, richer `barangayAnchor()` which prefers on-land places and never drags a town dot onto an island |
-| `barangay-marker-polish.js` | Same ground as `map-pin-boost.js`; map hierarchy belongs to `app.js` |
+| File                        | Why it was dead                                                                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `entry-polish.js`           | CSS-only refinement of an entry card that no longer exists; nothing referenced it                                                                            |
+| `map-pin-boost.js`          | Polygon visual-centre maths for pins. `app.js` has its own, richer `barangayAnchor()` which prefers on-land places and never drags a town dot onto an island |
+| `barangay-marker-polish.js` | Same ground as `map-pin-boost.js`; map hierarchy belongs to `app.js`                                                                                         |
 
 Proof before deletion: `git grep -E "entry-polish|map-pin-boost|barangay-marker-polish"`
 returned matches only in `README.md` and this file — no script tag, loader,
@@ -173,19 +173,19 @@ Clearing browser data resets that person. There is nothing to recover, by design
 
 ## 5. Map of features to code
 
-| Feature | Markup | Logic |
-|---|---|---|
-| Map, pins, layers, zoom | `#map` in `index.html` | `app.js` §MAP, `mountMap`, `renderPins`, single-active-layer system |
-| Place detail sheet | `.dest-sheet` | `app.js` §DESTINATION SHEET, `openDestSheet` |
-| Explore list + filters | `#exploreSheet` | `explore-model.js` (pure) + `app.js` §EXPLORE |
-| Today | `#todayScroll` | `app.js` §TODAY DRAWER, `openTodaySheet`, `refreshTodayPicks` |
-| Tribes / Events / Lounge / Feed | `#pulsePane` | `app.js` §PULSE v2 (~4,000–5,600) |
-| The Hunt (riddles) | Hunt pane | `app.js` §HUNT, `hunt_riddles`, 200 m GPS unlock |
-| My Journey | Journey pane | `app.js` §MY SANVIC |
-| Search | `#searchInput` | `app.js` §SEARCH |
-| Tala (assistant) | Tala sheet | `app.js` §TALA (keyword replies) + `/api/tala-chat` (AI, optional) |
-| Backoffice | `#adminPanelOverlay` | `admin-studio.js` + `app.js` §…ADMIN (2,300+ lines) |
-| Entry questions | `#sanvicEntry` | `entry-flow.js` — **off while building** |
+| Feature                         | Markup                 | Logic                                                               |
+| ------------------------------- | ---------------------- | ------------------------------------------------------------------- |
+| Map, pins, layers, zoom         | `#map` in `index.html` | `app.js` §MAP, `mountMap`, `renderPins`, single-active-layer system |
+| Place detail sheet              | `.dest-sheet`          | `app.js` §DESTINATION SHEET, `openDestSheet`                        |
+| Explore list + filters          | `#exploreSheet`        | `explore-model.js` (pure) + `app.js` §EXPLORE                       |
+| Today                           | `#todayScroll`         | `app.js` §TODAY DRAWER, `openTodaySheet`, `refreshTodayPicks`       |
+| Tribes / Events / Lounge / Feed | `#pulsePane`           | `app.js` §PULSE v2 (~4,000–5,600)                                   |
+| The Hunt (riddles)              | Hunt pane              | `app.js` §HUNT, `hunt_riddles`, 200 m GPS unlock                    |
+| My Journey                      | Journey pane           | `app.js` §MY SANVIC                                                 |
+| Search                          | `#searchInput`         | `app.js` §SEARCH                                                    |
+| Tala (assistant)                | Tala sheet             | `app.js` §TALA (keyword replies) + `/api/tala-chat` (AI, optional)  |
+| Backoffice                      | `#adminPanelOverlay`   | `admin-studio.js` + `app.js` §…ADMIN (2,300+ lines)                 |
+| Entry questions                 | `#sanvicEntry`         | `entry-flow.js` — **off while building**                            |
 
 `admin-studio.js` defines `window.openAdminPanel`, which **overrides** the
 function of the same name in `app.js`. When changing how admin opens, change the

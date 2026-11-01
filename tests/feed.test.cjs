@@ -35,7 +35,10 @@ test("feed channels are not tribe tags", () => {
   assert.match(app, /let pulseFeedCategory = 'all';/);
   assert.match(app, /const FEED_CHANNEL_ORDER = \[/);
   assert.match(app, /function feedChannels\(\)\{/);
-  const feed = app.slice(app.indexOf("async function renderPulseFeed()"), app.indexOf("// Pulse photos were previously"));
+  const feed = app.slice(
+    app.indexOf("async function renderPulseFeed()"),
+    app.indexOf("// Pulse photos were previously"),
+  );
   assert.match(feed, /pulseFeedCategory !== 'all'/);
   assert.equal(/pulseCategory/.test(feed), false, "renderPulseFeed must not read the tribe filter");
   assert.match(app, /pulseFeedCategory = 'all';\n  pulseTab = 'feed';/);
@@ -53,12 +56,24 @@ test("an empty feed says it is empty, a failed one says it failed", () => {
 test("the feed still shows nothing it was not given", () => {
   // Content-policy rule, applied to the newest surface.
   assert.equal(/const PULSE_POSTS/.test(app), false);
-  const feed = app.slice(app.indexOf("async function renderPulseFeed()"), app.indexOf("// Pulse photos were previously"));
-  assert.equal(/PULSE_POSTS\b|SAMPLE_\w+/.test(feed), false, "no packaged posts may be substituted");
+  const feed = app.slice(
+    app.indexOf("async function renderPulseFeed()"),
+    app.indexOf("// Pulse photos were previously"),
+  );
+  assert.equal(
+    /PULSE_POSTS\b|SAMPLE_\w+/.test(feed),
+    false,
+    "no packaged posts may be substituted",
+  );
 });
 
 test("posting resets the channel and lands back on the feed", () => {
-  const submit = app.slice(app.indexOf("async function submitPulsePost()"), app.indexOf("// ═══════════════════════════════════════════════════════\n// HERO WEATHER WIDGET"));
+  const submit = app.slice(
+    app.indexOf("async function submitPulsePost()"),
+    app.indexOf(
+      "// ═══════════════════════════════════════════════════════\n// HERO WEATHER WIDGET",
+    ),
+  );
   assert.match(submit, /closePulseCompose\(\);/);
   assert.match(submit, /pulseFeedCategory = 'all';/);
   assert.match(submit, /await renderPulseFeed\(\);/);
@@ -66,7 +81,13 @@ test("posting resets the channel and lands back on the feed", () => {
 
 test("the feed schema ships as a migration the user can run", () => {
   const sql = fs.readFileSync("supabase/migrations/20261030120000_pulse_feed_schema.sql", "utf8");
-  for (const column of ["display_name", "is_anonymous", "admin_post", "location_text", "image_url"]) {
+  for (const column of [
+    "display_name",
+    "is_anonymous",
+    "admin_post",
+    "location_text",
+    "image_url",
+  ]) {
     assert.match(sql, new RegExp(`ADD COLUMN IF NOT EXISTS ${column}`), `pulse_posts.${column}`);
   }
   assert.match(sql, /CREATE POLICY "Anyone can create pulse posts"/);
@@ -84,7 +105,10 @@ test("the heading follows the view it is describing", () => {
   assert.match(app, /applyPulseHeading\(view\);/);
   assert.match(app, /title: 'Feed',/);
   // Everything that is not the feed keeps the copy it shipped with.
-  assert.match(app, /const PULSE_DEFAULT_HEADING = \{ title:'Tribes', sub:'Find your tribe today\.'/);
+  assert.match(
+    app,
+    /const PULSE_DEFAULT_HEADING = \{ title:'Tribes', sub:'Find your tribe today\.'/,
+  );
 });
 
 test("the feed's channels are the categories the Backoffice edits", () => {
@@ -99,14 +123,24 @@ test("the feed's channels are the categories the Backoffice edits", () => {
   assert.match(app, /menu\.innerHTML = feedChannels\(\)\.map/);
   // And the markup no longer carries its own copy of the six channels.
   assert.equal(/data-val="hidden" data-label="Hidden Spots"/.test(html), false);
-  assert.match(html, /<div id="pulseComposeCatMenu" class="pulse-custom-menu" style="display:none;"><\/div>/);
+  assert.match(
+    html,
+    /<div id="pulseComposeCatMenu" class="pulse-custom-menu" style="display:none;"><\/div>/,
+  );
 });
 
 test("saving a category in the Backoffice refreshes what visitors see", () => {
   // refreshPulseCategoryChips() called applyPulseCategoryLabelsToChips(), which
   // was never written: the save threw and nothing on screen changed.
-  assert.equal(/applyPulseCategoryLabelsToChips/.test(app), false, "no call to a function that does not exist");
-  const fn = app.slice(app.indexOf("async function refreshPulseCategoryChips()"), app.indexOf("async function refreshPulseCategoryChips()") + 400);
+  assert.equal(
+    /applyPulseCategoryLabelsToChips/.test(app),
+    false,
+    "no call to a function that does not exist",
+  );
+  const fn = app.slice(
+    app.indexOf("async function refreshPulseCategoryChips()"),
+    app.indexOf("async function refreshPulseCategoryChips()") + 400,
+  );
   assert.match(fn, /await loadPulseCategoriesFromDB\(\);/);
   assert.match(fn, /renderPulseComposeCategoryMenu\(\);/);
   assert.match(fn, /if\(pulseView === 'feed'\) renderPulseFeed\(\);/);

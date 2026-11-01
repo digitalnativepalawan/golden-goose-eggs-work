@@ -110,6 +110,7 @@ pending rather than pretending a draft was hidden.
 ## Implemented in this pass
 
 ### Workspace and navigation
+
 - Added a real Admin home with live-content search, published/draft/archived counts,
   needs-attention items, content inventory, quick actions and recent edits from
   real database timestamps plus actual edits made in the browser.
@@ -122,6 +123,7 @@ pending rather than pretending a draft was hidden.
   Save/Cancel actions.
 
 ### Places, map and publishing
+
 - Kept all existing place fields and related tables. Added search, status,
   category, area and sort filters; published/draft/archived pills; archive/undo,
   unpublish, publish, restore and confirmed permanent delete.
@@ -138,6 +140,7 @@ pending rather than pretending a draft was hidden.
   gracefully fall back to the old insert shape before migration.
 
 ### Photos
+
 - Added library and camera inputs, multiple selection, desktop drag/drop,
   cautious paste, MIME/size validation, SVG rejection, HEIC decode checks,
   client-side optimization, real XHR progress, success/failure, retry,
@@ -151,6 +154,7 @@ pending rather than pretending a draft was hidden.
   allows deletion of unused files.
 
 ### Safety and compatibility
+
 - Preserved the existing Supabase Auth + RLS model and the server-only
   service-role API used by `/admin`. No secret key was added to client code.
 - Existing Tala, AI, Pulse, Site, Today, Tribes, Events, My Sanvic and Hunt

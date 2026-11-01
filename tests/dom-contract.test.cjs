@@ -10,7 +10,13 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 
-const SCRIPTS = ["app.js", "admin-studio.js", "explore-model.js", "admin-model.js", "kmz-import.js"];
+const SCRIPTS = [
+  "app.js",
+  "admin-studio.js",
+  "explore-model.js",
+  "admin-model.js",
+  "kmz-import.js",
+];
 
 // Looked up on purpose, and handled when absent. Keep this list short and say why.
 const INTENTIONALLY_OPTIONAL = {

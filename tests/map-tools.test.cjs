@@ -39,8 +39,18 @@ test("map tools are driven by one explicit switch, not by a panel guess", () => 
 });
 
 test("a full-screen panel hides the tools, the Explore sheet does not", () => {
-  const covering = app.slice(app.indexOf("const COVERING_PANELS"), app.indexOf("].join(',');", app.indexOf("const COVERING_PANELS")));
-  for (const sel of [".today-panel.open", "#pulsePanel.open", "#mySanvicPanel.open", "#huntPanel.open", ".dest-sheet.expanded", "#infoSheet.open"]) {
+  const covering = app.slice(
+    app.indexOf("const COVERING_PANELS"),
+    app.indexOf("].join(',');", app.indexOf("const COVERING_PANELS")),
+  );
+  for (const sel of [
+    ".today-panel.open",
+    "#pulsePanel.open",
+    "#mySanvicPanel.open",
+    "#huntPanel.open",
+    ".dest-sheet.expanded",
+    "#infoSheet.open",
+  ]) {
     assert.ok(covering.includes(sel), `expected ${sel} to count as covering`);
   }
   // The Explore sheet is the one panel with the map still behind it.
@@ -59,7 +69,11 @@ test("marker dots stay big enough to read on a phone", () => {
   // The mobile override must not shrink them again.
   const mobile = css.match(/@media\(max-width:700px\)\{([^@]*)\}\s*$/);
   assert.ok(mobile, "mobile pin override missing");
-  const mobileWidths = [...mobile[1].matchAll(/\.place-pin\{[^}]*width:(\d+)px|\.place-marker\.is-key \.place-pin\{[^}]*width:(\d+)px/g)];
+  const mobileWidths = [
+    ...mobile[1].matchAll(
+      /\.place-pin\{[^}]*width:(\d+)px|\.place-marker\.is-key \.place-pin\{[^}]*width:(\d+)px/g,
+    ),
+  ];
   mobileWidths.forEach((m) => {
     const w = Number(m[1] || m[2]);
     assert.ok(w >= 12, `mobile pin is ${w}px`);
