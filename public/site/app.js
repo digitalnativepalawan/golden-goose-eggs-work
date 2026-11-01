@@ -5152,8 +5152,8 @@ async function refreshAdminAccess(){
 // Nothing to warn about any more. Kept as a function because ~40 save paths
 // still call it as a guard.
 function renderAdminAccessBanner(){
-  const banner = document.getElementById('adminAccessBanner');
-  if(banner) banner.remove();
+  /* Reads only — no element, nothing to draw. Kept so the save paths that
+     call it stay unchanged. */
 }
 
 function adminRequireWrite(){
