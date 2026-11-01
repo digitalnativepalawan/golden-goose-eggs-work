@@ -69,24 +69,42 @@
   function queryTerms(query){
     return normalize(query).split(/[^a-z0-9]+/).filter(t => t && t.length > 1 && !STOPWORDS.has(t));
   }
+  // ── WORDS, NOT LETTERS ──────────────────────────────────────────────────
+  // Matching used to be substring, so searching "drinks" widened to "bar" and
+  // then hit every "Barton" and every "barangay". Fields are compared word by
+  // word instead: a variant has to be a whole word, or be at least four letters
+  // and sit at the start of a word. That keeps "waterf" finding "Waterfall"
+  // while "port" no longer finds "Support" or "Airport".
+  const words = value => normalize(value).split(/[^a-z0-9]+/).filter(Boolean);
+  function wordHit(list, variant){
+    for(const word of list){
+      if(word === variant) return true;
+      if(variant.length >= 4 && word.indexOf(variant) === 0) return true;
+    }
+    return false;
+  }
   // A place is scored by where the words land: its own name is the strongest
   // signal, then its category, then where it is, then what is written about it.
+  // A word the visitor actually typed outranks a synonym that was only guessed
+  // at, so "waterfall" puts the place named Waterfall above Pamuayan Falls.
+  const SYNONYM_WEIGHT = 0.6;
   function score(place, terms, categories){
     if(!terms || !terms.length) return 0;
-    const name = normalize(place.name);
-    const cat = normalize((categories && categories[place.category] && categories[place.category].label) || place.category);
-    const where = normalize(place.barangay);
-    const tip = normalize(place.tip);
-    const desc = normalize(place.description);
+    const name = words(place.name);
+    const cat = words((categories && categories[place.category] && categories[place.category].label) || place.category);
+    const where = words(place.barangay);
+    const tip = words(place.tip);
+    const desc = words(place.description);
     let total = 0;
     for(const term of terms){
       let best = 0;
       for(const variant of expand(term)){
-        if(name.includes(variant)) best = Math.max(best, 6);
-        else if(cat.includes(variant)) best = Math.max(best, 4);
-        else if(where.includes(variant)) best = Math.max(best, 3);
-        else if(tip.includes(variant)) best = Math.max(best, 2.5);
-        else if(desc.includes(variant)) best = Math.max(best, 1.5);
+        const w = variant === term ? 1 : SYNONYM_WEIGHT;
+        if(wordHit(name, variant)) best = Math.max(best, 6 * w);
+        else if(wordHit(cat, variant)) best = Math.max(best, 4 * w);
+        else if(wordHit(where, variant)) best = Math.max(best, 3 * w);
+        else if(wordHit(tip, variant)) best = Math.max(best, 2.5 * w);
+        else if(wordHit(desc, variant)) best = Math.max(best, 1.5 * w);
       }
       total += best;
     }
