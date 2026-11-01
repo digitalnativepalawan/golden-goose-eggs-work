@@ -65,10 +65,10 @@ selection and 33 mapped places.*
 
 | Language | Where it's used | Share of the codebase |
 | --- | --- | --- |
-| **TypeScript / TSX** | Application shell, components, hooks, Supabase integration | 63 files |
-| **JavaScript** | The SANVIC client in `public/site/` — map engine, views, personalization | 9 modules |
+| **TypeScript / TSX** | Application shell, components, hooks, Supabase integration | 31 files |
+| **JavaScript** | The SANVIC client in `public/site/` — map engine, views, personalization | 10 modules |
 | **CSS** | Design system in `src/styles.css` and `explore-ux.css` | Tailwind + custom |
-| **SQL** | PostgreSQL schema, RLS policies, functions and seed data | 11 migrations |
+| **SQL** | PostgreSQL schema, RLS policies, functions and seed data | 32 migrations |
 | **HTML** | `public/site/index.html` — the application document | 1 |
 
 ### Frontend
@@ -78,11 +78,10 @@ selection and 33 mapped places.*
 - **TanStack Query** — server state
 - **Vite 8** — dev server and build pipeline
 - **Tailwind CSS 4** — design tokens and utility styling
-- **Radix UI** + **shadcn/ui** — 50 accessible primitives
-- **Recharts** — data visualisation
-- **Leaflet** — mapping engine
+- **Radix UI** + **shadcn/ui** — 9 primitives kept in `src/components/ui/` (nothing outside that folder imports them today)
+- **Leaflet** — mapping engine, loaded from unpkg CDN, not from npm
 - **Lucide** — iconography
-- **Sonner** — toasts
+- **@supabase/supabase-js** — loaded from unpkg CDN as a UMD bundle
 
 ### Mapping & Geodata
 
@@ -103,7 +102,7 @@ selection and 33 mapped places.*
 - **npm** / Node 24
 - **Nitro** build output (Cloudflare-compatible)
 - **ESLint** + **Prettier**
-- **Vitest**-style test harness in `tests/`
+- **node --test** for the 9 files in `tests/` (no framework, no Vitest)
 
 ---
 
@@ -116,13 +115,14 @@ golden-goose-eggs/
 │       ├── index.html               # Application document (all views)
 │       ├── app.js                   # Map engine, routing, view logic
 │       ├── entry-flow.js            # Onboarding and entry flow
-│       ├── entry-polish.js          # Entry refinements
 │       ├── explore-model.js         # Explore state model
 │       ├── explore-ux.css           # Explore-specific styling
-│       ├── barangay-marker-polish.js# Marker rendering
-│       ├── map-pin-boost.js         # Marker performance
 │       ├── personalize.js           # Localisation and preferences
 │       ├── pulse-demo-content.js    # Tribes / Pulse content
+│       ├── admin-model.js           # Backoffice rules
+│       ├── admin-studio.js          # Backoffice UI (Studio)
+│       ├── admin-ux.css             # Backoffice layout
+│       ├── kmz-import.js            # KMZ upload and preview
 │       ├── barangays.geojson.js     # PSA barangay geometry
 │       ├── supabase-config.js       # Public Supabase connection
 │       └── assets/                  # Photography, logos, Pulse imagery
@@ -134,7 +134,8 @@ golden-goose-eggs/
 │   │   └── api/
 │   │       └── tala-chat.ts         # Tala concierge endpoint
 │   ├── components/
-│   │   └── ui/                      # 50 Radix / shadcn primitives
+│   │   ├── admin/kmz-panel.tsx      # KMZ import review UI
+│   │   └── ui/                      # 9 Radix / shadcn primitives (unimported, kept as scaffolding)
 │   ├── integrations/
 │   │   └── supabase/
 │   │       ├── client.ts            # Browser client
@@ -154,14 +155,24 @@ golden-goose-eggs/
 │   └── router.tsx
 │
 ├── supabase/
-│   ├── migrations/                  # 11 historical SQL migrations
+│   ├── migrations/                  # 32 historical SQL migrations
 │   ├── config.toml
 │   └── seed_images.sql
 │
-├── tests/
-│   └── explore-model.test.cjs
+├── tests/                           # 9 files, run with node --test
+│   ├── admin-model.test.cjs
+│   ├── admin-ui.test.cjs
+│   ├── content-policy.test.cjs
+│   ├── dom-contract.test.cjs
+│   ├── explore-model.test.cjs
+│   ├── feed.test.cjs
+│   ├── kmz-import.test.mjs
+│   ├── map-tools.test.cjs
+│   └── tala-server.test.mjs
 │
 ├── docs/
+│   ├── tech-stack-and-code-tree.md
+│   ├── admin-backoffice-audit.md
 │   └── explore-ux-v2-review.md
 │
 ├── .env.example                     # Public Supabase config (safe to commit)
@@ -215,10 +226,15 @@ governed by Row Level Security policies in the database.
 ## Database
 
 - **PostgreSQL 17** on Supabase, region `ap-southeast-2`
-- **22 tables** across `public` — destinations, nearby places, Pulse posts,
-  comments, likes, tribes, events, notifications, the Hunt, Tala and settings
-- **50 Row Level Security policies**; RLS enabled on 19 tables
-- **8 functions** for roles, moderation and travel profiles
+- **31 tables queried by the client** — destinations, place details, nearby places,
+  Pulse posts/comments/likes, tribes, tribe members and messages, events and event
+  interest/messages, the Hunt, Today, saved places, site and Tala settings
+- **87 Row Level Security policies** in `supabase/migrations/`; RLS enabled on 18 tables
+- **11 functions** for roles, moderation, tribe guards and travel profiles
+
+Counted from the files on disk on 2026-11-01 (branch `cleanup/verdict`):
+32 migration files, 22 `CREATE TABLE`, 87 `CREATE POLICY`. Tables that predate the
+migration history are not in those counts but are queried by the client.
 
 ### Working with the database
 

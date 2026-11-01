@@ -1,6 +1,7 @@
 # SANVIC — Code Tree & Flow
 
-Verified against the working tree at `d153272` (`main`), 2026-11-01.
+Verified on branch `cleanup/verdict` (Phase 1 complete), 2026-11-01. Counts are
+taken from the files on disk, not from earlier notes.
 Supersedes the earlier version of this file, which described a login screen, an
 admin passcode, and a React shell that is no longer what serves the product.
 
@@ -69,16 +70,20 @@ the dock. The map is lazy: it initialises when the map view is first shown.
 Every script and module is fetched with `?v=<stamp>`, which is how a phone is
 stopped from running yesterday's `app.js`.
 
-### Files present but NOT loaded
+### Deleted in Phase 1 cleanup (2026-11-01, branch `cleanup/verdict`)
 
-Do not edit these expecting a change, and do not re-add them without reading why
-they were dropped:
+Three files that were present but never loaded have been removed. They are gone
+from the tree, not disabled. Do not recreate them from memory:
 
-| File | Why it is dead |
+| File | Why it was dead |
 |---|---|
-| `entry-polish.js` | Superseded; nothing references it |
-| `map-pin-boost.js` | Pin sizing/zooming moved into `app.js`; it fought it |
-| `barangay-marker-polish.js` | Same — map hierarchy belongs to `app.js` |
+| `entry-polish.js` | CSS-only refinement of an entry card that no longer exists; nothing referenced it |
+| `map-pin-boost.js` | Polygon visual-centre maths for pins. `app.js` has its own, richer `barangayAnchor()` which prefers on-land places and never drags a town dot onto an island |
+| `barangay-marker-polish.js` | Same ground as `map-pin-boost.js`; map hierarchy belongs to `app.js` |
+
+Proof before deletion: `git grep -E "entry-polish|map-pin-boost|barangay-marker-polish"`
+returned matches only in `README.md` and this file — no script tag, loader,
+test, build config or TypeScript import referenced any of them.
 
 ---
 
@@ -92,7 +97,7 @@ golden-goose-eggs-work/
 │   ├── admin-studio.js 2,824 ln    # Backoffice UI (overrides openAdminPanel)
 │   ├── admin-model.js    414 ln    # Backoffice rules: publishing, validation (unit-tested)
 │   ├── kmz-import.js     374 ln    # KMZ/KML upload + preview
-│   ├── entry-flow.js     225 ln    # first-visit questions (currently OFF, see flag)
+│   ├── entry-flow.js     225 ln    # first-visit questions (OFF — see §8)
 │   ├── personalize.js    118 ln    # locale, units, preferences
 │   ├── explore-model.js  109 ln    # Explore filtering/sorting (unit-tested, pure)
 │   ├── pulse-demo-content.js 67 ln # Pulse seed content
@@ -100,9 +105,6 @@ golden-goose-eggs-work/
 │   ├── barangays.geojson.js        # 32 KB boundary geometry
 │   ├── admin-ux.css    1,655 ln    # Backoffice layout (phone drawer → desktop)
 │   ├── explore-ux.css    152 ln    # Explore sheet + map control styling
-│   ├── entry-polish.js             # DEAD — not loaded
-│   ├── map-pin-boost.js            # DEAD — not loaded
-│   ├── barangay-marker-polish.js   # DEAD — not loaded
 │   └── assets/                     # logo, 4 hero photos, 6 Pulse photos
 │
 ├── src/                            # REACT SHELL (not the product)
@@ -111,7 +113,7 @@ golden-goose-eggs-work/
 │   │   ├── index.tsx               # / → window.location.replace('/site/index.html?v=…')
 │   │   ├── admin.tsx               # leftover passcode Backoffice
 │   │   └── api/{admin.ts,tala-chat.ts}
-│   ├── components/ui/              # 46 shadcn primitives, ~9 used
+│   ├── components/ui/              # 9 shadcn primitives, imported by nothing (see §8)
 │   ├── integrations/supabase/      # browser client, service-role client, types.ts (972 ln)
 │   └── lib/                        # admin-helpers, kmz-parser, buildVersion, error pages
 │
@@ -119,7 +121,7 @@ golden-goose-eggs-work/
 ├── api/tala.js                     # Vercel Function → server/tala.js  (/api/tala-chat)
 │
 ├── supabase/
-│   ├── migrations/  31 files       # historical record, NOT replayable
+│   ├── migrations/  32 files       # historical record, NOT replayable
 │   └── scripts/                    # health check, make_admin, verifications
 │
 ├── tests/  9 files, 66 assertions   # node --test, no framework
@@ -193,7 +195,7 @@ one in `admin-studio.js` — `app.js`'s copy is not what runs.
 
 ## 6. Data layer
 
-~34 tables, grouped:
+**31 tables are queried by the client**, grouped:
 
 - **Directory** — `destinations`, `destination_categories`, `nearby_places`,
   `amenities`, `place_details`, `place_contacts`, `place_links`,
@@ -234,17 +236,31 @@ Skip, for now: `src/`, the shadcn primitives, `tests/explore-model` AST checks.
 
 ---
 
-## 8. Known drift (accurate as of `d153272`)
+## 8. Known drift (verified on branch `cleanup/verdict`, 2026-11-01)
 
-- **`entry-flow.js` is switched off** (`ENTRY_QUESTIONS_ON = false`). A fresh
-  device lands on the map with no questions. Flip to `true` before public launch.
+- **The first-visit questionnaire is OFF, and this is the only switch.** In
+  `public/site/entry-flow.js` the flag is `const ENTRY_QUESTIONS_ON = false;`
+  (line ~10) and `shouldShow()` returns `false` on the next line whenever it is
+  false. The rest of the flow is intact: `openWhenReady()` still holds for
+  `SANVIC_SPLASH_HOLD` (4500 ms) and would mount the card, but it is never
+  reached. The loader in `supabase-config.js` still appends `entry-flow.js`, so
+  the file runs — it just declines to show anything. A device with a valid saved
+  profile was never shown it anyway. **Flip the flag to `true` to bring the
+  questions back**; nothing else needs to change.
 - **No login, no admin PIN** in the product. `/admin` in the React shell still
   has both, and is publicly reachable.
 - **Two directories called admin.** The in-app one is the product; the React one
   is legacy.
+- **`src/components/ui/` is now 9 files** (button, dialog, input, label,
+  separator, sheet, skeleton, toggle, tooltip). Nothing outside that folder
+  imports any of them — not `admin.tsx`, not `kmz-panel.tsx`. They are kept as
+  scaffolding. 37 unused primitives and 29 npm packages that only they used were
+  removed in Phase 1. `@hookform/resolvers` and `date-fns` are also unimported
+  but predate this cleanup, so they were left alone.
 - **`npm test`: 61 pass, 1 fail, 4 skipped** on Windows. The single failure is
-  line endings — `tests/feed.test.cjs` matches `\n` and the checkout is CRLF;
-  normalising to LF makes it pass. The 4 skips need packages absent here.
+  line endings — `tests/feed.test.cjs` matches `\n` and the working tree is CRLF
+  (`core.autocrlf=true`); **the git index stores LF**, so a Linux checkout passes.
+  The 4 skips need packages absent here.
 - **`app.js` is 8,924 lines.** It is the single biggest risk to future work. The
-  three model files (`explore-model`, `admin-model`) show the seam to move along
+  two model files (`explore-model`, `admin-model`) show the seam to move along
   when something needs extracting.
