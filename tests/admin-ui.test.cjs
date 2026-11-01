@@ -2,12 +2,15 @@ const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { appFiles, appSource, scriptFiles } = require("./support/client.cjs");
 
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "public", "site", "index.html"), "utf8");
 const css = fs.readFileSync(path.join(root, "public", "site", "admin-ux.css"), "utf8");
 const studio = fs.readFileSync(path.join(root, "public", "site", "admin-studio.js"), "utf8");
-const app = fs.readFileSync(path.join(root, "public", "site", "app.js"), "utf8");
+// The app, however many files it is spread across, in page load order - and
+// only the app, so an attribute that exists in admin-studio.js cannot leak in.
+const app = appSource();
 const migration = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20261026120000_destination_publishing.sql"),
   "utf8",
@@ -15,12 +18,22 @@ const migration = fs.readFileSync(
 const adminModel = fs.readFileSync(path.join(root, "public", "site", "admin-model.js"), "utf8");
 
 test("the Backoffice loads pure rules, the enhancement layer and the responsive CSS in the right order", () => {
-  const list = html.match(/\['supabase-config\.js'[^\]]+\]/);
-  assert.ok(list, "script list exists");
-  const order = list[0];
-  assert.ok(order.indexOf("admin-model.js") < order.indexOf("app.js"));
-  assert.ok(order.indexOf("app.js") < order.indexOf("admin-studio.js"));
-  assert.ok(order.indexOf("admin-studio.js") < order.indexOf("kmz-import.js"));
+  assert.ok(html.match(/\['supabase-config\.js'[^\]]+\]/), "script list exists");
+  // Read the order rather than the raw string, so it holds whether the app is
+  // one file or several.
+  const order = scriptFiles();
+  const at = (name) => order.indexOf(name);
+  assert.ok(at("admin-model.js") >= 0 && at("admin-studio.js") >= 0, "loaders are listed");
+  assert.ok(at("admin-model.js") < at("admin-studio.js"), "rules load before the Backoffice UI");
+  assert.ok(at("admin-studio.js") < at("kmz-import.js"), "the Backoffice UI loads before KMZ");
+  // The app sits between the pure rules and the Backoffice enhancement layer,
+  // and admin-studio.js must stay the file that loads last among them.
+  assert.ok(appFiles().length >= 1, "the app loads after the rules and before the Admin UI");
+  assert.equal(
+    appFiles().some((f) => /admin-studio|kmz-import/.test(f)),
+    false,
+    "the Backoffice UI is not part of the app",
+  );
   assert.match(html, /admin-ux\.css\?v=/);
   assert.match(html, /id="adminTabHome"/);
   assert.match(html, /id="adminTabMap"/);

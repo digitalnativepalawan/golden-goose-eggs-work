@@ -55,6 +55,19 @@ function scriptFiles() {
 // Every shipped script, concatenated in load order.
 const client = () => scriptFiles().map(read).join("\n");
 
+// Just the app: the files the loader places after the pure models and before
+// the Backoffice enhancement layer. A test that means "the app and nothing
+// else" should read this rather than the whole client, so a string that only
+// appears in admin-studio.js (a `title="` attribute, say) cannot make it fail.
+function appFiles() {
+  const order = scriptFiles();
+  const from = order.indexOf("admin-model.js") + 1;
+  const to = order.indexOf("admin-studio.js");
+  return order.slice(from, to);
+}
+
+const appSource = () => appFiles().map(read).join("\n");
+
 // Whitespace gone, quotes uniform. Comments are kept, because one assertion
 // pins the reasoning written next to the code.
 const canon = (code) => String(code).replace(/\s+/g, "").replace(/['"`]/g, '"');
@@ -108,6 +121,8 @@ module.exports = {
   readRoot,
   scriptFiles,
   client,
+  appFiles,
+  appSource,
   canon,
   has,
   count,

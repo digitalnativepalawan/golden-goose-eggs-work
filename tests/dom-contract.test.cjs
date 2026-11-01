@@ -13,7 +13,7 @@ const { read, scriptFiles, canon, has, count } = require("./support/client.cjs")
 
 // Looked up on purpose, and handled when absent. Keep this list short and say why.
 const INTENTIONALLY_OPTIONAL = {
-  appShell: "app.js mounts overlays into #appShell||document.body",
+  appShell: "the shell mounts overlays into #appShell||document.body",
 };
 
 // The scripts the page actually loads, in load order, so a file that is split
