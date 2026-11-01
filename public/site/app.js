@@ -5160,17 +5160,21 @@ function adminRequireWrite(){
   return true;
 }
 
+// The only way into the Backoffice: tap the SANVIC.PH logo in the header three
+// times. The old floating gear sat in the top-right corner and, on a phone, slid
+// underneath the Layers / Locate stack - it could not be tapped at all. The logo
+// is always in the header on the map view and collides with nothing.
 function adminBrandClick(){
   brandClickCount++;
   clearTimeout(brandClickTimer);
-  brandClickTimer = setTimeout(()=>{ brandClickCount = 0; }, 700);
+  brandClickTimer = setTimeout(()=>{ brandClickCount = 0; }, 900);
   if(brandClickCount >= 3){
     brandClickCount = 0;
-    openAdminPanel();
+    if(typeof openAdminPanel === 'function') openAdminPanel();
   }
 }
 
-// The visible "Staff admin" button (top-right gear) opens the in-client Backoffice.
+// Kept for anything still pointing at the removed gear button.
 //
 // No gate at all now: no 4-digit PIN, no Supabase sign-in. The panel opens and
 // writes. Read the migration named at the top of this section for the database
