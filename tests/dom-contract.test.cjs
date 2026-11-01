@@ -34,7 +34,9 @@ function createdIds() {
 
 function lookedUpIds() {
   const ids = new Set();
-  for (const m of js.matchAll(/getElementById\(\s*'([^']+)'\s*\)/g)) ids.add(m[1]);
+  // Both quote styles: which one is used is the formatter's decision, and a
+  // single-quote-only pattern silently stopped seeing every lookup.
+  for (const m of js.matchAll(/getElementById\(\s*["']([^"']+)["']\s*\)/g)) ids.add(m[1]);
   return ids;
 }
 

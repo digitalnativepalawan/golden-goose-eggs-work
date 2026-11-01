@@ -108,7 +108,11 @@ test("the feed's channels are the categories the Backoffice edits", () => {
   // A second hardcoded list meant a category added in the Backoffice could never
   // be posted to, and a renamed one never showed up in the feed.
   assert.ok(has(app, "function feedChannels(){"));
-  assert.ok(has(app, "FEED_CHANNEL_ORDER.filter(k=>PULSE_CATEGORIES[k])"));
+  // The order decides the chips, the categories decide what exists; Prettier
+  // owns the brackets around the arrow parameter, so the two are read separately.
+  const channels = after(app, "function feedChannels(){", 300);
+  assert.ok(channels.includes(canon("FEED_CHANNEL_ORDER.filter(")));
+  assert.ok(channels.includes(canon("PULSE_CATEGORIES[k]")));
   assert.equal(has(app, "const FEED_CHANNELS = ["), false, "no duplicate channel list");
   // The chips and the composer dropdown both read it.
   assert.ok(has(app, "const chips = feedChannels().map"));

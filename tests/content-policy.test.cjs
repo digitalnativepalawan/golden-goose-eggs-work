@@ -54,15 +54,12 @@ test("Today cards describe today, so they are live or empty", () => {
 });
 
 test("Today never reports counts it cannot see", () => {
-  assert.ok(
-    has(
-      app,
-      "const tribeCount = (typeof PULSE_TRIBES !== 'undefined' && Array.isArray(PULSE_TRIBES)) ? PULSE_TRIBES.length : 0;",
-    ),
-  );
-  assert.ok(
-    has(app, "const happenCount = Array.isArray(d.happening) ? d.happening.length : 0;"),
-  );
+  // Read the expression, not its brackets: Prettier drops the redundant ones.
+  const tribe = after(app, "const tribeCount", 220);
+  assert.ok(tribe.includes(canon("typeof PULSE_TRIBES !== 'undefined'")));
+  assert.ok(tribe.includes(canon("Array.isArray(PULSE_TRIBES)")));
+  assert.ok(tribe.includes(canon("PULSE_TRIBES.length : 0;")));
+  assert.ok(has(app, "const happenCount = Array.isArray(d.happening) ? d.happening.length : 0;"));
   // The packaged snapshot numbers must not be a fallback for either count.
   assert.equal(after(app, "tribeCount", 160).includes(canon("d.snapshot.tribes")), false);
   assert.equal(after(app, "happenCount", 160).includes(canon("d.snapshot.happenings")), false);
@@ -107,6 +104,8 @@ test("no control ships without something to do", () => {
   // "View all" sat in the tribes header with no handler at all. It now only
   // appears when a category filter is on, and clears it.
   assert.equal(has(app, '<button class="pv2-viewall">'), false);
-  assert.ok(has(app, `pulseCategory!=='all') ? \`<button class="pv2-viewall"`));
+  // The bracket around the condition is Prettier's to add or drop, so it is not
+  // part of what this pins: the button follows a category filter being on.
+  assert.ok(has(app, `pulseCategory!=='all' ? \`<button class="pv2-viewall"`));
   assert.ok(has(app, `onclick="selectPulseCategoryV2('all')"`));
 });

@@ -11,14 +11,9 @@ routeTree.gen.ts
 public/site/index.html
 public/site/barangays.geojson.js
 
-# app.js is asserted on as text by 20 tests in tests/*.cjs, which match exact
-# snippets including their single quotes. Prettier's double-quote output breaks
-# them, so it stays unformatted until those tests stop reading source text.
-public/site/app.js
-
-# Same reason: tests/map-tools.test.cjs matches `.place-pin{...width:12px`
-# with no spaces, which Prettier's CSS output removes.
-public/site/explore-ux.css
+# app.js and explore-ux.css were held back here while tests matched their exact
+# text. They now read the client through tests/support/client.cjs, so both are
+# formatted like everything else.
 docs/images
 docs/screenshots
 supabase/
