@@ -130,156 +130,25 @@ let dataReady = false;
 let destinationsSource = 'loading';
 
 // ═══════════════════════════════════════════════════════
-// AUTHENTICATION — Supabase Auth, Email Magic Link only for
-// now. Google/Apple need real OAuth app registrations on
-// Anthropic/David's end before they can be wired up; the login
-// modal already has buttons for them so adding the providers
-// later is just a few lines, not a redesign.
+// NO ACCOUNTS, NO SIGN-IN
+//
+// There used to be a full Supabase Auth stack here: magic link,
+// email+password, Google/Apple, a session listener, a 4-digit
+// admin PIN, a sign-in sheet and a "read-only" banner on the
+// Backoffice. All of it is gone.
+//
+// Who someone is now comes from the device: personId() / personGet()
+// (a name, kept in localStorage, asked once when they join a tribe
+// or an event). Nothing else is required to use the site, and the
+// Backoffice opens and writes without a credential of any kind.
+//
+// The database side of that is
+// supabase/migrations/<open backoffice writes>.sql, which grants
+// anon the write policies the admin role used to hold.
 // ═══════════════════════════════════════════════════════
-let currentUser = null;       // Supabase auth user object, or null if signed out
-let currentProfile = null;    // row from traveler_profiles, or null
-
-async function initAuth(){
-  const { data: { session } } = await sb.auth.getSession();
-  if(session){
-    currentUser = session.user;
-    await loadTravelerProfile();
-  }
-
-  sb.auth.onAuthStateChange(async (event, session) => {
-    if(event === 'SIGNED_IN' && session){
-      currentUser = session.user;
-      await loadTravelerProfile();
-      closeLoginModal();
-      updateAuthUI();
-      if(typeof refreshAdminAccess === 'function') refreshAdminAccess();
-    } else if(event === 'SIGNED_OUT'){
-      currentUser = null;
-      currentProfile = null;
-      updateAuthUI();
-      if(typeof refreshAdminAccess === 'function') refreshAdminAccess();
-    }
-  });
-
-  updateAuthUI();
-}
-
-async function loadTravelerProfile(){
-  if(!currentUser) return;
-  try {
-    const { data, error } = await sb.from('traveler_profiles').select('*').eq('id', currentUser.id).maybeSingle();
-    if(error) throw error;
-    currentProfile = data;
-    // Touch last_seen, best-effort, don't block on it
-    sb.from('traveler_profiles').update({ last_seen: new Date().toISOString() }).eq('id', currentUser.id);
-  } catch(err){
-    console.warn('[SANVIC] Failed to load traveler profile:', err);
-  }
-}
-
-function isLoggedIn(){
-  return !!currentUser;
-}
-
-function openLoginModal(){
-  document.getElementById('loginModalOverlay').classList.add('active');
-  document.getElementById('loginModalSheet').classList.add('open');
-  document.getElementById('loginEmailStatus').textContent = '';
-  document.getElementById('loginEmailInput').value = '';
-}
-
-function closeLoginModal(){
-  document.getElementById('loginModalOverlay').classList.remove('active');
-  document.getElementById('loginModalSheet').classList.remove('open');
-}
-
-async function sendMagicLink(){
-  const email = document.getElementById('loginEmailInput').value.trim();
-  const statusEl = document.getElementById('loginEmailStatus');
-  if(!email || !email.includes('@')){
-    statusEl.textContent = 'Please enter a valid email address.';
-    statusEl.style.color = '#ef4444';
-    return;
-  }
-  statusEl.textContent = 'Sending link...';
-  statusEl.style.color = 'var(--white-dim)';
-  try {
-    const { error } = await sb.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.href }
-    });
-    if(error) throw error;
-    statusEl.textContent = `Check your email — we sent a link to ${email}.`;
-    statusEl.style.color = '#5eead4';
-  } catch(err){
-    statusEl.textContent = 'Could not send link: ' + (err.message || err);
-    statusEl.style.color = '#ef4444';
-  }
-}
-
-// Email + password sign-in, so the owner never has to wait for an email. The
-// one-time link below still works as a fallback. The existing onAuthStateChange
-// handler (SIGNED_IN) closes this modal and refreshes the admin write access.
-async function signInWithPassword(){
-  const statusEl = document.getElementById('loginEmailStatus');
-  const email = document.getElementById('loginEmailInput').value.trim();
-  const passwordEl = document.getElementById('loginPasswordInput');
-  const password = passwordEl ? passwordEl.value : '';
-  if(!email || !password){
-    statusEl.textContent = 'Enter your email and password.';
-    statusEl.style.color = '#ef4444';
-    return;
-  }
-  statusEl.textContent = 'Signing in...';
-  statusEl.style.color = 'var(--white-dim)';
-  try {
-    const { error } = await sb.auth.signInWithPassword({ email, password });
-    if(error) throw error;
-    if(passwordEl) passwordEl.value = '';
-    statusEl.textContent = 'Signed in.';
-    statusEl.style.color = '#5eead4';
-    setTimeout(()=>closeLoginModal(), 500);
-  } catch(err){
-    statusEl.textContent = 'Could not sign in: ' + (err.message || err);
-    statusEl.style.color = '#ef4444';
-  }
-}
-
-async function signInWithProvider(provider){
-  const statusEl = document.getElementById('loginEmailStatus');
-  statusEl.textContent = `Opening ${provider} sign-in...`;
-  statusEl.style.color = 'var(--white-dim)';
-  try {
-    // Use the iframe's own URL — accessing window.top across origins (e.g. in the Lovable editor) throws
-    let redirectTo = window.location.href;
-    try { if (window.top && window.top !== window.self) redirectTo = window.top.location.href; } catch(_) {}
-    const { error } = await sb.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo }
-    });
-    if(error) throw error;
-  } catch(err){
-    statusEl.textContent = `Could not start ${provider} sign-in: ` + (err.message || err);
-    statusEl.style.color = '#ef4444';
-  }
-}
-
-async function signOutUser(){
-  await sb.auth.signOut();
-  closeDashboard();
-}
-
-function updateAuthUI(){
-  // Bell/notification icon and avatar swap in the hero or dock area
-  // could go here later; for now this drives the dashboard's own
-  // header state and the dock "Saved" tab behavior.
-  const dashAvatarWrap = document.getElementById('dashUserAvatarWrap');
-  if(dashAvatarWrap){
-    if(isLoggedIn() && currentProfile){
-      dashAvatarWrap.style.display = '';
-    }
-  }
-}
+function isLoggedIn(){ return false; }
+function initAuth(){ /* no accounts */ }
+function updateAuthUI(){ /* no accounts */ }
 
 // ═══════════════════════════════════════════════════════
 // TRAVELER DASHBOARD
@@ -303,29 +172,17 @@ function renderDashProfileCard(){
   const nameEl = document.getElementById('dashUserName');
   const subEl = document.getElementById('dashUserSub');
   const avatarWrap = document.getElementById('dashUserAvatarWrap');
-  const signinBtn = document.getElementById('dashProfileSigninBtn');
-  const signoutBtn = document.getElementById('dashSignoutBtn');
+  if(!nameEl || !avatarWrap) return;
 
-  if(!currentUser){
+  const name = personName();
+  if(name){
+    nameEl.textContent = `Hello, ${name}`;
+    subEl.textContent = 'Welcome back to San Vicente';
+    avatarWrap.innerHTML = `<span>${escapeHtml(name.slice(0,1).toUpperCase())}</span>`;
+  } else {
     avatarWrap.innerHTML = DASH_GUEST_AVATAR;
     nameEl.textContent = 'Welcome, Explorer';
-    subEl.textContent = 'Sign in to save places and plan trips';
-    if(signinBtn) signinBtn.style.display = '';
-    if(signoutBtn) signoutBtn.style.display = 'none';
-    return;
-  }
-
-  if(signinBtn) signinBtn.style.display = 'none';
-  if(signoutBtn) signoutBtn.style.display = '';
-
-  const displayName = (currentProfile && currentProfile.display_name) || currentUser.email.split('@')[0];
-  nameEl.textContent = `Hello, ${displayName}`;
-  subEl.textContent = 'Welcome back to San Vicente';
-
-  if(currentProfile && currentProfile.avatar_url){
-    avatarWrap.innerHTML = `<img src="${currentProfile.avatar_url}" alt="">`;
-  } else {
-    avatarWrap.innerHTML = `<span>${escapeHtml(displayName.slice(0,1).toUpperCase())}</span>`;
+    subEl.textContent = 'Your saves and plans stay on this device';
   }
 }
 
@@ -348,9 +205,7 @@ async function renderDashOverview(){
   const owner = saveOwner();
   try {
     const { data: saved } = await sb.from('saved_places').select('id').eq(owner.col, owner.val);
-    const { data: posts } = isLoggedIn()
-      ? await sb.from('pulse_posts').select('id').eq('user_id', currentUser.id)
-      : { data: [] };
+    const plans = (typeof myTribes!=='undefined'?myTribes.size:0) + (typeof myEvents!=='undefined'?myEvents.size:0);
     body.innerHTML = `
       <div class="dash-section-title">Overview</div>
       <div class="admin-grid-2" style="margin-bottom:14px;">
@@ -359,13 +214,11 @@ async function renderDashOverview(){
           <div style="font-size:.7rem;margin-top:4px;">Saved places</div>
         </div>
         <div class="dash-empty-state" style="padding:18px;">
-          <div style="font-size:1.4rem;color:var(--ocean-teal-light);font-weight:600;">${(posts||[]).length}</div>
-          <div style="font-size:.7rem;margin-top:4px;">Tribes posts</div>
+          <div style="font-size:1.4rem;color:var(--ocean-teal-light);font-weight:600;">${plans}</div>
+          <div style="font-size:.7rem;margin-top:4px;">Tribes &amp; events</div>
         </div>
       </div>
-      ${isLoggedIn()
-        ? `<div class="dash-empty-state">Your saves follow you to any device you sign in on.</div>`
-        : `<div class="dash-empty-state">Your saves live on this device.<br><button class="login-provider-btn" style="margin-top:12px;" onclick="openLoginModal()">Sign in</button> to sync them across your devices.</div>`}`;
+      <div class="dash-empty-state">Everything here stays on this device. No account, no email.</div>`;
   } catch(err){
     body.innerHTML = `<div class="dash-empty-state">Couldn't load your overview right now.</div>`;
   }
@@ -383,14 +236,11 @@ async function renderDashSaved(){
     if(error) throw error;
 
     if(!data || !data.length){
-      body.innerHTML = heading + `<div class="dash-empty-state">You haven't saved any places yet. Tap the bookmark on a place to save it here.`
-        + (isLoggedIn() ? '' : `<br><button class="login-provider-btn" style="margin-top:12px;" onclick="openLoginModal()">Sign in</button> to sync your saves across your devices.`)
-        + `</div>`;
+      body.innerHTML = heading + `<div class="dash-empty-state">You haven't saved any places yet. Tap the bookmark on a place to save it here.</div>`;
       return;
     }
 
     body.innerHTML = heading
-      + (isLoggedIn() ? '' : `<div class="dash-empty-state" style="margin-bottom:10px;">Saved on this device. <button class="login-provider-btn" style="margin-top:8px;" onclick="openLoginModal()">Sign in</button> to sync them across your devices.</div>`)
       + data.map(row=>{
       const d = row.destinations;
       if(!d) return '';
@@ -410,70 +260,74 @@ async function renderDashSaved(){
 
 async function renderDashActivity(){
   const body = document.getElementById('dashSectionBody');
-  if(!currentUser){
-    body.innerHTML = `<div class="dash-section-title">Activity</div><div class="dash-empty-state">Sign in to see your Tribes posts and saves here.<br><button class="login-provider-btn" style="margin-top:12px;" onclick="openLoginModal()">Sign in</button></div>`;
-    return;
-  }
+  const heading = `<div class="dash-section-title">Activity</div>`;
+  const me = personId();
+  const rows = [];
   try {
-    const { data, error } = await sb.from('pulse_posts')
-      .select('id, text_content, category, created_at')
-      .eq('user_id', currentUser.id)
-      .order('created_at', { ascending: false })
-      .limit(20);
-    if(error) throw error;
+    const [tm, ei] = await Promise.all([
+      sb.from('tribe_members').select('tribe_id').eq('device_id', me),
+      sb.from('event_interest').select('event_id').eq('device_id', me)
+    ]);
+    if(tm && tm.error) throw tm.error;
+    if(ei && ei.error) throw ei.error;
 
-    if(!data || !data.length){
-      body.innerHTML = `<div class="dash-section-title">Activity</div><div class="dash-empty-state">Your Tribes posts and saves will show up here.</div>`;
-      return;
+    const tribeIds = [...new Set((tm && tm.data || []).map(r=>String(r.tribe_id)))];
+    const eventIds = [...new Set((ei && ei.data || []).map(r=>String(r.event_id)))];
+
+    let tribeTitles = {}, eventTitles = {};
+    if(tribeIds.length){
+      const { data } = await sb.from('tribes').select('id, title').in('id', tribeIds);
+      (data||[]).forEach(t=>{ tribeTitles[String(t.id)] = t.title; });
+    }
+    if(eventIds.length){
+      const { data } = await sb.from('events').select('id, title').in('id', eventIds);
+      (data||[]).forEach(e=>{ eventTitles[String(e.id)] = e.title; });
     }
 
-    body.innerHTML = `<div class="dash-section-title">Activity</div>` + data.map(p=>`
+    tribeIds.forEach(id=>rows.push({ icon:'users', label: tribeTitles[id] || 'Tribe', meta:'Tribe you joined' }));
+    eventIds.forEach(id=>rows.push({ icon:'calendar', label: eventTitles[id] || 'Event', meta:'Event you are going to' }));
+  } catch(err){
+    body.innerHTML = heading + `<div class="dash-empty-state">Couldn't load activity right now.</div>`;
+    return;
+  }
+
+  if(!rows.length){
+    body.innerHTML = heading + `<div class="dash-empty-state">Join a tribe or an event and it shows up here.</div>`;
+    return;
+  }
+
+  body.innerHTML = heading + rows.map(r=>`
       <div class="around-card" style="margin-bottom:10px;">
-        <div class="around-card-icon">${lucideSvg('map-pin',18)}</div>
+        <div class="around-card-icon">${lucideSvg(r.icon,18)}</div>
         <div class="around-card-body">
-          <div class="around-card-name">${escapeHtml((p.text_content||'').slice(0,60))}${(p.text_content||'').length>60?'…':''}</div>
-          <div class="around-card-meta">${new Date(p.created_at).toLocaleDateString()}</div>
+          <div class="around-card-name">${escapeHtml(r.label)}</div>
+          <div class="around-card-meta">${escapeHtml(r.meta)}</div>
         </div>
       </div>`).join('');
-  } catch(err){
-    body.innerHTML = `<div class="dash-empty-state">Couldn't load activity right now.</div>`;
-  }
 }
 
 async function renderDashSettings(){
   const body = document.getElementById('dashSectionBody');
-  if(!currentUser){
-    body.innerHTML = `<div class="dash-section-title">Settings</div><div class="dash-empty-state">Sign in to edit your traveler profile.<br><button class="login-provider-btn" style="margin-top:12px;" onclick="openLoginModal()">Sign in</button></div>`;
-    return;
-  }
   body.innerHTML = `
     <div class="dash-section-title">Settings</div>
-    <div class="admin-field"><label>Display name</label><input id="dashSettingsName" value="${escapeHtml((currentProfile&&currentProfile.display_name)||'')}"></div>
-    <div class="admin-field"><label>Bio</label><textarea id="dashSettingsBio" rows="3">${escapeHtml((currentProfile&&currentProfile.bio)||'')}</textarea></div>
-    <button class="admin-save-btn" onclick="saveDashSettings()">Save changes</button>`;
+    <div class="admin-field"><label>What should we call you</label><input id="dashSettingsName" maxlength="40" value="${escapeHtml(personName())}"></div>
+    <div class="dash-empty-state" style="margin-top:12px;">Kept on this device only. No email, no password.</div>
+    <button class="admin-save-btn" style="margin-top:12px;" onclick="saveDashSettings()">Save name</button>`;
 }
 
 async function saveDashSettings(){
-  const display_name = document.getElementById('dashSettingsName').value.trim();
-  const bio = document.getElementById('dashSettingsBio').value.trim();
-  try {
-    const { error } = await sb.from('traveler_profiles').update({ display_name, bio, updated_at: new Date().toISOString() }).eq('id', currentUser.id);
-    if(error) throw error;
-    currentProfile = { ...currentProfile, display_name, bio };
-    renderDashProfileCard();
-    alert('Saved.');
-  } catch(err){
-    alert('Save failed: ' + (err.message || err));
-  }
+  const el = document.getElementById('dashSettingsName');
+  const name = (el && el.value || '').trim();
+  if(!name){ toast('Enter a name first.'); return; }
+  personSave(name, null);
+  renderDashProfileCard();
+  toast('Saved.');
 }
 
 // ─── Save / unsave a place ───
-// Signed in: saved against the account, so it follows the traveller to another
-// device. Not signed in: saved against this device, using the same anonymous id
-// Pulse likes and tribe joins use. Demanding an email before a bookmark works is
-// the friction the owner ruled out, so the button now works either way.
+// Every save belongs to the device, using the same anonymous id Pulse likes and
+// tribe joins use. There are no accounts, so there is nothing to sign in to.
 function saveOwner(){
-  if(isLoggedIn()) return { col:'user_id', val:currentUser.id, row:{ user_id: currentUser.id } };
   const id = personId();
   return { col:'device_id', val:id, row:{ device_id:id } };
 }
@@ -3860,7 +3714,7 @@ async function submitPulseComment(postId){
   txtEl.disabled = true;
   const { error } = await sb.from('pulse_comments').insert({
     post_id: postId,
-    user_id: currentUser ? currentUser.id : null,
+    user_id: null,
     display_name: name,
     is_anonymous: !name,
     text_content: text.slice(0,300),
@@ -4292,13 +4146,13 @@ async function submitPulsePost(){
   }
 
   const { error } = await sb.from('pulse_posts').insert({
-    user_id: currentUser ? currentUser.id : null,
+    user_id: null,
     display_name: displayName,
     category: cat || 'all',
     text_content: text ? text.slice(0, 500) : null,
     image_url: imageUrl,
     location_text: pulseComposeLocation || null,
-    is_anonymous: !currentUser,
+    is_anonymous: true,
   });
 
   postBtn.disabled = false;
@@ -5245,67 +5099,36 @@ window.addEventListener('load',()=>{
 });
 
 // ═══════════════════════════════════════════════════════
-// ADMIN PANEL — triple-click "SANVIC.PH" brand label, PIN 5309.
-// The PIN only opens this interface (it is visible in this file).
-// The real gate is Supabase Row Level Security: saves only succeed
-// when the signed-in user has the 'admin' role in public.user_roles
-// (see supabase/scripts/02_make_admin.sql). Everyone else gets a
-// read-only view.
+// ADMIN PANEL — triple-click the "SANVIC.PH" brand label, or the
+// gear in the header. No PIN, no sign-in, no read-only state:
+// openAdminFromButton() opens the panel and every save is allowed.
+// The database side is
+// supabase/migrations/20261101090000_open_backoffice_writes.sql.
 // ═══════════════════════════════════════════════════════
-const ADMIN_PIN = "5309";
 let brandClickCount = 0, brandClickTimer = null;
-let adminUnlocked = false;
 let adminTab = 'dest';
 let adminEditingDestId = null;   // null = not editing, 'new' = creating, else id
 let adminEditingTalaId = null;
-let adminCanWrite = false;
-let adminWriteWarned = false;
+let adminCanWrite = true;
 let adminCollapsedCats = {};     // { [categoryKey]: true } when that group is collapsed
 let adminNeedsWorkOnly = false;  // show only listings that are missing details
 let adminQuickPhotoTargetId = null;
 let adminDeadCovers = new Set(); // listings whose saved photo link 404s (id, as string)
 
 async function refreshAdminAccess(){
-  adminCanWrite = false;
-  if(currentUser){
-    try{
-      const { data } = await sb.from('user_roles').select('role').eq('user_id', currentUser.id).eq('role','admin').maybeSingle();
-      adminCanWrite = !!data;
-    }catch(e){}
-  }
+  adminCanWrite = true;
   renderAdminAccessBanner();
 }
 
-// Read-only notice at the top of the Backoffice when the current visitor
-// isn't a signed-in admin. Saves would be rejected by the database anyway.
+// Nothing to warn about any more. Kept as a function because ~40 save paths
+// still call it as a guard.
 function renderAdminAccessBanner(){
-  const head = document.querySelector('#adminPanelOverlay .admin-head');
-  if(!head) return;
-  let banner = document.getElementById('adminAccessBanner');
-  if(adminCanWrite){ if(banner) banner.remove(); return; }
-  if(!banner){
-    banner = document.createElement('div');
-    banner.id = 'adminAccessBanner';
-    banner.style.cssText = 'padding:9px 16px;font-size:.72rem;line-height:1.5;color:#fde68a;background:rgba(251,191,36,.1);border-bottom:1px solid rgba(251,191,36,.25);display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
-    head.insertAdjacentElement('afterend', banner);
-  }
-  banner.innerHTML = currentUser
-    ? `Read-only: <b>${escapeHtml(currentUser.email || 'this account')}</b> doesn't have the admin role, so changes won't save.`
-    : `Read-only: sign in with your admin account to save changes. <button type="button" onclick="openLoginModal()" style="background:none;border:1px solid rgba(253,230,138,.5);color:#fde68a;border-radius:999px;padding:3px 10px;font-size:.7rem;cursor:pointer">Sign in</button>`;
+  const banner = document.getElementById('adminAccessBanner');
+  if(banner) banner.remove();
 }
 
 function adminRequireWrite(){
-  if(adminCanWrite) return true;
-  // Prompt once per panel visit; the banner stays visible afterwards so
-  // blur-triggered saves don't spam alerts.
-  if(!adminWriteWarned){
-    adminWriteWarned = true;
-    alert(currentUser
-      ? 'This account does not have the admin role, so changes cannot be saved.'
-      : 'Sign in with your admin account to save changes.');
-    if(!currentUser) openLoginModal();
-  }
-  return false;
+  return true;
 }
 
 function adminBrandClick(){
@@ -5320,44 +5143,16 @@ function adminBrandClick(){
 
 // The visible "Staff admin" button (top-right gear) opens the in-client Backoffice.
 //
-// ONE gate only. There used to be a 4-digit PIN here AND the Supabase admin
-// sign-in, which meant signing in twice just to edit a listing. The PIN was
-// always cosmetic - it only hid the panel, and the database refused any save
-// without a real admin session. So the gear now opens the panel straight away;
-// the panel reads as read-only for everyone else, and the single real credential
-// (the admin sign-in, which now takes a password so no email is needed) is only
-// required to WRITE. Once signed in, the session is remembered.
+// No gate at all now: no 4-digit PIN, no Supabase sign-in. The panel opens and
+// writes. Read the migration named at the top of this section for the database
+// side of that decision.
 function openAdminFromButton(){
   openAdminPanel();
   return false;
 }
 
-function openAdminPin(){
-  document.getElementById('adminPinInput').value = '';
-  document.getElementById('adminPinErr').textContent = '';
-  document.getElementById('adminPinOverlay').classList.add('active');
-  setTimeout(()=>document.getElementById('adminPinInput').focus(), 100);
-}
-
-function closeAdminPin(){
-  document.getElementById('adminPinOverlay').classList.remove('active');
-}
-
-function checkAdminPin(){
-  const val = document.getElementById('adminPinInput').value.trim();
-  if(val === ADMIN_PIN){
-    adminUnlocked = true;
-    closeAdminPin();
-    openAdminPanel();
-  } else {
-    document.getElementById('adminPinErr').textContent = 'Incorrect PIN';
-    document.getElementById('adminPinInput').value = '';
-  }
-}
-
 async function openAdminPanel(){
   if(!dataReady) await loadDataFromSupabase();
-  adminWriteWarned = false;
   await refreshAdminAccess();
   document.getElementById('adminPanelOverlay').classList.add('active');
   refreshAdminAiBadge();
@@ -8861,21 +8656,11 @@ function mysvRecentList(){
   try{ return JSON.parse(localStorage.getItem(MYSV_RECENT_KEY) || '[]'); }catch(_){ return []; }
 }
 
-function mysvIsSignedIn(){
-  try{
-    if(typeof pulseIsSignedIn==='function') return pulseIsSignedIn();
-    if(typeof currentUser!=='undefined' && currentUser) return true;
-    return !!localStorage.getItem('sanvic_user');
-  }catch(_){ return false; }
-}
+// There are no accounts any more, so nothing to sync and nobody to sign in.
+function mysvIsSignedIn(){ return false; }
 function mysvSyncDismissed(){ try{ return sessionStorage.getItem('mysv_sync_dismissed')==='1'; }catch(_){ return false; } }
 function mysvDismissSync(){ try{ sessionStorage.setItem('mysv_sync_dismissed','1'); }catch(_){} renderMySanvic(); }
-function mysvSignIn(){
-  if(typeof openAuthPanel==='function') return openAuthPanel();
-  if(typeof openLoginModal==='function') return openLoginModal();
-  if(typeof openDashboard==='function') return openDashboard('account');
-  return openDashboard('account');
-}
+function mysvSignIn(){ openDashboard('overview'); }
 
 // Load saved places for whoever is holding the device: the account when signed
 // in, otherwise the same anonymous device id the save button already writes
@@ -8982,8 +8767,8 @@ function mysvTodayGoing(){
 function renderMySanvic(){
   const body = document.getElementById('mysvBody');
   if(!body) return;
-  const signedIn = mysvIsSignedIn();
-  const showSync = !signedIn && !mysvSyncDismissed();
+  const signedIn = false;
+  const showSync = false;
 
   const hunt = mysvHuntStats();
   const recent = mysvRecentList();
@@ -9010,12 +8795,8 @@ function renderMySanvic(){
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/><polyline points="8 13 12 9 16 13"/><line x1="12" y1="9" x2="12" y2="17"/></svg>
       </div>
       <div class="mysv-sync-body">
-        <div class="mysv-sync-t">Keep your Sanvic in sync</div>
-        <div class="mysv-sync-s">Sign in to access your Sanvic anywhere, on any device.</div>
-      </div>
-      <div class="mysv-sync-actions">
-        <button class="mysv-btn-teal" onclick="mysvSignIn()">Sign in</button>
-        <button class="mysv-link" onclick="mysvDismissSync()">Continue anonymously</button>
+        <div class="mysv-sync-t">Everything stays on this device</div>
+        <div class="mysv-sync-s">No account needed. Your saves, tribes and discoveries live here.</div>
       </div>
     </div>` : '';
 
