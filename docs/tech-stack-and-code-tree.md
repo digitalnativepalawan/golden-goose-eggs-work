@@ -55,7 +55,7 @@ index.html
 │    1. supabase-config.js       creates `sb`; then loads entry-flow, personalize, pulse-demo-content
 │    2. explore-model.js         pure Explore state
 │    3. admin-model.js           pure Backoffice rules
-│    4. app.js                   the app (8,924 lines)
+│    4. app.js                   the app (12,034 lines)
 │    5. admin-studio.js          Backoffice UI, overrides window.openAdminPanel
 │    6. kmz-import.js            KMZ upload UI
 ├─ explore-ux.css
@@ -91,20 +91,20 @@ test, build config or TypeScript import referenced any of them.
 
 ```
 golden-goose-eggs-work/
-├── public/site/                    # THE PRODUCT — ~13k lines
+├── public/site/                    # THE PRODUCT — ~21k lines
 │   ├── index.html      2,297 ln    # every screen's markup + the design system CSS
-│   ├── app.js          8,924 ln    # map, screens, data, all feature logic
+│   ├── app.js         12,034 ln    # map, screens, data, all feature logic
 │   ├── admin-studio.js 2,824 ln    # Backoffice UI (overrides openAdminPanel)
 │   ├── admin-model.js    414 ln    # Backoffice rules: publishing, validation (unit-tested)
 │   ├── kmz-import.js     374 ln    # KMZ/KML upload + preview
 │   ├── entry-flow.js     225 ln    # first-visit questions (OFF — see §8)
 │   ├── personalize.js    118 ln    # locale, units, preferences
-│   ├── explore-model.js  109 ln    # Explore filtering/sorting (unit-tested, pure)
+│   ├── explore-model.js  257 ln    # Explore filtering/sorting (unit-tested, pure)
 │   ├── pulse-demo-content.js 67 ln # Pulse seed content
 │   ├── supabase-config.js 24 ln    # project URL + publishable key + module loader
 │   ├── barangays.geojson.js        # 32 KB boundary geometry
 │   ├── admin-ux.css    1,655 ln    # Backoffice layout (phone drawer → desktop)
-│   ├── explore-ux.css    152 ln    # Explore sheet + map control styling
+│   ├── explore-ux.css  1,144 ln    # Explore sheet + map control styling
 │   └── assets/                     # logo, 4 hero photos, 6 Pulse photos
 │
 ├── src/                            # REACT SHELL (not the product)
@@ -114,10 +114,10 @@ golden-goose-eggs-work/
 │   │   ├── admin.tsx               # leftover passcode Backoffice
 │   │   └── api/{admin.ts,tala-chat.ts}
 │   ├── components/ui/              # 9 shadcn primitives, imported by nothing (see §8)
-│   ├── integrations/supabase/      # browser client, service-role client, types.ts (972 ln)
+│   ├── integrations/supabase/      # browser client, service-role client, types.ts (984 ln)
 │   └── lib/                        # admin-helpers, kmz-parser, buildVersion, error pages
 │
-├── server/tala.js  (352 ln)        # OpenRouter proxy: prompt, knowledge, rate limit
+├── server/tala.js  (325 ln)        # OpenRouter proxy: prompt, knowledge, rate limit
 ├── api/tala.js                     # Vercel Function → server/tala.js  (/api/tala-chat)
 │
 ├── supabase/
@@ -257,10 +257,17 @@ Skip, for now: `src/`, the shadcn primitives, `tests/explore-model` AST checks.
   scaffolding. 37 unused primitives and 29 npm packages that only they used were
   removed in Phase 1. `@hookform/resolvers` and `date-fns` are also unimported
   but predate this cleanup, so they were left alone.
-- **`npm test`: 61 pass, 1 fail, 4 skipped** on Windows. The single failure is
-  line endings — `tests/feed.test.cjs` matches `\n` and the working tree is CRLF
-  (`core.autocrlf=true`); **the git index stores LF**, so a Linux checkout passes.
-  The 4 skips need packages absent here.
-- **`app.js` is 8,924 lines.** It is the single biggest risk to future work. The
+- **`npm test`: 68 pass, 0 fail, 4 skipped.** The suite used to report one
+  failure on Windows — `tests/feed.test.cjs` matched a literal `\n` and the
+  working tree is CRLF (`core.autocrlf=true`, index stores LF). The tests now
+  read the client through `tests/support/client.cjs`, which ignores layout, so
+  the assertion passes wherever it runs without being loosened. The 4 skips are
+  `tests/kmz-import.test.mjs`'s DOMParser cases.
+- **Tests read behaviour, not source text.** `tests/support/client.cjs` builds
+  the client from the loader lists in `index.html` and `supabase-config.js` and
+  matches canonicalised snippets (`has`, `count`, `after`, `between`). This is
+  what allowed `app.js` and `explore-ux.css` to be formatted at last, and it is
+  what will let `app.js` be split without rewriting the assertions.
+- **`app.js` is 12,034 lines.** It is the single biggest risk to future work. The
   two model files (`explore-model`, `admin-model`) show the seam to move along
   when something needs extracting.
