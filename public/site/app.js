@@ -5164,6 +5164,10 @@ function adminRequireWrite(){
 // times. The old floating gear sat in the top-right corner and, on a phone, slid
 // underneath the Layers / Locate stack - it could not be tapped at all. The logo
 // is always in the header on the map view and collides with nothing.
+//
+// Counted from pointerdown, not click. A phone can swallow clicks (double-tap
+// zoom, slow taps on old Android) and then three taps never arrive as three
+// clicks. pointerdown fires once per finger down, every time, on every device.
 function adminBrandClick(){
   brandClickCount++;
   clearTimeout(brandClickTimer);
@@ -5173,6 +5177,12 @@ function adminBrandClick(){
     if(typeof openAdminPanel === 'function') openAdminPanel();
   }
 }
+
+// Delegated, so it survives anything that re-renders the header.
+document.addEventListener('pointerdown', function(e){
+  const brand = e.target && e.target.closest ? e.target.closest('#heroBrand') : null;
+  if(brand) adminBrandClick();
+}, {passive:true});
 
 // Kept for anything still pointing at the removed gear button.
 //
