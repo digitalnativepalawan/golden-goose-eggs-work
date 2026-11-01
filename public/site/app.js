@@ -1889,7 +1889,7 @@ function generateNewPick(){
   // actually changes, or until we have tried every page.
   let guard = 0;
   while(idSet(next) === before && guard++ < pages){ todayPickTurn += 1; next = todayPersonalPick(); }
-  renderTodayContent();
+  refreshTodayPicks();
   if(idSet(next) === before){
     toast('That is every place matching your four vibes. Add another vibe to widen it.');
   } else {
@@ -1905,6 +1905,28 @@ function catLabelFor(cat){
 // than showing packaged copy about places that were never checked.
 function todayEmptyRow(text){
   return `<li class="today-row today-row-empty"><div class="trow-main"><div class="trow-meta">${escT(text)}</div></div></li>`;
+}
+
+// Builds one "Picked for you" place card from the visitor's chosen vibes.
+// `total` is used only to decide whether a divider arrow is shown after it.
+function pickCard(x, i, total){
+  const p = x.d;
+  const whyIcon = (x.why && x.why.icon) ? x.why.icon : ((catStyle[p.category] && catStyle[p.category].icon) || 'map-pin');
+  // Say why this place is here, using the visitor's own words, and then let the
+  // place's own tip do the describing. "Long Beach · Poblacion · Beaches" read
+  // like a directory line, not a suggestion.
+  const whyLine = x.why
+    ? 'Matches: ' + x.why.map(v=>v.label).join(' + ') + (p.barangay ? ' · ' + p.barangay : '')
+    : [p.barangay, catLabelFor(p.category)].filter(Boolean).join(' · ');
+  const tip = String(p.tip || '').trim();
+  const tipLine = tip ? (tip.length > 104 ? tip.slice(0, 101).trim() + '…' : tip) : '';
+  return `
+    <div class="today-node" role="button" tabindex="0" style="cursor:pointer" onclick="openDestinationById(${p.id})">
+      <div class="tnode-label">${lucideSvg(whyIcon,15)} ${escT(p.name)}</div>
+      <div class="tnode-sub">${escT(whyLine)}</div>
+      ${tipLine ? `<div class="tnode-tip">${escT(tipLine)}</div>` : ''}
+    </div>
+    ${i<total-1?'<div class="today-arrow">'+lucideSvg('arrow-right',16)+'</div>':''}`;
 }
 
 function renderTodayContent(){
@@ -1937,35 +1959,16 @@ function renderTodayContent(){
   // Personalised suggestions, built from the vibes the visitor chose in the
   // questionnaire. This replaces the old "TALA's pick of the day".
   const picks = todayPersonalPick();
-  const pickCard = (x, i) => {
-    const p = x.d;
-    const whyIcon = (x.why && x.why.icon) ? x.why.icon : ((catStyle[p.category] && catStyle[p.category].icon) || 'map-pin');
-    // Say why this place is here, using the visitor's own words, and then let the
-    // place's own tip do the describing. "Long Beach · Poblacion · Beaches" read
-    // like a directory line, not a suggestion.
-    const whyLine = x.why
-      ? 'Matches: ' + x.why.map(v=>v.label).join(' + ') + (p.barangay ? ' · ' + p.barangay : '')
-      : [p.barangay, catLabelFor(p.category)].filter(Boolean).join(' · ');
-    const tip = String(p.tip || '').trim();
-    const tipLine = tip ? (tip.length > 104 ? tip.slice(0, 101).trim() + '…' : tip) : '';
-    return `
-      <div class="today-node" role="button" tabindex="0" style="cursor:pointer" onclick="openDestinationById(${p.id})">
-        <div class="tnode-label">${lucideSvg(whyIcon,15)} ${escT(p.name)}</div>
-        <div class="tnode-sub">${escT(whyLine)}</div>
-        ${tipLine ? `<div class="tnode-tip">${escT(tipLine)}</div>` : ''}
-      </div>
-      ${i<picks.length-1?'<div class="today-arrow">'+lucideSvg('arrow-right',16)+'</div>':''}`;
-  };
   const pick = picks ? `
-    <article class="today-card">
+    <article id="today-pick-card" class="today-card">
       <div class="today-kicker">Picked for you</div>
       <p class="today-lede">${picks.length === 1 ? 'One place' : picks.length + ' places'} scored against all four interests in your profile. Ask for another set any time.</p>
       <div class="today-path">
-        ${picks.map(pickCard).join('')}
+        ${picks.map((x,i)=>pickCard(x,i,picks.length)).join('')}
       </div>
       <button class="today-newpick" onclick="generateNewPick()">${lucideSvg('refresh-cw',13)} Generate new pick</button>
     </article>` : `
-    <article class="today-card">
+    <article id="today-pick-card" class="today-card">
       <div class="today-kicker">Your day</div>
       <p class="today-lede">Tell us what you are into and this fills with places chosen for you.</p>
       <div class="today-path">
@@ -2070,6 +2073,32 @@ function renderTodayContent(){
     </article>`;
   host.innerHTML = snap + pick + happening + joinable + weather + locals + notices;
   if(keepScroll) host.scrollTop = keepScroll;
+}
+
+// Re-render only the "Picked for you" card when the visitor taps "Generate new
+// pick", instead of rebuilding the whole Today panel (snapshot, happening,
+// weather, locals, notices). Keeps the panel fast on low-end devices.
+function refreshTodayPicks(){
+  const card = document.getElementById('today-pick-card');
+  if(!card) return;
+  const picks = todayPersonalPick();
+  card.innerHTML = picks ? `
+      <div class="today-kicker">Picked for you</div>
+      <p class="today-lede">${picks.length === 1 ? 'One place' : picks.length + ' places'} scored against all four interests in your profile. Ask for another set any time.</p>
+      <div class="today-path">
+        ${picks.map((x,i)=>pickCard(x,i,picks.length)).join('')}
+      </div>
+      <button class="today-newpick" onclick="generateNewPick()">${lucideSvg('refresh-cw',13)} Generate new pick</button>
+    ` : `
+      <div class="today-kicker">Your day</div>
+      <p class="today-lede">Tell us what you are into and this fills with places chosen for you.</p>
+      <div class="today-path">
+        <div class="today-node" role="button" tabindex="0" style="cursor:pointer" onclick="openMyVibes()">
+          <div class="tnode-label">Choose your vibes</div>
+          <div class="tnode-sub">A few quick taps — then this is yours</div>
+        </div>
+      </div>
+    `;
 }
 
 // ─── DESTINATION SHEET ───
