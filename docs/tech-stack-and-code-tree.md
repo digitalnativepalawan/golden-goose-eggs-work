@@ -55,7 +55,7 @@ index.html
 │    1. supabase-config.js       creates `sb`; then loads entry-flow, personalize, pulse-demo-content
 │    2. explore-model.js         pure Explore state
 │    3. admin-model.js           pure Backoffice rules
-│    4. app.js                   the app (12,034 lines)
+│    4. app.js                   the app (12,617 lines)
 │    5. admin-studio.js          Backoffice UI, overrides window.openAdminPanel
 │    6. kmz-import.js            KMZ upload UI
 ├─ explore-ux.css
@@ -91,20 +91,20 @@ test, build config or TypeScript import referenced any of them.
 
 ```
 golden-goose-eggs-work/
-├── public/site/                    # THE PRODUCT — ~21k lines
-│   ├── index.html      2,297 ln    # every screen's markup + the design system CSS
-│   ├── app.js         12,034 ln    # map, screens, data, all feature logic
-│   ├── admin-studio.js 2,824 ln    # Backoffice UI (overrides openAdminPanel)
-│   ├── admin-model.js    414 ln    # Backoffice rules: publishing, validation (unit-tested)
-│   ├── kmz-import.js     374 ln    # KMZ/KML upload + preview
-│   ├── entry-flow.js     225 ln    # first-visit questions (OFF — see §8)
-│   ├── personalize.js    118 ln    # locale, units, preferences
-│   ├── explore-model.js  257 ln    # Explore filtering/sorting (unit-tested, pure)
-│   ├── pulse-demo-content.js 67 ln # Pulse seed content
-│   ├── supabase-config.js 24 ln    # project URL + publishable key + module loader
+├── public/site/                    # THE PRODUCT — 22,624 lines
+│   ├── index.html      2,459 ln    # every screen's markup + the design system CSS
+│   ├── app.js         12,617 ln    # map, screens, data, all feature logic
+│   ├── admin-studio.js 2,979 ln    # Backoffice UI (overrides openAdminPanel)
+│   ├── admin-model.js    447 ln    # Backoffice rules: publishing, validation (unit-tested)
+│   ├── kmz-import.js     426 ln    # KMZ/KML upload + preview
+│   ├── entry-flow.js     235 ln    # first-visit questions (OFF — see §8)
+│   ├── personalize.js    129 ln    # locale, units, preferences
+│   ├── explore-model.js  258 ln    # Explore filtering/sorting (unit-tested, pure)
+│   ├── pulse-demo-content.js 73 ln # Pulse seed content
+│   ├── supabase-config.js 26 ln    # project URL + publishable key + module loader
 │   ├── barangays.geojson.js        # 32 KB boundary geometry
-│   ├── admin-ux.css    1,655 ln    # Backoffice layout (phone drawer → desktop)
-│   ├── explore-ux.css  1,144 ln    # Explore sheet + map control styling
+│   ├── admin-ux.css    1,826 ln    # Backoffice layout (phone drawer → desktop)
+│   ├── explore-ux.css  1,145 ln    # Explore sheet + map control styling
 │   └── assets/                     # logo, 4 hero photos, 6 Pulse photos
 │
 ├── src/                            # REACT SHELL (not the product)
@@ -114,10 +114,10 @@ golden-goose-eggs-work/
 │   │   ├── admin.tsx               # leftover passcode Backoffice
 │   │   └── api/{admin.ts,tala-chat.ts}
 │   ├── components/ui/              # 9 shadcn primitives, imported by nothing (see §8)
-│   ├── integrations/supabase/      # browser client, service-role client, types.ts (984 ln)
+│   ├── integrations/supabase/      # browser client, service-role client, types.ts (993 ln)
 │   └── lib/                        # admin-helpers, kmz-parser, buildVersion, error pages
 │
-├── server/tala.js  (325 ln)        # OpenRouter proxy: prompt, knowledge, rate limit
+├── server/tala.js  (352 ln)        # OpenRouter proxy: prompt, knowledge, rate limit
 ├── api/tala.js                     # Vercel Function → server/tala.js  (/api/tala-chat)
 │
 ├── supabase/
@@ -179,12 +179,12 @@ Clearing browser data resets that person. There is nothing to recover, by design
 | Place detail sheet              | `.dest-sheet`          | `app.js` §DESTINATION SHEET, `openDestSheet`                        |
 | Explore list + filters          | `#exploreSheet`        | `explore-model.js` (pure) + `app.js` §EXPLORE                       |
 | Today                           | `#todayScroll`         | `app.js` §TODAY DRAWER, `openTodaySheet`, `refreshTodayPicks`       |
-| Tribes / Events / Lounge / Feed | `#pulsePane`           | `app.js` §PULSE v2 (~4,000–5,600)                                   |
+| Tribes / Events / Lounge / Feed | `#pulsePane`           | `app.js` §PULSE v2 (3,198–5,842)                                    |
 | The Hunt (riddles)              | Hunt pane              | `app.js` §HUNT, `hunt_riddles`, 200 m GPS unlock                    |
 | My Journey                      | Journey pane           | `app.js` §MY SANVIC                                                 |
 | Search                          | `#searchInput`         | `app.js` §SEARCH                                                    |
 | Tala (assistant)                | Tala sheet             | `app.js` §TALA (keyword replies) + `/api/tala-chat` (AI, optional)  |
-| Backoffice                      | `#adminPanelOverlay`   | `admin-studio.js` + `app.js` §…ADMIN (2,300+ lines)                 |
+| Backoffice                      | `#adminPanelOverlay`   | `admin-studio.js` + `app.js` §ADMIN (7,218–8,631, 1,414 lines)      |
 | Entry questions                 | `#sanvicEntry`         | `entry-flow.js` — **off while building**                            |
 
 `admin-studio.js` defines `window.openAdminPanel`, which **overrides** the
@@ -226,7 +226,7 @@ source of truth.
 ## 7. Reading order for someone new
 
 1. `index.html` tail — see the loader list and the deploy stamp.
-2. `app.js` top (~130 lines) — fallback data and live-data arrays.
+2. `app.js` top (lines 1–253) — fallback data, samples policy and live-data state.
 3. `loadDataFromSupabase()` — the only data entry point.
 4. `openDestSheet()` — the smallest complete screen: markup → state → render.
 5. `admin-studio.js` `openAdminPanel` + one save path — the write side.
@@ -268,6 +268,6 @@ Skip, for now: `src/`, the shadcn primitives, `tests/explore-model` AST checks.
   matches canonicalised snippets (`has`, `count`, `after`, `between`). This is
   what allowed `app.js` and `explore-ux.css` to be formatted at last, and it is
   what will let `app.js` be split without rewriting the assertions.
-- **`app.js` is 12,034 lines.** It is the single biggest risk to future work. The
+- **`app.js` is 12,617 lines.** It is the single biggest risk to future work. The
   two model files (`explore-model`, `admin-model`) show the seam to move along
   when something needs extracting.
