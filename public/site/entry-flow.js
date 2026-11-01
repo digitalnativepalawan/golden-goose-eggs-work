@@ -4,6 +4,11 @@
   const KEY = 'sanvic_entry_v1';
   const MAX = 4;
   const DELAY = 5200;
+  // BUILDING MODE. While David and his partners are building, nobody should be
+  // stopped by onboarding before they can reach the map or the Backoffice: the
+  // questions blocked every tap on a fresh device, the Admin button included.
+  // Set this back to true before the public launch.
+  const ENTRY_QUESTIONS_ON = false;
   // [label, personalisation tags, Lucide icon]
   // Icons are real Lucide SVG via the app's shared icon set (see lucideSvg in
   // app.js). No emoji: they render inconsistently across devices and read as
@@ -61,6 +66,8 @@
       resetEntrySession();
       return true;
     }
+    // Off while building: no gate, and ?resetEntry=1 still works for testing.
+    if(!ENTRY_QUESTIONS_ON) return false;
     const profile=saved();
     const validAudience=profile && ['local','visitor'].includes(profile.audience);
     const choices=profile && Array.isArray(profile.vibes)?profile.vibes:[];
