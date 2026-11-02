@@ -2,7 +2,7 @@
 
 # SANVIC
 
-### *Explore San Vicente, Palawan*
+### _Explore San Vicente, Palawan_
 
 **An interactive destination guide and community platform for San Vicente, Palawan.**
 
@@ -25,12 +25,12 @@ spread across a coastline most visitors never navigate well.
 The app is built around four connected surfaces, reachable from a persistent
 bottom navigation bar:
 
-| Surface | What it does |
-| --- | --- |
-| **Explore** | A layered, interactive map of the municipality. Switch between Street, Dark, Satellite and Terrain basemaps, toggle barangay boundaries, and search beaches, food, waterfalls and barangays. Every place is a marker; every marker opens a full detail sheet. |
-| **Today** | A daily briefing — live local conditions, sunset times, what's happening, and **Tala**, a San Vicente concierge assistant with voice output that answers questions about destinations, timing, routes and hidden gems. |
-| **Tribes** | *Pulse.* Small groups, live plans and local happenings. Travellers join existing tribes or start their own, with live participation counts and category filters. |
-| **The Hunt** | A discovery game. Find hidden spots, unlock stories, collect badges and earn rewards across San Vicente, with progress tracking and discoverable nearby finds. |
+| Surface      | What it does                                                                                                                                                                                                                                                  |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Explore**  | A layered, interactive map of the municipality. Switch between Street, Dark, Satellite and Terrain basemaps, toggle barangay boundaries, and search beaches, food, waterfalls and barangays. Every place is a marker; every marker opens a full detail sheet. |
+| **Today**    | A daily briefing — live local conditions, sunset times, what's happening, and **Tala**, a San Vicente concierge assistant with voice output that answers questions about destinations, timing, routes and hidden gems.                                        |
+| **Tribes**   | _Pulse._ Small groups, live plans and local happenings. Travellers join existing tribes or start their own, with live participation counts and category filters.                                                                                              |
+| **The Hunt** | A discovery game. Find hidden spots, unlock stories, collect badges and earn rewards across San Vicente, with progress tracking and discoverable nearby finds.                                                                                                |
 
 Place detail sheets carry the full editorial record: photography, video,
 barangay, access and season information, ratings, coordinates, and tappable
@@ -42,18 +42,18 @@ booking links.
 
 ![Explore San Vicente](docs/images/explore-map.png)
 
-*Explore — the layered map of San Vicente with category filters, barangay
-selection and 33 mapped places.*
+_Explore — the layered map of San Vicente with category filters, barangay
+selection and 33 mapped places._
 
 <details>
 <summary><strong>More screenshots</strong></summary>
 
-| | |
-| --- | --- |
+|                                                |                                                  |
+| ---------------------------------------------- | ------------------------------------------------ |
 | **Tribes** — Pulse, live groups and happenings | **The Hunt** — daily hunt and nearby discoveries |
-| ![Tribes](docs/screenshots/tribes.png) | ![The Hunt](docs/screenshots/hunt.png) |
-| **Place detail** — media, editorial, booking | **Today** — Tala, the San Vicente concierge |
-| ![Place](docs/screenshots/place.png) | ![Today](docs/screenshots/today.png) |
+| ![Tribes](docs/screenshots/tribes.png)         | ![The Hunt](docs/screenshots/hunt.png)           |
+| **Place detail** — media, editorial, booking   | **Today** — Tala, the San Vicente concierge      |
+| ![Place](docs/screenshots/place.png)           | ![Today](docs/screenshots/today.png)             |
 
 </details>
 
@@ -63,13 +63,13 @@ selection and 33 mapped places.*
 
 ### Languages
 
-| Language | Where it's used | Share of the codebase |
-| --- | --- | --- |
-| **TypeScript / TSX** | Application shell, components, hooks, Supabase integration | 63 files |
-| **JavaScript** | The SANVIC client in `public/site/` — map engine, views, personalization | 9 modules |
-| **CSS** | Design system in `src/styles.css` and `explore-ux.css` | Tailwind + custom |
-| **SQL** | PostgreSQL schema, RLS policies, functions and seed data | 11 migrations |
-| **HTML** | `public/site/index.html` — the application document | 1 |
+| Language             | Where it's used                                                          | Share of the codebase |
+| -------------------- | ------------------------------------------------------------------------ | --------------------- |
+| **TypeScript / TSX** | Application shell, components, hooks, Supabase integration               | 31 files              |
+| **JavaScript**       | The SANVIC client in `public/site/` - map engine, views, personalization | 16 modules            |
+| **CSS**              | Design system in `src/styles.css` and `explore-ux.css`                   | Tailwind + custom     |
+| **SQL**              | PostgreSQL schema, RLS policies, functions and seed data                 | 32 migrations         |
+| **HTML**             | `public/site/index.html` — the application document                      | 1                     |
 
 ### Frontend
 
@@ -78,11 +78,10 @@ selection and 33 mapped places.*
 - **TanStack Query** — server state
 - **Vite 8** — dev server and build pipeline
 - **Tailwind CSS 4** — design tokens and utility styling
-- **Radix UI** + **shadcn/ui** — 50 accessible primitives
-- **Recharts** — data visualisation
-- **Leaflet** — mapping engine
+- **Radix UI** + **shadcn/ui** — 9 primitives kept in `src/components/ui/` (nothing outside that folder imports them today)
+- **Leaflet** — mapping engine, loaded from unpkg CDN, not from npm
 - **Lucide** — iconography
-- **Sonner** — toasts
+- **@supabase/supabase-js** — loaded from unpkg CDN as a UMD bundle
 
 ### Mapping & Geodata
 
@@ -103,7 +102,7 @@ selection and 33 mapped places.*
 - **npm** / Node 24
 - **Nitro** build output (Cloudflare-compatible)
 - **ESLint** + **Prettier**
-- **Vitest**-style test harness in `tests/`
+- **node --test** for the 9 files in `tests/` (no framework, no Vitest)
 
 ---
 
@@ -114,15 +113,22 @@ golden-goose-eggs/
 ├── public/
 │   └── site/                        # The SANVIC client
 │       ├── index.html               # Application document (all views)
-│       ├── app.js                   # Map engine, routing, view logic
+│       ├── app-core.js              # Data, samples policy, live-data state
+│       ├── app-map-explore-today.js # Identity, taxonomy/icons, map, Today, Explore
+│       ├── app-pulse.js             # Pulse: feed, tribes, events, Lounge
+│       ├── app-weather.js           # Hero weather widget, then boot on load
+│       ├── app-backoffice.js        # The in-app Backoffice panel
+│       ├── app-place-details.js     # Place sheet: gallery, video, tips, contacts
+│       ├── app-pulse-admin-my-sanvic-hunt.js # Moderation, My Sanvic, the Hunt
 │       ├── entry-flow.js            # Onboarding and entry flow
-│       ├── entry-polish.js          # Entry refinements
 │       ├── explore-model.js         # Explore state model
 │       ├── explore-ux.css           # Explore-specific styling
-│       ├── barangay-marker-polish.js# Marker rendering
-│       ├── map-pin-boost.js         # Marker performance
 │       ├── personalize.js           # Localisation and preferences
 │       ├── pulse-demo-content.js    # Tribes / Pulse content
+│       ├── admin-model.js           # Backoffice rules
+│       ├── admin-studio.js          # Backoffice UI (Studio)
+│       ├── admin-ux.css             # Backoffice layout
+│       ├── kmz-import.js            # KMZ upload and preview
 │       ├── barangays.geojson.js     # PSA barangay geometry
 │       ├── supabase-config.js       # Public Supabase connection
 │       └── assets/                  # Photography, logos, Pulse imagery
@@ -134,7 +140,8 @@ golden-goose-eggs/
 │   │   └── api/
 │   │       └── tala-chat.ts         # Tala concierge endpoint
 │   ├── components/
-│   │   └── ui/                      # 50 Radix / shadcn primitives
+│   │   ├── admin/kmz-panel.tsx      # KMZ import review UI
+│   │   └── ui/                      # 9 Radix / shadcn primitives (unimported, kept as scaffolding)
 │   ├── integrations/
 │   │   └── supabase/
 │   │       ├── client.ts            # Browser client
@@ -154,14 +161,24 @@ golden-goose-eggs/
 │   └── router.tsx
 │
 ├── supabase/
-│   ├── migrations/                  # 11 historical SQL migrations
+│   ├── migrations/                  # 32 historical SQL migrations
 │   ├── config.toml
 │   └── seed_images.sql
 │
-├── tests/
-│   └── explore-model.test.cjs
+├── tests/                           # 9 files, run with node --test
+│   ├── admin-model.test.cjs
+│   ├── admin-ui.test.cjs
+│   ├── content-policy.test.cjs
+│   ├── dom-contract.test.cjs
+│   ├── explore-model.test.cjs
+│   ├── feed.test.cjs
+│   ├── kmz-import.test.mjs
+│   ├── map-tools.test.cjs
+│   └── tala-server.test.mjs
 │
 ├── docs/
+│   ├── tech-stack-and-code-tree.md
+│   ├── admin-backoffice-audit.md
 │   └── explore-ux-v2-review.md
 │
 ├── .env.example                     # Public Supabase config (safe to commit)
@@ -193,13 +210,13 @@ from `public/site/`.
 
 ### Scripts
 
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Development server |
-| `npm run build` | Production build |
+| Command           | Purpose                      |
+| ----------------- | ---------------------------- |
+| `npm run dev`     | Development server           |
+| `npm run build`   | Production build             |
 | `npm run preview` | Preview the production build |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier |
+| `npm run lint`    | ESLint                       |
+| `npm run format`  | Prettier                     |
 
 ### Configuration
 
@@ -215,10 +232,15 @@ governed by Row Level Security policies in the database.
 ## Database
 
 - **PostgreSQL 17** on Supabase, region `ap-southeast-2`
-- **22 tables** across `public` — destinations, nearby places, Pulse posts,
-  comments, likes, tribes, events, notifications, the Hunt, Tala and settings
-- **50 Row Level Security policies**; RLS enabled on 19 tables
-- **8 functions** for roles, moderation and travel profiles
+- **31 tables queried by the client** — destinations, place details, nearby places,
+  Pulse posts/comments/likes, tribes, tribe members and messages, events and event
+  interest/messages, the Hunt, Today, saved places, site and Tala settings
+- **87 Row Level Security policies** in `supabase/migrations/`; RLS enabled on 18 tables
+- **11 functions** for roles, moderation, tribe guards and travel profiles
+
+Counted from the files on disk on 2026-11-01 (branch `cleanup/verdict`):
+32 migration files, 22 `CREATE TABLE`, 87 `CREATE POLICY`. Tables that predate the
+migration history are not in those counts but are queried by the client.
 
 ### Working with the database
 
@@ -281,6 +303,7 @@ Built by **[Palawan Collective](https://github.com/digitalnativepalawan)** and
 **[MerQato.digital](https://merqato.digital)**.
 
 ### Palawan Collective + MerQato.digital
+
 **DESIGN · DEVELOPMENT · AUTOMATION**
 
 Palawan Collective and MerQato.digital work together to connect local businesses,
@@ -322,7 +345,7 @@ systems, direct bookings, digital marketing, and scalable business solutions.
 and emerging destinations, starting in Palawan and creating solutions with the
 potential to reach far beyond it.
 
-> *Local businesses. Distinct digital worlds. Rooted in Palawan. Built for what's next.*
+> _Local businesses. Distinct digital worlds. Rooted in Palawan. Built for what's next._
 
 ---
 
@@ -333,7 +356,8 @@ potential to reach far beyond it.
 - Barangay boundaries: Philippine Statistics Authority, December 2023, via
   [faeldon/philippines-json-maps](https://github.com/faeldon/philippines-json-maps) (MIT)
 - Icons: [Lucide](https://lucide.dev) — ISC, with the Feather-derived icons
-  under MIT. The icon shapes are inlined into `public/site/app.js`; the full
+  under MIT. The icon shapes are inlined into
+  `public/site/app-map-explore-today.js`; the full
   notices are in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)
 
 ---

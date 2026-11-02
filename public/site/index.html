@@ -2314,10 +2314,10 @@ svg.lucide{vertical-align:-.15em}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-30-feed-channels-r1';
+  window.SANVIC_DEPLOY_VERSION = '2026-11-02-app-split-r1';
   // How long the SANVIC splash holds before the app (and the first-visit
-  // questions) appear. Shared by app.js and entry-flow.js so the two timers
-  // cannot drift apart. Raise it to hold the first page longer.
+  // questions) appear. Shared by the app scripts and entry-flow.js so the two
+  // timers cannot drift apart. Raise it to hold the first page longer.
   // The wordmark is the first thing anyone sees and the partner wants it to
   // land rather than flash past. Four and a half seconds, per his note.
   window.SANVIC_SPLASH_HOLD = 4500;
@@ -2326,14 +2326,52 @@ svg.lucide{vertical-align:-.15em}
 <script>
   (function () {
     var v = encodeURIComponent(window.SANVIC_DEPLOY_VERSION);
+    // Anything that failed to load. Nothing is said about it here: the watchdog
+    // below is the only thing that ever speaks, and only if the page is stuck.
+    var failed = [];
     // async=false keeps execution order: supabase-config.js first (defines
-    // sb + loads experience modules), then app.js which depends on it.
-    ['supabase-config.js', 'explore-model.js', 'admin-model.js', 'app.js', 'admin-studio.js', 'kmz-import.js'].forEach(function (file) {
+    // sb + loads experience modules), then the app scripts which depend on it.
+    [
+      'supabase-config.js',
+      'explore-model.js',
+      'admin-model.js',
+      'app-core.js',
+      'app-map-explore-today.js',
+      'app-pulse.js',
+      'app-weather.js',
+      'app-backoffice.js',
+      'app-place-details.js',
+      'app-pulse-admin-my-sanvic-hunt.js',
+      'admin-studio.js',
+      'kmz-import.js',
+    ].forEach(function (file) {
       var s = document.createElement('script');
       s.src = file + '?v=' + v;
       s.async = false;
+      s.onerror = function () {
+        failed.push(file);
+      };
       document.body.appendChild(s);
     });
+    // If a script is missing the splash never lifts, because the app is what
+    // hides it. A splash still up after eight seconds plus a failed file is
+    // therefore the one case worth saying anything about - one plain line, and
+    // silence in every other situation.
+    setTimeout(function () {
+      if (!failed.length) return;
+      var splash = document.getElementById('splash');
+      if (!splash || splash.classList.contains('hidden')) return;
+      if (document.getElementById('sanvicLoadError')) return;
+      var notice = document.createElement('div');
+      notice.id = 'sanvicLoadError';
+      notice.setAttribute('role', 'status');
+      notice.textContent = 'Could not load — check your connection and reload.';
+      notice.style.cssText =
+        'position:fixed;left:0;right:0;bottom:calc(28px + env(safe-area-inset-bottom,0px));' +
+        'text-align:center;padding:0 24px;font:400 14px/1.5 system-ui,sans-serif;' +
+        'color:#fff;opacity:.85;z-index:10000;pointer-events:none;';
+      document.body.appendChild(notice);
+    }, 8000);
   })();
 </script>
 <style id="sanvicGlassStandard">

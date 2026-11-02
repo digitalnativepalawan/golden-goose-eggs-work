@@ -1,18 +1,23 @@
-# Explore UX v2 — review branch
+# Explore UX v2 - review branch
+
+> **Note, 2026-11-02.** Historical review. `public/site/app.js` no longer exists:
+> it was split into seven files loaded in order, and the Explore work described
+> below now lives in `app-map-explore-today.js` (Explore sheet, filters, map,
+> markers, barangay anchors) and `app-place-details.js` (the place sheet).
 
 Branch: `astra/explore-ux-v2`. Implementation is committed for review; main is unchanged. **Visual acceptance is pending**, because the browser environment rejected access to the running preview with `ERR_BLOCKED_BY_CLIENT`. No screenshots were captured and no deployment was made.
 
 ## UX decisions and behavior
 
-| Area | Before | Implemented |
-| --- | --- | --- |
-| Explore | Floating panel and disconnected map behaviors | Connected 420px desktop column; 400px tablet landscape column; three sheet positions on portrait tablet/mobile |
-| Directory | Separate discovery helpers and repeated marker resets | Shared search/category/barangay filtering for directory cards and map pins |
-| Map | Competing scripts repeatedly reset bounds, pins and zoom controls | One map owner; visible zoom and Locate; keyboard-accessible Layers menu |
-| Layers | Modes were easy to lose in interface changes | Explicit Street, Dark, Satellite and Terrain; per-session preference; independent barangay checkbox |
-| Place selection | Compact/expanded detail states | Readable details, selected pin/card, safe imagery fallback, Back to places restoring filters, scroll and map view |
-| Entry | Five-second splash and automatic onboarding interruption | Short splash; Explore opens by default; optional My interests onboarding |
-| Data state | Optional failures could replace successful directory data | Empty live directory stays empty; failed directory requests show explicitly labeled samples and Retry |
+| Area            | Before                                                            | Implemented                                                                                                       |
+| --------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Explore         | Floating panel and disconnected map behaviors                     | Connected 420px desktop column; 400px tablet landscape column; three sheet positions on portrait tablet/mobile    |
+| Directory       | Separate discovery helpers and repeated marker resets             | Shared search/category/barangay filtering for directory cards and map pins                                        |
+| Map             | Competing scripts repeatedly reset bounds, pins and zoom controls | One map owner; visible zoom and Locate; keyboard-accessible Layers menu                                           |
+| Layers          | Modes were easy to lose in interface changes                      | Explicit Street, Dark, Satellite and Terrain; per-session preference; independent barangay checkbox               |
+| Place selection | Compact/expanded detail states                                    | Readable details, selected pin/card, safe imagery fallback, Back to places restoring filters, scroll and map view |
+| Entry           | Five-second splash and automatic onboarding interruption          | Short splash; Explore opens by default; optional My interests onboarding                                          |
+| Data state      | Optional failures could replace successful directory data         | Empty live directory stays empty; failed directory requests show explicitly labeled samples and Retry             |
 
 Map modes use OpenStreetMap tiles (Street and CSS-derived Dark), OpenTopoMap (Terrain), and Esri World Imagery (Satellite). None needs a map API key in this implementation. **Esri imagery is not open data.** Public tile services have usage terms and availability limits; this is not a promise of unlimited free hosting. There is no offline tile downloader or prefetcher.
 
@@ -53,16 +58,16 @@ Exercise Street → Dark → Satellite → Terrain; switch barangay boundaries o
 
 ## Schema proposal — not implemented
 
-| Proposed field | Admin purpose |
-| --- | --- |
-| `status` (draft/published/archived) | Keep incomplete records out of public Explore |
-| `is_demo` | Distinguish mock records already present in the live database |
-| `place_type` (business/tourist site/community service) | Separate listing type from the user-facing category |
-| `verification_status`, `last_verified_at` | Show a real verification trail, rather than assuming live data is verified |
-| `phone`, `website`, structured opening hours | Reliable contact and opening information |
-| `fees`, `accessibility`, `access_notes` | Practical trip planning without packing every detail into a tip |
-| `owner_user_id` | Ownership and future claim/review workflow, with dedicated RLS |
-| Photo attribution/source/license | Credit and provenance per media asset |
+| Proposed field                                         | Admin purpose                                                              |
+| ------------------------------------------------------ | -------------------------------------------------------------------------- |
+| `status` (draft/published/archived)                    | Keep incomplete records out of public Explore                              |
+| `is_demo`                                              | Distinguish mock records already present in the live database              |
+| `place_type` (business/tourist site/community service) | Separate listing type from the user-facing category                        |
+| `verification_status`, `last_verified_at`              | Show a real verification trail, rather than assuming live data is verified |
+| `phone`, `website`, structured opening hours           | Reliable contact and opening information                                   |
+| `fees`, `accessibility`, `access_notes`                | Practical trip planning without packing every detail into a tip            |
+| `owner_user_id`                                        | Ownership and future claim/review workflow, with dedicated RLS             |
+| Photo attribution/source/license                       | Credit and provenance per media asset                                      |
 
 Plan migration, existing-record backfill and RLS together. Do not automatically mark existing mock or real records verified. A successful database connection does not distinguish those records without explicit editorial metadata.
 

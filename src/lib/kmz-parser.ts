@@ -22,7 +22,7 @@ export type KmzParseResult = {
   locations: KmzLocation[];
 };
 
-const asArray = <T,>(value: T | T[] | undefined): T[] =>
+const asArray = <T>(value: T | T[] | undefined): T[] =>
   value == null ? [] : Array.isArray(value) ? value : [value];
 
 function valueText(value: unknown): string {
@@ -83,8 +83,7 @@ function distanceMeters(a: number, b: number, c: number, d: number) {
   const dLat = radians(c - a);
   const dLon = radians(d - b);
   const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(radians(a)) * Math.cos(radians(c)) * Math.sin(dLon / 2) ** 2;
+    Math.sin(dLat / 2) ** 2 + Math.cos(radians(a)) * Math.cos(radians(c)) * Math.sin(dLon / 2) ** 2;
   return 2 * radius * Math.asin(Math.sqrt(h));
 }
 
@@ -112,12 +111,21 @@ function barangayFromFolder(folder: string): string {
 
 function inferType(name: string, description: string): string {
   const text = normalize(`${name} ${description}`);
-  if (/\b(resort|hotel|inn|lodge|guesthouse|guest house|homestay|hostel|cottages?|villa|rooms?|pension|huts?|camp)\b/.test(text)) return "stays";
+  if (
+    /\b(resort|hotel|inn|lodge|guesthouse|guest house|homestay|hostel|cottages?|villa|rooms?|pension|huts?|camp)\b/.test(
+      text,
+    )
+  )
+    return "stays";
   if (/\b(cafe|coffee|bakery)\b/.test(text)) return "food";
   if (/\b(restaurant|resto|grill|bistro|kitchen|pizza|eatery)\b/.test(text)) return "food";
   if (/\b(tour|tours|travel|excursion)\b/.test(text)) return "adventure";
   if (/\b(transport|transfer|van hire|car hire)\b/.test(text)) return "adventure";
-  if (/\bbeach\b/.test(text) && !/\b(resort|hotel|inn|lodge|guest|homestay|hostel|cottages?|villa|rooms?)\b/.test(text)) return "beaches";
+  if (
+    /\bbeach\b/.test(text) &&
+    !/\b(resort|hotel|inn|lodge|guest|homestay|hostel|cottages?|villa|rooms?)\b/.test(text)
+  )
+    return "beaches";
   return "adventure";
 }
 
@@ -143,7 +151,8 @@ export function parseKmz(bytes: Uint8Array): KmzParseResult {
   const files = unzipSync(bytes, { filter: (file) => file.name.toLowerCase().endsWith(".kml") });
   const kmlName = Object.keys(files).find((name) => name.toLowerCase().endsWith(".kml"));
   if (!kmlName) throw new Error("This KMZ does not contain a KML document.");
-  if (files[kmlName].byteLength > 12 * 1024 * 1024) throw new Error("The expanded KML is too large to import safely.");
+  if (files[kmlName].byteLength > 12 * 1024 * 1024)
+    throw new Error("The expanded KML is too large to import safely.");
 
   const xml = new TextDecoder().decode(files[kmlName]);
   const parser = new XMLParser({
@@ -153,17 +162,21 @@ export function parseKmz(bytes: Uint8Array): KmzParseResult {
     cdataPropName: "#cdata",
   });
   const parsed = parser.parse(xml) as XmlNode;
-  const document = ((parsed.kml as XmlNode | undefined)?.Document ?? parsed.Document) as XmlNode | undefined;
+  const document = ((parsed.kml as XmlNode | undefined)?.Document ?? parsed.Document) as
+    XmlNode | undefined;
   if (!document) throw new Error("The KML document could not be read.");
 
   const documentName = valueText(document.name) || kmlName;
   const documentKey = normalize(documentName);
-  const isSightseeingBatch = documentKey.includes("tourist destination") || documentKey.includes("sightseeing");
+  const isSightseeingBatch =
+    documentKey.includes("tourist destination") || documentKey.includes("sightseeing");
   const locations: KmzLocation[] = [];
   let totalPlacemarks = 0;
 
   const visit = (container: XmlNode, folders: string[]) => {
-    for (const placemark of asArray<XmlNode>(container.Placemark as XmlNode | XmlNode[] | undefined)) {
+    for (const placemark of asArray<XmlNode>(
+      container.Placemark as XmlNode | XmlNode[] | undefined,
+    )) {
       totalPlacemarks += 1;
       const coordinates = pointCoordinates(placemark).split(/\s+/).find(Boolean) || "";
       if (!coordinates) continue;
@@ -174,16 +187,24 @@ export function parseKmz(bytes: Uint8Array): KmzParseResult {
       const fields = dataFields(placemark);
       const name = valueText(placemark.name).slice(0, 180);
       if (!name) continue;
-      if (isSightseeingBatch && /\b(choke\s*point|chokepoint|waypoint|start\s*point|end\s*point)\b/i.test(name)) continue;
+      if (
+        isSightseeingBatch &&
+        /\b(choke\s*point|chokepoint|waypoint|start\s*point|end\s*point)\b/i.test(name)
+      )
+        continue;
 
       const sourceFolder = folders.at(-1) || "";
       const folderBarangay = barangayFromFolder(sourceFolder);
-      const barangay = folderBarangay === "Unassigned" ? barangayFromCoordinates(latitude, longitude) : folderBarangay;
+      const barangay =
+        folderBarangay === "Unassigned"
+          ? barangayFromCoordinates(latitude, longitude)
+          : folderBarangay;
       const rawDescription = valueText(placemark.description) || fields.description || "";
       const description = cleanDescription(rawDescription);
       const warnings: string[] = [];
       if (barangay === "Unassigned") warnings.push("Barangay could not be identified.");
-      else if (folderBarangay === "Unassigned") warnings.push("Barangay inferred from coordinates — please review.");
+      else if (folderBarangay === "Unassigned")
+        warnings.push("Barangay inferred from coordinates — please review.");
       if (!description) warnings.push("No usable description.");
       if (!isSightseeingBatch) warnings.push("Category was inferred — please review.");
 
@@ -205,5 +226,10 @@ export function parseKmz(bytes: Uint8Array): KmzParseResult {
   };
 
   visit(document, []);
-  return { documentName, totalPlacemarks, ignoredCount: totalPlacemarks - locations.length, locations };
+  return {
+    documentName,
+    totalPlacemarks,
+    ignoredCount: totalPlacemarks - locations.length,
+    locations,
+  };
 }

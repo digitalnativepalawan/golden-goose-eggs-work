@@ -75,14 +75,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "SANVIC — San Vicente, Palawan" },
-      { name: "description", content: "Explore San Vicente, Palawan: beaches, islands, stays and everyday local life, curated by the people who live here." },
+      {
+        name: "description",
+        content:
+          "Explore San Vicente, Palawan: beaches, islands, stays and everyday local life, curated by the people who live here.",
+      },
       { name: "author", content: "Palawan Collective" },
       { property: "og:title", content: "SANVIC — San Vicente, Palawan" },
-      { property: "og:description", content: "Explore San Vicente, Palawan: beaches, islands, stays and everyday local life, curated by the people who live here." },
+      {
+        property: "og:description",
+        content:
+          "Explore San Vicente, Palawan: beaches, islands, stays and everyday local life, curated by the people who live here.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "SANVIC — San Vicente, Palawan" },
-      { name: "twitter:description", content: "Explore San Vicente, Palawan: beaches, islands, stays and everyday local life, curated by the people who live here." },
+      {
+        name: "twitter:description",
+        content:
+          "Explore San Vicente, Palawan: beaches, islands, stays and everyday local life, curated by the people who live here.",
+      },
     ],
     links: [
       {

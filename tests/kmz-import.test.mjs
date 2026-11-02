@@ -1,7 +1,7 @@
 // Tests for public/site/kmz-import.js — the KMZ/KML bulk importer.
 //
 // The module is a classic browser script (no exports), so it is loaded here by
-// evaluating its real source with small stubs for the app.js globals it uses.
+// evaluating its real source with small stubs for the app globals it uses.
 // That keeps the test honest: it exercises the shipped file, not a copy.
 //
 // The ZIP half runs anywhere. KML parsing needs DOMParser, which Node does not
@@ -33,9 +33,10 @@ var sb = { from(){ return { insert(){ return { select: async()=>({data:[],error:
 `;
 
 const api = new Function(
-  STUBS + SRC +
-  "\nreturn { kmzExtractKmlText, kmzParseKml, kmzFinish, kmzInSanVicente, kmzGuessCategory," +
-  " kmzStripHtml, kmzHaversineM, getRows:()=>kmzRows, getMsg:()=>kmzMsg };"
+  STUBS +
+    SRC +
+    "\nreturn { kmzExtractKmlText, kmzParseKml, kmzFinish, kmzInSanVicente, kmzGuessCategory," +
+    " kmzStripHtml, kmzHaversineM, getRows:()=>kmzRows, getMsg:()=>kmzMsg };",
 )();
 
 // Build a genuine ZIP archive in memory. CRC fields are left zero on purpose —
@@ -46,29 +47,46 @@ async function makeZip(name, text, method) {
   let data = enc.encode(text);
   if (method === 8) {
     const cs = new CompressionStream("deflate-raw");
-    data = new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(cs)).arrayBuffer());
+    data = new Uint8Array(
+      await new Response(new Blob([data]).stream().pipeThrough(cs)).arrayBuffer(),
+    );
   }
   const local = new Uint8Array(30 + nameBytes.length + data.length);
   const lv = new DataView(local.buffer);
-  lv.setUint32(0, 0x04034b50, true); lv.setUint16(4, 20, true); lv.setUint16(8, method, true);
-  lv.setUint32(18, data.length, true); lv.setUint32(22, data.length, true);
-  lv.setUint16(26, nameBytes.length, true); lv.setUint16(28, 0, true);
-  local.set(nameBytes, 30); local.set(data, 30 + nameBytes.length);
+  lv.setUint32(0, 0x04034b50, true);
+  lv.setUint16(4, 20, true);
+  lv.setUint16(8, method, true);
+  lv.setUint32(18, data.length, true);
+  lv.setUint32(22, data.length, true);
+  lv.setUint16(26, nameBytes.length, true);
+  lv.setUint16(28, 0, true);
+  local.set(nameBytes, 30);
+  local.set(data, 30 + nameBytes.length);
 
   const central = new Uint8Array(46 + nameBytes.length);
   const cv = new DataView(central.buffer);
-  cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
-  cv.setUint16(10, method, true); cv.setUint32(20, data.length, true); cv.setUint32(24, data.length, true);
-  cv.setUint16(28, nameBytes.length, true); cv.setUint32(42, 0, true);
+  cv.setUint32(0, 0x02014b50, true);
+  cv.setUint16(4, 20, true);
+  cv.setUint16(6, 20, true);
+  cv.setUint16(10, method, true);
+  cv.setUint32(20, data.length, true);
+  cv.setUint32(24, data.length, true);
+  cv.setUint16(28, nameBytes.length, true);
+  cv.setUint32(42, 0, true);
   central.set(nameBytes, 46);
 
   const eocd = new Uint8Array(22);
   const ev = new DataView(eocd.buffer);
-  ev.setUint32(0, 0x06054b50, true); ev.setUint16(8, 1, true); ev.setUint16(10, 1, true);
-  ev.setUint32(12, central.length, true); ev.setUint32(16, local.length, true);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, 1, true);
+  ev.setUint16(10, 1, true);
+  ev.setUint32(12, central.length, true);
+  ev.setUint32(16, local.length, true);
 
   const out = new Uint8Array(local.length + central.length + eocd.length);
-  out.set(local, 0); out.set(central, local.length); out.set(eocd, local.length + central.length);
+  out.set(local, 0);
+  out.set(central, local.length);
+  out.set(eocd, local.length + central.length);
   return out.buffer;
 }
 
@@ -104,14 +122,14 @@ test("extracts the KML from a deflated KMZ", async () => {
 test("rejects a file that is not a ZIP at all", async () => {
   await assert.rejects(
     () => api.kmzExtractKmlText(new TextEncoder().encode('<?xml version="1.0"?>').buffer),
-    /not a KMZ\/ZIP/
+    /not a KMZ\/ZIP/,
   );
 });
 
 test("rejects a ZIP that contains no .kml entry", async () => {
   await assert.rejects(
     async () => api.kmzExtractKmlText(await makeZip("readme.txt", "nope", 0)),
-    /did not contain a \.kml/
+    /did not contain a \.kml/,
   );
 });
 
@@ -120,7 +138,7 @@ test("rejects a ZIP that contains no .kml entry", async () => {
 test("strips HTML without leaving a space before punctuation", () => {
   assert.equal(
     api.kmzStripHtml("<p>Hidden <b>gem</b>.&nbsp;Bring water.</p>"),
-    "Hidden gem. Bring water."
+    "Hidden gem. Bring water.",
   );
 });
 
@@ -138,27 +156,27 @@ test("parses placemarks and maps KML lng,lat order correctly", { skip }, () => {
   const parsed = api.kmzParseKml(KML);
   // The placemark with no <coordinates> is dropped.
   assert.equal(parsed.length, 4);
-  const falls = parsed.find(p => p.name === "Bigaho Falls");
+  const falls = parsed.find((p) => p.name === "Bigaho Falls");
   assert.equal(falls.lat, 10.44);
   assert.equal(falls.lng, 119.31);
   assert.equal(falls.folder, "Waterfalls");
 });
 
 test("reads coordinates out of a MultiGeometry", { skip }, () => {
-  const bay = api.kmzParseKml(KML).find(p => p.name === "Port Barton Bay");
+  const bay = api.kmzParseKml(KML).find((p) => p.name === "Port Barton Bay");
   assert.equal(bay.lat, 10.45);
   assert.equal(bay.lng, 119.22);
 });
 
 test("guesses the category from the containing folder", { skip }, () => {
-  const falls = api.kmzParseKml(KML).find(p => p.name === "Bigaho Falls");
+  const falls = api.kmzParseKml(KML).find((p) => p.name === "Bigaho Falls");
   assert.equal(api.kmzGuessCategory(falls), "waterfalls");
 });
 
 test("review pass ticks in-area rows, skips duplicates and out-of-area rows", { skip }, () => {
   api.kmzFinish(api.kmzParseKml(KML), [{ name: "test.kmz" }]);
   const rows = api.getRows();
-  const byName = Object.fromEntries(rows.map(r => [r.name, r]));
+  const byName = Object.fromEntries(rows.map((r) => [r.name, r]));
   assert.equal(byName["Bigaho Falls"].include, true);
   assert.equal(byName["Long Beach"].duplicateOf, "Long Beach");
   assert.equal(byName["Long Beach"].include, false);

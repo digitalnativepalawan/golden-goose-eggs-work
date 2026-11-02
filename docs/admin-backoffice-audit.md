@@ -2,6 +2,16 @@
 
 Last updated: 2026-10-26
 
+> **Note, 2026-11-02.** This is a record of the audit as it stood in October, so
+> it still refers to `public/site/app.js` and to a signed-in write path. Both
+> have changed since: the login/PIN gate was removed, and `app.js` was split into
+> seven files (`app-core.js`, `app-map-explore-today.js`, `app-pulse.js`,
+> `app-weather.js`, `app-backoffice.js`, `app-place-details.js`,
+> `app-pulse-admin-my-sanvic-hunt.js`) loaded in that order. The Backoffice panel
+> is now `app-backoffice.js`, with `admin-studio.js` still overriding
+> `window.openAdminPanel`. Read the body below as history, not as current
+> instruction.
+
 ## Scope of the audit
 
 The following were inspected before changing behavior:
@@ -110,6 +120,7 @@ pending rather than pretending a draft was hidden.
 ## Implemented in this pass
 
 ### Workspace and navigation
+
 - Added a real Admin home with live-content search, published/draft/archived counts,
   needs-attention items, content inventory, quick actions and recent edits from
   real database timestamps plus actual edits made in the browser.
@@ -122,6 +133,7 @@ pending rather than pretending a draft was hidden.
   Save/Cancel actions.
 
 ### Places, map and publishing
+
 - Kept all existing place fields and related tables. Added search, status,
   category, area and sort filters; published/draft/archived pills; archive/undo,
   unpublish, publish, restore and confirmed permanent delete.
@@ -138,6 +150,7 @@ pending rather than pretending a draft was hidden.
   gracefully fall back to the old insert shape before migration.
 
 ### Photos
+
 - Added library and camera inputs, multiple selection, desktop drag/drop,
   cautious paste, MIME/size validation, SVG rejection, HEIC decode checks,
   client-side optimization, real XHR progress, success/failure, retry,
@@ -151,6 +164,7 @@ pending rather than pretending a draft was hidden.
   allows deletion of unused files.
 
 ### Safety and compatibility
+
 - Preserved the existing Supabase Auth + RLS model and the server-only
   service-role API used by `/admin`. No secret key was added to client code.
 - Existing Tala, AI, Pulse, Site, Today, Tribes, Events, My Sanvic and Hunt

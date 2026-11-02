@@ -2,7 +2,7 @@
 
 ## Lucide icons
 
-The inline icon set in `public/site/app.js` (`LUCIDE_ICONS`, `EXTRA_ICONS` and
+The inline icon set in `public/site/app-map-explore-today.js` (`LUCIDE_ICONS`, `EXTRA_ICONS` and
 `LUCIDE_MORE_ICONS`) is taken from [Lucide](https://lucide.dev). The shape data
 was copied from the `lucide-static` package and stripped to the inner SVG
 markup, so the icons are redistributed as part of this repository rather than

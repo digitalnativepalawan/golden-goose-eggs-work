@@ -6,3 +6,32 @@ pnpm-lock.yaml
 package-lock.json
 bun.lock
 routeTree.gen.ts
+
+# Data and markup that must stay byte-for-byte
+public/site/index.html
+public/site/barangays.geojson.js
+
+docs/images
+docs/screenshots
+supabase/
+*.sql
+
+# Outside the formatting scope: files owned by other workstreams
+api/tala.js
+server/tala.js
+server/tala.d.ts
+tests/tala-server.test.mjs
+src/routes/api/tala-chat.ts
+src/routes/api/admin.ts
+src/routes/admin.tsx
+src/integrations/supabase/
+vercel.json
+vite.config.ts
+HANDOFF.md
+public/site/admin-model.js
+public/site/admin-studio.js
+public/site/entry-flow.js
+public/site/personalize.js
+public/site/pulse-demo-content.js
+public/site/supabase-config.js
+public/site/kmz-import.js
