@@ -11,9 +11,6 @@ routeTree.gen.ts
 public/site/index.html
 public/site/barangays.geojson.js
 
-# app.js and explore-ux.css were held back here while tests matched their exact
-# text. They now read the client through tests/support/client.cjs, so both are
-# formatted like everything else.
 docs/images
 docs/screenshots
 supabase/

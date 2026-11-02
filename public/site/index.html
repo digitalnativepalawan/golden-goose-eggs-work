@@ -2314,10 +2314,10 @@ svg.lucide{vertical-align:-.15em}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-10-30-feed-channels-r1';
+  window.SANVIC_DEPLOY_VERSION = '2026-11-02-app-split-r1';
   // How long the SANVIC splash holds before the app (and the first-visit
-  // questions) appear. Shared by app.js and entry-flow.js so the two timers
-  // cannot drift apart. Raise it to hold the first page longer.
+  // questions) appear. Shared by the app scripts and entry-flow.js so the two
+  // timers cannot drift apart. Raise it to hold the first page longer.
   // The wordmark is the first thing anyone sees and the partner wants it to
   // land rather than flash past. Four and a half seconds, per his note.
   window.SANVIC_SPLASH_HOLD = 4500;
@@ -2327,8 +2327,21 @@ svg.lucide{vertical-align:-.15em}
   (function () {
     var v = encodeURIComponent(window.SANVIC_DEPLOY_VERSION);
     // async=false keeps execution order: supabase-config.js first (defines
-    // sb + loads experience modules), then app.js which depends on it.
-    ['supabase-config.js', 'explore-model.js', 'admin-model.js', 'app.js', 'admin-studio.js', 'kmz-import.js'].forEach(function (file) {
+    // sb + loads experience modules), then the app scripts which depend on it.
+    [
+      'supabase-config.js',
+      'explore-model.js',
+      'admin-model.js',
+      'app-core.js',
+      'app-map-explore-today.js',
+      'app-pulse.js',
+      'app-weather.js',
+      'app-backoffice.js',
+      'app-place-details.js',
+      'app-pulse-admin-my-sanvic-hunt.js',
+      'admin-studio.js',
+      'kmz-import.js',
+    ].forEach(function (file) {
       var s = document.createElement('script');
       s.src = file + '?v=' + v;
       s.async = false;

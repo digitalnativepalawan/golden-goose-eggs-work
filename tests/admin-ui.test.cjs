@@ -18,7 +18,12 @@ const migration = fs.readFileSync(
 const adminModel = fs.readFileSync(path.join(root, "public", "site", "admin-model.js"), "utf8");
 
 test("the Backoffice loads pure rules, the enhancement layer and the responsive CSS in the right order", () => {
-  assert.ok(html.match(/\['supabase-config\.js'[^\]]+\]/), "script list exists");
+  // The list may be laid out on one line or several; the assertion is that the
+  // loader array exists and starts at supabase-config.js.
+  assert.ok(
+    html.match(/\[\s*'supabase-config\.js'[\s\S]*?\]/),
+    "script list exists and starts at supabase-config.js",
+  );
   // Read the order rather than the raw string, so it holds whether the app is
   // one file or several.
   const order = scriptFiles();

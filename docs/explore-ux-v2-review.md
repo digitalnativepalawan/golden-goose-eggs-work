@@ -1,4 +1,9 @@
-# Explore UX v2 — review branch
+# Explore UX v2 - review branch
+
+> **Note, 2026-11-02.** Historical review. `public/site/app.js` no longer exists:
+> it was split into seven files loaded in order, and the Explore work described
+> below now lives in `app-map-explore-today.js` (Explore sheet, filters, map,
+> markers, barangay anchors) and `app-place-details.js` (the place sheet).
 
 Branch: `astra/explore-ux-v2`. Implementation is committed for review; main is unchanged. **Visual acceptance is pending**, because the browser environment rejected access to the running preview with `ERR_BLOCKED_BY_CLIENT`. No screenshots were captured and no deployment was made.
 

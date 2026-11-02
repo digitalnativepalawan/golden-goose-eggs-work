@@ -20,15 +20,16 @@ One repository, **two surfaces**:
 | **The product** — vanilla-JS single page                    | `public/site/` | Live, all real work happens here                                          |
 | **React/TanStack shell** (SSR, `/`, `/admin`, `/api/admin`) | `src/`         | Deployed, but only used for `/` → redirect and the leftover `/admin` page |
 
-The client is **static files with no build step**. `app.js` and `index.html` are
-loaded as written. There is no bundler, no TypeScript, no framework in the product.
+The client is **static files with no build step**. The app scripts and
+`index.html` are loaded as written. There is no bundler, no TypeScript, no
+framework in the product.
 
 Vendor code is CDN-loaded, so it is absent from `package.json`:
 Leaflet 1.9.4, `@supabase/supabase-js` 2 (UMD), Google Fonts.
 
 ### Two admin surfaces — know the difference
 
-1. **In-app Backoffice** (`admin-studio.js` + parts of `app.js`). No login, no
+1. **In-app Backoffice** (`admin-studio.js` + the Backoffice app scripts). No login, no
    PIN. Opens from the **Admin** button in the dock, or three taps on the
    SANVIC.PH logo. Writes with the public anon key, permitted by
    `supabase/migrations/20261101090000_open_backoffice_writes.sql`.
@@ -41,8 +42,8 @@ Leaflet 1.9.4, `@supabase/supabase-js` 2 (UMD), Google Fonts.
 
 ## 2. Boot sequence
 
-`index.html` loads things in a fixed order. Order matters — `app.js` expects
-`sb` to exist.
+`index.html` loads things in a fixed order. Order matters — the app scripts
+expect `sb` to exist.
 
 ```
 index.html
@@ -55,31 +56,42 @@ index.html
 │    1. supabase-config.js       creates `sb`; then loads entry-flow, personalize, pulse-demo-content
 │    2. explore-model.js         pure Explore state
 │    3. admin-model.js           pure Backoffice rules
-│    4. app.js                   the app (12,617 lines)
-│    5. admin-studio.js          Backoffice UI, overrides window.openAdminPanel
-│    6. kmz-import.js            KMZ upload UI
+│    4. app-core.js              data, samples policy, live-data state (252 ln)
+│    5. app-map-explore-today.js identity, taxonomy + icons, map, Today, Explore (2,943 ln)
+│    6. app-pulse.js             feed, tribes, events, Lounge (2,644 ln)
+│    7. app-weather.js           hero weather widget, then boot on `load` (1,374 ln)
+│    8. app-backoffice.js        the in-app Backoffice panel (1,413 ln)
+│    9. app-place-details.js     the place sheet: gallery, video, tips, contacts (2,595 ln)
+│   10. app-pulse-admin-my-sanvic-hunt.js  moderation, My Sanvic, the Hunt (1,390 ln)
+│   11. admin-studio.js          Backoffice UI, overrides window.openAdminPanel
+│   12. kmz-import.js            KMZ upload UI
 ├─ explore-ux.css
 └─ admin-ux.css
 ```
 
-`app.js` reads a `load` event and starts: hide splash after
+The app was one 12,617-line `app.js` until the Phase 4 split; the seven files
+numbered 4–10 are that file cut at section boundaries and loaded in the same
+order, so nothing about execution changed. They share one global scope, as
+`app.js` always did.
+
+`app-weather.js` reads a `load` event and starts: hide splash after
 `SANVIC_SPLASH_HOLD`, then `initAuth()` (device identity), weather, then shows
 the dock. The map is lazy: it initialises when the map view is first shown.
 
 **Bump `SANVIC_DEPLOY_VERSION` in `index.html` for any deploy that changes JS.**
 Every script and module is fetched with `?v=<stamp>`, which is how a phone is
-stopped from running yesterday's `app.js`.
+stopped from running yesterday's app.
 
 ### Deleted in Phase 1 cleanup (2026-11-01, branch `cleanup/verdict`)
 
 Three files that were present but never loaded have been removed. They are gone
 from the tree, not disabled. Do not recreate them from memory:
 
-| File                        | Why it was dead                                                                                                                                              |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `entry-polish.js`           | CSS-only refinement of an entry card that no longer exists; nothing referenced it                                                                            |
-| `map-pin-boost.js`          | Polygon visual-centre maths for pins. `app.js` has its own, richer `barangayAnchor()` which prefers on-land places and never drags a town dot onto an island |
-| `barangay-marker-polish.js` | Same ground as `map-pin-boost.js`; map hierarchy belongs to `app.js`                                                                                         |
+| File                        | Why it was dead                                                                                                                                                                                 |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `entry-polish.js`           | CSS-only refinement of an entry card that no longer exists; nothing referenced it                                                                                                               |
+| `map-pin-boost.js`          | Polygon visual-centre maths for pins. The app has its own, richer `barangayAnchor()` (now in `app-map-explore-today.js`) which prefers on-land places and never drags a town dot onto an island |
+| `barangay-marker-polish.js` | Same ground as `map-pin-boost.js`; map hierarchy belongs to the app                                                                                                                             |
 
 Proof before deletion: `git grep -E "entry-polish|map-pin-boost|barangay-marker-polish"`
 returned matches only in `README.md` and this file — no script tag, loader,
@@ -91,9 +103,15 @@ test, build config or TypeScript import referenced any of them.
 
 ```
 golden-goose-eggs-work/
-├── public/site/                    # THE PRODUCT — 22,624 lines
+├── public/site/                    # THE PRODUCT — 22,618 lines
 │   ├── index.html      2,459 ln    # every screen's markup + the design system CSS
-│   ├── app.js         12,617 ln    # map, screens, data, all feature logic
+│   ├── app-core.js       252 ln    # data, samples policy, live-data state
+│   ├── app-map-explore-today.js 2,943 ln # identity, taxonomy + icons, map, Today, Explore
+│   ├── app-pulse.js    2,644 ln    # Pulse: feed, tribes, events, Lounge
+│   ├── app-weather.js  1,374 ln    # hero weather widget, then boot on `load`
+│   ├── app-backoffice.js 1,413 ln  # the in-app Backoffice panel
+│   ├── app-place-details.js 2,595 ln # the place sheet: gallery, video, tips, contacts
+│   ├── app-pulse-admin-my-sanvic-hunt.js 1,390 ln # moderation, My Sanvic, the Hunt
 │   ├── admin-studio.js 2,979 ln    # Backoffice UI (overrides openAdminPanel)
 │   ├── admin-model.js    447 ln    # Backoffice rules: publishing, validation (unit-tested)
 │   ├── kmz-import.js     426 ln    # KMZ/KML upload + preview
@@ -135,7 +153,7 @@ golden-goose-eggs-work/
 ## 4. How a screen works
 
 Every screen follows the same three steps. Learn this pattern once and the rest
-of `app.js` is readable.
+of the app scripts is readable.
 
 ```
   1. MARKUP      index.html holds the element, hidden by CSS
@@ -173,23 +191,23 @@ Clearing browser data resets that person. There is nothing to recover, by design
 
 ## 5. Map of features to code
 
-| Feature                         | Markup                 | Logic                                                               |
-| ------------------------------- | ---------------------- | ------------------------------------------------------------------- |
-| Map, pins, layers, zoom         | `#map` in `index.html` | `app.js` §MAP, `mountMap`, `renderPins`, single-active-layer system |
-| Place detail sheet              | `.dest-sheet`          | `app.js` §DESTINATION SHEET, `openDestSheet`                        |
-| Explore list + filters          | `#exploreSheet`        | `explore-model.js` (pure) + `app.js` §EXPLORE                       |
-| Today                           | `#todayScroll`         | `app.js` §TODAY DRAWER, `openTodaySheet`, `refreshTodayPicks`       |
-| Tribes / Events / Lounge / Feed | `#pulsePane`           | `app.js` §PULSE v2 (3,198–5,842)                                    |
-| The Hunt (riddles)              | Hunt pane              | `app.js` §HUNT, `hunt_riddles`, 200 m GPS unlock                    |
-| My Journey                      | Journey pane           | `app.js` §MY SANVIC                                                 |
-| Search                          | `#searchInput`         | `app.js` §SEARCH                                                    |
-| Tala (assistant)                | Tala sheet             | `app.js` §TALA (keyword replies) + `/api/tala-chat` (AI, optional)  |
-| Backoffice                      | `#adminPanelOverlay`   | `admin-studio.js` + `app.js` §ADMIN (7,218–8,631, 1,414 lines)      |
-| Entry questions                 | `#sanvicEntry`         | `entry-flow.js` — **off while building**                            |
+| Feature                         | Markup                 | Logic                                                                                      |
+| ------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------ |
+| Map, pins, layers, zoom         | `#map` in `index.html` | `app-map-explore-today.js`, `mountMap`, `renderPins`, single-active-layer system           |
+| Place detail sheet              | `.dest-sheet`          | `app-place-details.js`, `openDestSheet`                                                    |
+| Explore list + filters          | `#exploreSheet`        | `explore-model.js` (pure) + `app-map-explore-today.js`                                     |
+| Today                           | `#todayScroll`         | `app-map-explore-today.js`, `openTodaySheet`, `refreshTodayPicks`                          |
+| Tribes / Events / Lounge / Feed | `#pulsePane`           | `app-pulse.js` (feed, tribes, events, Lounge)                                              |
+| The Hunt (riddles)              | Hunt pane              | `app-pulse-admin-my-sanvic-hunt.js`, `hunt_riddles`, 200 m GPS unlock                      |
+| My Journey                      | Journey pane           | `app-pulse-admin-my-sanvic-hunt.js` (My Sanvic panel)                                      |
+| Search                          | `#searchInput`         | `app-map-explore-today.js`                                                                 |
+| Tala (assistant)                | Tala sheet             | `app-map-explore-today.js` (keyword replies) + `/api/tala-chat` (AI, optional)             |
+| Backoffice                      | `#adminPanelOverlay`   | `admin-studio.js` + `app-backoffice.js` + `app-pulse-admin-my-sanvic-hunt.js` (moderation) |
+| Entry questions                 | `#sanvicEntry`         | `entry-flow.js` — **off while building**                                                   |
 
 `admin-studio.js` defines `window.openAdminPanel`, which **overrides** the
-function of the same name in `app.js`. When changing how admin opens, change the
-one in `admin-studio.js` — `app.js`'s copy is not what runs.
+function of the same name in `app-backoffice.js`. When changing how admin opens,
+change the one in `admin-studio.js` — the app's copy is not what runs.
 
 ---
 
@@ -226,7 +244,7 @@ source of truth.
 ## 7. Reading order for someone new
 
 1. `index.html` tail — see the loader list and the deploy stamp.
-2. `app.js` top (lines 1–253) — fallback data, samples policy and live-data state.
+2. `app-core.js` — fallback data, samples policy and live-data state.
 3. `loadDataFromSupabase()` — the only data entry point.
 4. `openDestSheet()` — the smallest complete screen: markup → state → render.
 5. `admin-studio.js` `openAdminPanel` + one save path — the write side.
@@ -267,7 +285,12 @@ Skip, for now: `src/`, the shadcn primitives, `tests/explore-model` AST checks.
   the client from the loader lists in `index.html` and `supabase-config.js` and
   matches canonicalised snippets (`has`, `count`, `after`, `between`). This is
   what allowed `app.js` and `explore-ux.css` to be formatted at last, and it is
-  what will let `app.js` be split without rewriting the assertions.
-- **`app.js` is 12,617 lines.** It is the single biggest risk to future work. The
-  two model files (`explore-model`, `admin-model`) show the seam to move along
-  when something needs extracting.
+  what let `app.js` be split into seven files without rewriting the assertions.
+- **The app is seven files, 12,611 lines, one global scope.** Split in Phase 4
+  from the single 12,617-line `app.js`, keeping load order and every top-level
+  binding as it was; the only difference is six blank lines Prettier removes at
+  the joins (see the Phase 4 commit for the byte and AST proof). Splitting made
+  it navigable, not decoupled — real decoupling means ES modules, which needs a
+  bundler the product does not have. The two model files (`explore-model`,
+  `admin-model`) still show the seam to move along when something needs
+  extracting.

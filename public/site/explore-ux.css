@@ -82,7 +82,8 @@
   border-radius: 20px 20px 0 0;
 }
 /* Slim grabber. The heading row is a second drag surface so a thumb can grab
-   the sheet anywhere along the top; see initExploreInteractions in app.js. */
+   the sheet anywhere along the top; see initExploreInteractions in
+   app-map-explore-today.js. */
 .es-handle {
   display: flex;
   align-items: center;

@@ -9,7 +9,7 @@
 // Two things fix that here:
 //
 //   1. The file list comes from the page itself - the loader arrays in
-//      index.html and supabase-config.js. Splitting app.js into several files
+//      index.html and supabase-config.js. Splitting the app into several files
 //      only has to update those lists, and every test follows.
 //   2. `has(code, "if(x){y();}")` compares both sides with whitespace removed
 //      and quotes made uniform. A snippet that appears in the file still

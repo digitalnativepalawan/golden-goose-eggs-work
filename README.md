@@ -66,7 +66,7 @@ selection and 33 mapped places._
 | Language             | Where it's used                                                          | Share of the codebase |
 | -------------------- | ------------------------------------------------------------------------ | --------------------- |
 | **TypeScript / TSX** | Application shell, components, hooks, Supabase integration               | 31 files              |
-| **JavaScript**       | The SANVIC client in `public/site/` — map engine, views, personalization | 10 modules            |
+| **JavaScript**       | The SANVIC client in `public/site/` - map engine, views, personalization | 16 modules            |
 | **CSS**              | Design system in `src/styles.css` and `explore-ux.css`                   | Tailwind + custom     |
 | **SQL**              | PostgreSQL schema, RLS policies, functions and seed data                 | 32 migrations         |
 | **HTML**             | `public/site/index.html` — the application document                      | 1                     |
@@ -113,7 +113,13 @@ golden-goose-eggs/
 ├── public/
 │   └── site/                        # The SANVIC client
 │       ├── index.html               # Application document (all views)
-│       ├── app.js                   # Map engine, routing, view logic
+│       ├── app-core.js              # Data, samples policy, live-data state
+│       ├── app-map-explore-today.js # Identity, taxonomy/icons, map, Today, Explore
+│       ├── app-pulse.js             # Pulse: feed, tribes, events, Lounge
+│       ├── app-weather.js           # Hero weather widget, then boot on load
+│       ├── app-backoffice.js        # The in-app Backoffice panel
+│       ├── app-place-details.js     # Place sheet: gallery, video, tips, contacts
+│       ├── app-pulse-admin-my-sanvic-hunt.js # Moderation, My Sanvic, the Hunt
 │       ├── entry-flow.js            # Onboarding and entry flow
 │       ├── explore-model.js         # Explore state model
 │       ├── explore-ux.css           # Explore-specific styling
@@ -350,7 +356,8 @@ potential to reach far beyond it.
 - Barangay boundaries: Philippine Statistics Authority, December 2023, via
   [faeldon/philippines-json-maps](https://github.com/faeldon/philippines-json-maps) (MIT)
 - Icons: [Lucide](https://lucide.dev) — ISC, with the Feather-derived icons
-  under MIT. The icon shapes are inlined into `public/site/app.js`; the full
+  under MIT. The icon shapes are inlined into
+  `public/site/app-map-explore-today.js`; the full
   notices are in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md)
 
 ---

@@ -2,6 +2,16 @@
 
 Last updated: 2026-10-26
 
+> **Note, 2026-11-02.** This is a record of the audit as it stood in October, so
+> it still refers to `public/site/app.js` and to a signed-in write path. Both
+> have changed since: the login/PIN gate was removed, and `app.js` was split into
+> seven files (`app-core.js`, `app-map-explore-today.js`, `app-pulse.js`,
+> `app-weather.js`, `app-backoffice.js`, `app-place-details.js`,
+> `app-pulse-admin-my-sanvic-hunt.js`) loaded in that order. The Backoffice panel
+> is now `app-backoffice.js`, with `admin-studio.js` still overriding
+> `window.openAdminPanel`. Read the body below as history, not as current
+> instruction.
+
 ## Scope of the audit
 
 The following were inspected before changing behavior:

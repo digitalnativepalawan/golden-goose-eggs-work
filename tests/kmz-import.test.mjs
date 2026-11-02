@@ -1,7 +1,7 @@
 // Tests for public/site/kmz-import.js — the KMZ/KML bulk importer.
 //
 // The module is a classic browser script (no exports), so it is loaded here by
-// evaluating its real source with small stubs for the app.js globals it uses.
+// evaluating its real source with small stubs for the app globals it uses.
 // That keeps the test honest: it exercises the shipped file, not a copy.
 //
 // The ZIP half runs anywhere. KML parsing needs DOMParser, which Node does not
