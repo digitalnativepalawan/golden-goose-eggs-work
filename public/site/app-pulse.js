@@ -243,6 +243,17 @@ function pulseRibbonOnScroll() {
     { passive: true },
   );
 }
+// The Tribes panel is one scrolling page now (title, tabs and chips scroll away),
+// so "start at the top" means the page wrapper, not the inner list.
+function pulsePageEl() {
+  return document.getElementById("pv2Scroll");
+}
+function resetPulsePageScroll() {
+  const page = pulsePageEl();
+  if (page) page.scrollTop = 0;
+  const body = document.getElementById("pulseBody");
+  if (body) body.scrollTop = 0;
+}
 function closePulsePanel() {
   const panel = document.getElementById("pulsePanel");
   if (panel) panel.classList.remove("open");
@@ -317,8 +328,7 @@ function selectPulseView(view) {
   if (rib)
     rib.style.display = view === "lounge" || view === "form" || view === "feed" ? "none" : "";
   if (rib) rib.classList.remove("is-away");
-  const body = document.getElementById("pulseBody");
-  if (body) body.scrollTop = 0;
+  resetPulsePageScroll();
   renderPulseBody();
 }
 function selectPulseCategoryV2(cat) {
@@ -331,8 +341,7 @@ function selectPulseCategoryV2(cat) {
   // card is the first thing you see after tapping a filter.
   const rib = document.getElementById("pv2CatRibbon");
   if (rib) rib.classList.remove("is-away");
-  const body = document.getElementById("pulseBody");
-  if (body) body.scrollTop = 0;
+  resetPulsePageScroll();
 }
 function renderPulseCatRibbon() {
   const el = document.getElementById("pv2CatScroll");
@@ -1324,8 +1333,9 @@ function renderPulseLounge() {
       <input id="pv2LoungeInput" type="text" placeholder="Say something to the lounge…" onkeydown="if(event.key==='Enter')sendLoungeMsg()"/>
       <button onclick="sendLoungeMsg()">Send</button>
     </div>`;
-  const el = body;
-  el.scrollTop = el.scrollHeight;
+  const page = pulsePageEl();
+  if (page) page.scrollTop = page.scrollHeight;
+  body.scrollTop = body.scrollHeight;
 }
 function sendLoungeMsg() {
   const input = document.getElementById("pv2LoungeInput");
@@ -2640,5 +2650,6 @@ async function submitPulsePost() {
   });
 
   await renderPulseFeed();
-  document.getElementById("pulseBody").scrollTo({ top: 0, behavior: "smooth" });
+  const pulsePage = pulsePageEl();
+  if (pulsePage) pulsePage.scrollTo({ top: 0, behavior: "smooth" });
 }

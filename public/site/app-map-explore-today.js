@@ -1797,6 +1797,9 @@ function openTodaySheet() {
   updateTodayGreeting();
   s.classList.add("open");
   s.setAttribute("aria-hidden", "false");
+  // Re-opening always starts at the greeting, not halfway down yesterday's cards.
+  const page = document.getElementById("todayPage");
+  if (page) page.scrollTop = 0;
 }
 // Today is a full-screen panel now, not a 3-snap bottom sheet, so "toggle",
 // "snap" and "collapse" all just resolve to open or close. Kept as named
@@ -2580,7 +2583,11 @@ function renderTodayContent() {
   if (!host) return;
   // Re-rendering used to jump the panel back to the top, so pressing "Generate
   // new pick" scrolled you away from the picks you just asked for.
-  const keepScroll = host.scrollTop;
+  // The whole Today page scrolls now (greeting scrolls away with the cards), so
+  // the scroll position lives on #todayPage; fall back to the list itself.
+  const page = document.getElementById("todayPage");
+  const scroller = page || host;
+  const keepScroll = scroller.scrollTop;
   const d = TODAY_DATA;
   // Counts must come from the live data: the hardcoded TODAY_DATA.snapshot
   // numbers went stale the moment tribes/events moved into the database
@@ -2745,7 +2752,7 @@ function renderTodayContent() {
       </ul>
     </article>`;
   host.innerHTML = snap + pick + happening + joinable + weather + locals + notices;
-  if (keepScroll) host.scrollTop = keepScroll;
+  if (keepScroll) scroller.scrollTop = keepScroll;
 }
 
 // Re-render only the "Picked for you" card when the visitor taps "Generate new
