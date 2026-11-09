@@ -1134,6 +1134,11 @@ svg.lucide{vertical-align:-.15em}
   .es-search input{flex:1;background:none;border:0;outline:0;color:rgba(255,255,255,.94);
     font-family:var(--font-body);font-size:.92rem}
   .es-search input::placeholder{color:rgba(255,255,255,.45)}
+  /* Optional browsing controls. The search box and the "All barangays / Near me"
+     row are hidden by default; the Backoffice switch (Site -> Explore filters)
+     brings them back. Hidden, never deleted, so nothing else can break. */
+  .explore-sheet.es-no-filters .es-search,
+  .explore-sheet.es-no-filters .es-filter-row{display:none}
   .es-ribbon{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
     scrollbar-width:none;padding:2px 0}
   .es-ribbon::-webkit-scrollbar{display:none}
@@ -1236,7 +1241,7 @@ svg.lucide{vertical-align:-.15em}
     letter-spacing:.02em;text-shadow:0 1px 4px rgba(0,0,0,.6)}
 
 </style>
-<section class="explore-sheet" id="exploreSheet" aria-label="Explore San Vicente" inert>
+<section class="explore-sheet es-no-filters" id="exploreSheet" aria-label="Explore San Vicente" inert>
   <button class="es-handle" id="esHandle" aria-label="Expand place list" aria-expanded="false"><span></span></button>
   <div class="es-peek">
     <div class="es-heading">
@@ -2384,7 +2389,7 @@ svg.lucide{vertical-align:-.15em}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-11-09-one-page-scroll';
+  window.SANVIC_DEPLOY_VERSION = '2026-11-09-explore-lite';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by the app scripts and entry-flow.js so the two
   // timers cannot drift apart. Raise it to hold the first page longer.

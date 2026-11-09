@@ -853,7 +853,27 @@ function renderAdminSite() {
       <label>Loading screen footer (small caps text at the bottom of the loader)</label>
       <textarea id="adsSplashFooter" rows="1" onblur="adminSaveSplashFooter()">${escapeHtml(splashFooter)}</textarea>
     </div>
+    <div class="admin-field" style="margin-top:18px;">
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;">
+        <input type="checkbox" id="adsExploreFilters" onchange="adminSaveExploreFilters(this.checked)" ${exploreFiltersVisible ? "checked" : ""} style="margin-top:3px;width:18px;height:18px;accent-color:#14b8a6;flex-shrink:0;">
+        <span>Explore map: show the search box and the “All barangays / Near me” row<br><span style="opacity:.62;font-size:.86em;">Off keeps Explore compact. Nothing is deleted — tick this and both come back for every visitor.</span></span>
+      </label>
+    </div>
     <div class="admin-empty" style="margin-top:6px;">Saves automatically when you click away from a field. Changes appear for every visitor.</div>`;
+}
+
+async function adminSaveExploreFilters(on) {
+  if (!adminRequireWrite()) return;
+  const value = on ? "true" : "false";
+  try {
+    const { error } = await sb.from("site_settings").upsert({ key: "explore_filters", value });
+    if (error) throw error;
+    exploreFiltersVisible = !!on;
+    applyExploreFiltersVisibility();
+  } catch (err) {
+    alert("Save failed: " + (err.message || err));
+    renderAdminSite();
+  }
 }
 
 async function adminSaveHeroTitle() {
