@@ -2322,11 +2322,11 @@
       <div class="admin-hint">Choose photos from the device library, take a new photo, drag files here, or paste a copied image while focus is outside a text field. Images are optimized and saved to Supabase Storage immediately.</div>
       <div class="admin-dropzone" id="${containerId}Dropzone" ondragover="event.preventDefault();this.classList.add('is-drag')" ondragleave="this.classList.remove('is-drag')" ondrop="mediaDrop(event,'${containerId}')">
         <label class="admin-photo-add">
-          <input type="file" id="${containerId}LibraryInput" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" multiple onchange="mediaUploadFile(this,'${containerId}')" hidden>
+          <input type="file" class="admin-photo-input" id="${containerId}LibraryInput" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" multiple onchange="mediaUploadFile(this,'${containerId}')">
           ${icon("images", 22)}<span>Choose photos</span><small>Device library · multiple allowed</small>
         </label>
         <label class="admin-photo-add">
-          <input type="file" id="${containerId}CameraInput" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" capture="environment" onchange="mediaUploadFile(this,'${containerId}')" hidden>
+          <input type="file" class="admin-photo-input" id="${containerId}CameraInput" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" capture="environment" onchange="mediaUploadFile(this,'${containerId}')">
           ${icon("camera", 22)}<span>Take photo</span><small>Uses the device camera where supported</small>
         </label>
       </div>
@@ -2554,6 +2554,56 @@
     });
   }
 
+  // HEIC/HEIF is what an iPhone shoots by default. Some browsers decode it with
+  // createImageBitmap, Safari only inside an <img>, and a few cannot decode it at
+  // all. Whatever the phone hands over, convert it to a JPEG before upload so the
+  // photo is accepted and displays on every device afterwards.
+  async function studioImageToJpeg(file) {
+    var name = (file && file.name) || "photo";
+    var baseName = name.replace(/\.[^.]+$/, "") || "photo";
+    var drawToJpeg = async function (source, width, height) {
+      if (!width || !height) throw new Error("no image size");
+      var scale = Math.min(1, 2400 / Math.max(width, height));
+      var canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      canvas.getContext("2d").drawImage(source, 0, 0, canvas.width, canvas.height);
+      var blob = await new Promise(function (res) {
+        canvas.toBlob(res, "image/jpeg", 0.85);
+      });
+      if (!blob) throw new Error("conversion failed");
+      return new File([blob], baseName + ".jpg", { type: "image/jpeg" });
+    };
+    // Fast path for browsers that decode HEIC themselves.
+    if (typeof createImageBitmap === "function") {
+      try {
+        var bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
+        var out = await drawToJpeg(bitmap, bitmap.width, bitmap.height);
+        if (bitmap.close) bitmap.close();
+        return out;
+      } catch (_) {
+        /* fall through to the <img> path */
+      }
+    }
+    // Safari path: an <img> can render HEIC even when createImageBitmap cannot.
+    var url = URL.createObjectURL(file);
+    try {
+      var img = await new Promise(function (res, rej) {
+        var el = new Image();
+        el.onload = function () {
+          res(el);
+        };
+        el.onerror = function () {
+          rej(new Error("decode failed"));
+        };
+        el.src = url;
+      });
+      return await drawToJpeg(img, img.naturalWidth || img.width, img.naturalHeight || img.height);
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
   async function studioUploadOne(entry, options) {
     var opts = options || entry.options || {};
     entry.options = opts;
@@ -2581,16 +2631,15 @@
       var optimized = entry.file;
       if (/heic|heif/i.test(entry.file.type || entry.file.name || "")) {
         try {
-          if (typeof createImageBitmap === "function") {
-            var bitmap = await createImageBitmap(entry.file);
-            if (bitmap.close) bitmap.close();
-          }
+          optimized = await studioImageToJpeg(entry.file);
         } catch (_) {
-          throw new Error("This browser cannot read that HEIC photo. Choose JPG or PNG instead.");
+          throw new Error(
+            "This phone's HEIC photo could not be converted here. Set Camera → Formats → Most Compatible (JPG), or pick the photo through Files instead of Photos.",
+          );
         }
       }
       if (typeof window.mediaShrinkImage === "function")
-        optimized = await window.mediaShrinkImage(entry.file);
+        optimized = await window.mediaShrinkImage(optimized);
       entry.status = "uploading";
       entry.progress = 18;
       studioUpdateEntry(entry);
@@ -2725,11 +2774,11 @@
         <div class="admin-card-head"><h3>Upload photos</h3><span class="admin-kicker">JPG · PNG · WebP · GIF · AVIF · HEIC · max 15 MB</span></div>
         <div class="admin-dropzone" id="adminPhotoDropzone" ondragover="event.preventDefault();this.classList.add('is-drag')" ondragleave="this.classList.remove('is-drag')" ondrop="adminPhotoDrop(event)">
           <label class="admin-photo-add">
-            <input type="file" id="adminPhotoLibraryLibraryInput" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" multiple onchange="adminPhotoChoose(this)" hidden>
+            <input type="file" class="admin-photo-input" id="adminPhotoLibraryLibraryInput" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" multiple onchange="adminPhotoChoose(this)">
             ${icon("images", 22)}<span>Choose from library</span><small>Multiple photos supported on phone and desktop</small>
           </label>
           <label class="admin-photo-add">
-            <input type="file" id="adminPhotoLibraryCameraInput" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" capture="environment" onchange="adminPhotoChoose(this)" hidden>
+            <input type="file" class="admin-photo-input" id="adminPhotoLibraryCameraInput" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" capture="environment" onchange="adminPhotoChoose(this)">
             ${icon("camera", 22)}<span>Take a photo</span><small>Opens the device camera where supported</small>
           </label>
         </div>

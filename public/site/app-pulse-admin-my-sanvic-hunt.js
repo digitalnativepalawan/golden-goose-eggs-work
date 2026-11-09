@@ -880,14 +880,14 @@ function huntRiddleCard(r, i) {
   const verse = String(r.verse || "").trim();
   return `
     <div class="hunt-spot hunt-riddle${done ? " is-done" : ""}">
-      <div class="hunt-spot-media">
+      <button type="button" class="hunt-spot-media" onclick="openRiddleView('${escT(r.slug)}')" aria-label="See the full photo and this riddle">
         ${
           img
             ? `<div class="hunt-spot-thumb" style="background-image:url('${escapeHtml(img)}')"></div>`
             : `<div class="hunt-spot-thumb hunt-spot-thumb-none" aria-hidden="true">${lucideSvg("image", 20)}</div>`
         }
         <span class="hunt-spot-chip">${done ? lucideSvg("circle-check", 12) + " Found" : "Riddle " + (i + 1)}</span>
-      </div>
+      </button>
       <div class="hunt-spot-body">
         <div class="hunt-riddle-title">${escapeHtml(r.title || "Riddle")}</div>
         ${r.difficulty ? `<div class="hunt-riddle-diff">Difficulty ${escapeHtml(r.difficulty)}</div>` : ""}
@@ -896,6 +896,63 @@ function huntRiddleCard(r, i) {
       </div>
     </div>`;
 }
+
+// ── RIDDLE VIEWER ─────────────────────────────────────────────────────────
+// A phone cannot read a verse and squint at a cropped photo at the same time.
+// Tapping the picture opens the whole photo plus the words, in one fixed
+// layout: the image is contained (never cropped), the text scrolls under it.
+function openRiddleView(slug) {
+  const r = HUNT_RIDDLES.find((x) => String(x.slug) === String(slug));
+  const view = document.getElementById("riddleView");
+  if (!r || !view) return;
+  const media = document.getElementById("riddleViewMedia");
+  const img = document.getElementById("riddleViewImg");
+  const empty = !r.image_url;
+  if (media) media.classList.toggle("is-empty", empty);
+  if (img) {
+    if (empty) {
+      img.removeAttribute("src");
+      img.alt = "";
+    } else {
+      img.src = r.image_url;
+      img.alt = (r.title ? r.title + " — " : "") + "riddle photo";
+    }
+  }
+  const title = document.getElementById("riddleViewTitle");
+  if (title) title.textContent = r.title || "Riddle";
+  const diff = document.getElementById("riddleViewDiff");
+  if (diff) {
+    diff.textContent = r.difficulty ? "Difficulty " + r.difficulty : "";
+    diff.style.display = r.difficulty ? "" : "none";
+  }
+  const verse = document.getElementById("riddleViewVerse");
+  if (verse) verse.textContent = String(r.verse || "").trim();
+  const unlock = document.getElementById("riddleViewUnlock");
+  if (unlock)
+    unlock.onclick = function () {
+      closeRiddleView();
+      huntStartRiddle(r.slug);
+    };
+  view.classList.add("open");
+  view.setAttribute("aria-hidden", "false");
+  document.body.classList.add("riddle-view-open");
+  const close = document.getElementById("riddleViewClose");
+  if (close && close.focus) close.focus({ preventScroll: true });
+}
+
+function closeRiddleView(evt) {
+  // A tap anywhere on the backdrop closes; a tap inside the card does not.
+  if (evt && evt.target && evt.target !== evt.currentTarget) return;
+  const view = document.getElementById("riddleView");
+  if (!view) return;
+  view.classList.remove("open");
+  view.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("riddle-view-open");
+}
+
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape") closeRiddleView();
+});
 
 // The riddle version of huntStart: same GPS rule, coordinates from the riddle.
 function huntStartRiddle(slug) {
