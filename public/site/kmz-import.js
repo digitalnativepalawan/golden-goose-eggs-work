@@ -19,6 +19,8 @@ let kmzPanelOpen = false;
 let kmzRows = [];        // parsed rows awaiting review
 let kmzBusy = false;
 let kmzMsg = '';
+// When ticked, imported rows go straight to the public map instead of drafts.
+let kmzPublishNow = false;
 
 // San Vicente bounds — same box the single-place form uses.
 const KMZ_BOUNDS = { minLat: 10.25, maxLat: 10.78, minLng: 118.95, maxLng: 119.45 };
@@ -422,7 +424,7 @@ async function adminKmzImport() {
         featured: false,
         sort_order: sortBase + i + n,
       };
-      if (supportsStatus) row.status = 'draft';
+      if (supportsStatus) row.status = kmzPublishNow ? 'published' : 'draft';
       return row;
     });
 
@@ -463,6 +465,10 @@ function adminKmzPanelHtml() {
     <button class="admin-add-btn" style="margin-bottom:0;" onclick="document.getElementById('adfKmzFile').click()">
       ${lucideSvg('upload', 14)} Choose a .kmz or .kml file
     </button>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:.8rem;cursor:pointer;">
+      <input type="checkbox" ${kmzPublishNow ? 'checked' : ''} onchange="kmzPublishNow=this.checked">
+      <span>Show them on the map straight away (skip draft)</span>
+    </label>
     <input type="file" id="adfKmzFile" accept=".kmz,.kml,application/vnd.google-earth.kmz,application/vnd.google-earth.kml+xml"
            multiple style="display:none" onchange="kmzLoadFiles(this.files)">
     ${kmzMsg ? `<div class="admin-data-note" style="margin-top:10px;">${escapeHtml(kmzMsg)}</div>` : ''}

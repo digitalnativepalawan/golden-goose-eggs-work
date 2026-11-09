@@ -877,8 +877,8 @@
       ${
         typeof window.adminKmzPanelHtml === "function"
           ? `
-      <details class="admin-section-card admin-form-section-card">
-        <summary>Import places from KMZ / KML</summary>
+      <details class="admin-section-card admin-form-section-card" ${kmzRows.length || kmzMsg ? "open" : ""}>
+        <summary>Import places from KMZ / KML${kmzRows.length ? " · " + kmzRows.length + " parsed" : ""}</summary>
         <div class="admin-section-body">${window.adminKmzPanelHtml()}</div>
       </details>`
           : ""
