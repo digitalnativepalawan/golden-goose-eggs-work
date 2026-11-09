@@ -791,6 +791,35 @@
       </div>`;
   }
 
+  // Tala is retired from the product (see the CSS switch in index.html), but its
+  // two admin screens were still sitting in the menu. They now live behind one
+  // small link, so the Backoffice reads as the five things you actually use.
+  window.adminToggleRetiredTools = function (force) {
+    var group = document.getElementById("adminNavRetired");
+    var btn = document.getElementById("adminNavToolsBtn");
+    if (!group) return;
+    var show = typeof force === "boolean" ? force : group.hidden;
+    group.hidden = !show;
+    if (btn) btn.textContent = show ? "Hide retired tools" : "Show retired tools";
+    try {
+      localStorage.setItem("sanvic_admin_tools", show ? "1" : "0");
+    } catch (_) {
+      /* private mode */
+    }
+  };
+  (function restoreRetiredTools() {
+    var run = function () {
+      try {
+        if (localStorage.getItem("sanvic_admin_tools") === "1")
+          window.adminToggleRetiredTools(true);
+      } catch (_) {
+        /* private mode */
+      }
+    };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", run);
+    else run();
+  })();
+
   window.renderAdminDest = function () {
     var body = document.getElementById("adminBody");
     if (!body) return;

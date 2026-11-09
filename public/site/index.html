@@ -704,6 +704,10 @@ svg.lucide{vertical-align:-.15em}
 .admin-close svg{width:15px;height:15px}
 
 .admin-shell{flex:1;min-height:0;display:flex;flex-direction:column}
+.admin-nav-toggle-tools{display:block;margin:14px 10px 4px;padding:6px 4px;width:calc(100% - 20px);
+  background:none;border:0;color:rgba(255,255,255,.38);font-family:var(--font-body);font-size:.7rem;
+  text-align:left;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.admin-nav-toggle-tools:hover{color:rgba(255,255,255,.7)}
 .admin-tabs{display:flex;gap:6px;padding:10px 16px;border-bottom:1px solid var(--glass-border);flex-shrink:0;overflow-x:auto;-ms-overflow-style:none;scrollbar-width:none}
 .admin-tabs::-webkit-scrollbar{display:none}
 .admin-tab{flex-shrink:0;display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:var(--radius-pill);border:1px solid var(--glass-border);background:transparent;color:var(--white-muted);font-size:.74rem;cursor:pointer;transition:all .18s}
@@ -1867,18 +1871,18 @@ svg.lucide{vertical-align:-.15em}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.5-1.5 3-3.2 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.8 0-3 .5-4.5 2-1.5-1.5-2.7-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4 3 5.5l7 7Z"/></svg><span class="admin-tab-label">Pulse posts</span>
           </button>
         </div>
-        <div class="admin-nav-group">
-          <div class="admin-nav-heading">Assistant &amp; tools</div>
+        <div class="admin-nav-group is-retired" id="adminNavRetired" hidden>
+          <div class="admin-nav-heading">Retired tools</div>
           <button type="button" class="admin-tab" data-tab="tala" id="adminTabTala" aria-label="Tala answers" onclick="switchAdminTab('tala')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg><span class="admin-tab-label">Tala answers</span>
           </button>
           <button type="button" class="admin-tab" data-tab="ai" id="adminTabTalaAi" aria-label="TALA AI settings" onclick="switchAdminTab('ai')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8Z"/><path d="M19 15v4"/><path d="M17 17h4"/></svg><span class="admin-tab-label">TALA AI</span>
           </button>
-          <a class="admin-tab" href="/admin" aria-label="Advanced data tools">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span class="admin-tab-label">Advanced data</span>
-          </a>
         </div>
+        <button type="button" class="admin-nav-toggle-tools" id="adminNavToolsBtn" onclick="adminToggleRetiredTools()">
+          Show retired tools
+        </button>
       </nav>
       <div class="admin-main">
         <div class="admin-body" id="adminBody"></div>
@@ -2389,7 +2393,7 @@ svg.lucide{vertical-align:-.15em}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-11-09-kmz-publish';
+  window.SANVIC_DEPLOY_VERSION = '2026-11-09-admin-desktop';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by the app scripts and entry-flow.js so the two
   // timers cannot drift apart. Raise it to hold the first page longer.
