@@ -59,6 +59,21 @@ function kmzChildText(node, tag) {
   return '';
 }
 
+// Cheap similarity for "same business, two exports" — word overlap, no library.
+function kmzNameSimilarity(a, b) {
+  const words = (v) =>
+    String(v || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9 ]+/g, ' ')
+      .split(/\s+/)
+      .filter((w) => w.length > 2);
+  const A = words(a);
+  const B = words(b);
+  if (!A.length || !B.length) return 0;
+  const hit = A.filter((w) => B.includes(w)).length;
+  return (2 * hit) / (A.length + B.length);
+}
+
 function kmzHaversineM(lat1, lng1, lat2, lng2) {
   const R = 6371000, rad = Math.PI / 180;
   const dLat = (lat2 - lat1) * rad, dLng = (lng2 - lng1) * rad;
@@ -133,9 +148,14 @@ function kmzParseKml(text) {
     const name = (kmzChildText(pm, 'name') || '').trim() || 'Untitled place';
     const rawDesc = kmzChildText(pm, 'description');
 
-    // Any <coordinates> works: Point, LineString, Polygon.
+    // Only Point placemarks are places. A Google Earth export carries the
+    // barangay boundary polygons and the whole road network in the same file
+    // (the San Vicente TRE export has 314 line strings against 106 real pins),
+    // and taking the first vertex of a road would invent a business on it.
+    const pointEl = pm.getElementsByTagName('Point')[0];
+    if (!pointEl) continue;
     // KML order is longitude,latitude,altitude.
-    const coordEl = pm.getElementsByTagName('coordinates')[0];
+    const coordEl = pointEl.getElementsByTagName('coordinates')[0];
     if (!coordEl || !coordEl.textContent) continue;
     const first = coordEl.textContent.trim().split(/\s+/)[0];
     const parts = first.split(',');
@@ -156,19 +176,64 @@ function kmzParseKml(text) {
   return out;
 }
 
-// Best-effort category match from the folder name, the place name,
-// then the description. Falls back to the first configured category.
+// Category match, in priority order. The old version only looked for the
+// category key or its label inside the text, so a folder named "Port_Barton_TREs"
+// matched nothing and every business landed in the first category on the list.
+// These rules read the words a Philippine establishment actually uses.
+const KMZ_CATEGORY_RULES = [
+  // Nightlife first: a "cocktail bar and restaurant" is a bar, not a canteen.
+  ['nightlife', /cocktail|night ?club|videoke|karaoke|reggae/],
+  ['stays', /accom|resort|hotel|guest ?house|\binn\b|cottage|lodge|pension|homestay|hostel|bed and breakfast|b&b|\brooms?\b|\bvilla\b|travellers? (inn|pad)|transient/],
+  ['food', /resto|restaurant|eatery|grill|bistro|cafe|coffee|carinderia|kitchen|\bmenu\b|\bbar\b|\bfood\b|snack|bakery|dining/],
+  ['waterfalls', /waterfall|\bfalls\b/],
+  ['islands', /\bisland\b/],
+  ['beaches', /\bbeach\b/],
+  ['nature', /mangrove|forest|lagoon|spring|cave|reef/],
+  ['sport', /surf|kite|paddle|dive|snorkel|freediv|\bsport\b/],
+  ['adventure', /trek|hike|tour|adventure|camping|island hopping/],
+  ['services', /spa|massage|laundry|salon|clinic|rental|travel and tours|\bshop\b|\bstore\b|money|atm|terminal|\bport\b/],
+];
+
 function kmzGuessCategory(row) {
   const keys = Object.keys(catStyle || {});
-  if (!keys.length) return 'beaches';
-  const haystack = (row.folder + ' ' + row.name + ' ' + row.description).toLowerCase();
-  for (const key of keys) {
-    if (haystack.includes(String(key).toLowerCase())) return key;
-    const label = String((catStyle[key] || {}).label || '').toLowerCase();
-    if (label && haystack.includes(label)) return key;
-    if (label && haystack.includes(label.replace(/s$/, ''))) return key;
+  if (!keys.length) return 'stays';
+  const hay = (row.folder + ' ' + row.name + ' ' + row.description).toLowerCase().replace(/[_-]+/g, ' ');
+
+  for (const [key, re] of KMZ_CATEGORY_RULES) {
+    if (keys.includes(key) && re.test(hay)) return key;
   }
-  return keys[0];
+  // Then the old behaviour: a folder or name that literally says the category.
+  for (const key of keys) {
+    if (hay.includes(String(key).toLowerCase())) return key;
+    const label = String((catStyle[key] || {}).label || '').toLowerCase();
+    if (label && hay.includes(label)) return key;
+    if (label && hay.includes(label.replace(/s$/, ''))) return key;
+  }
+  return keys.includes('stays') ? 'stays' : keys[0];
+}
+
+// ── Barangay from the folder / name / blurb ─────────────────────────────
+// A TRE export groups pins by barangay folder ("Port_Barton_TREs"), which is a
+// far better hint than "nearest place that happens to be mapped".
+const KMZ_BARANGAY_HINTS = [
+  ['Port Barton', ['port barton', 'portbarton']],
+  ['Poblacion', ['poblacion', 'pob.']],
+  ['New Agutaya', ['new agutaya', 'agutaya']],
+  ['Sto. Niño', ['sto nino', 'santo nino', 'sto. niño', 'santo niño']],
+  ['San Isidro', ['san isidro']],
+  ['Alimanguan', ['alimanguan']],
+  ['Binga', ['binga']],
+  ['Kemdeng', ['kemdeng']],
+  ['Caruray', ['caruray']],
+  ['New Canipo', ['new canipo', 'canipo']],
+];
+
+function kmzGuessBarangay(row, near) {
+  const hay = (row.folder + ' ' + row.name + ' ' + row.description).toLowerCase().replace(/[_-]+/g, ' ');
+  for (const [barangay, hints] of KMZ_BARANGAY_HINTS) {
+    if (hints.some((h) => hay.includes(h))) return barangay;
+  }
+  return near ? near.barangay || '' : '';
 }
 
 /* -------------------------------------------------------------- state --- */
@@ -228,24 +293,53 @@ function kmzFinish(collected, list) {
       (kmzHaversineM(row.lat, row.lng, Number(d.lat), Number(d.lng)) < 75)
     );
     const inArea = kmzInSanVicente(row.lat, row.lng);
+    const category = kmzGuessCategory(row);
+    const barangay = kmzGuessBarangay(row, near);
+    const label = (catStyle && catStyle[category] && catStyle[category].label) || category;
     return {
       name: row.name,
       lat: row.lat,
       lng: row.lng,
       folder: row.folder,
-      description: row.description,
-      category: kmzGuessCategory(row),
-      barangay: near ? (near.barangay || '') : '',
+      // A pin with no blurb still needs a sentence, or the card reads as a bug.
+      description: row.description || (label + (barangay ? ' in ' + barangay : '') + '.'),
+      category,
+      barangay,
       duplicateOf: near ? near.name : '',
       inArea,
       include: inArea && !near,
     };
   });
 
-  const dupes = kmzRows.filter(r => r.duplicateOf).length;
-  const outside = kmzRows.filter(r => !r.inArea).length;
-  kmzMsg = kmzRows.length + ' placemark' + (kmzRows.length === 1 ? '' : 's') + ' parsed' +
+  // Repeats inside the upload itself. Exports collect the same business twice
+  // ("Malaika Bar and Restaurant" / "Malaika Cocktail and Restaurant" a few
+  // metres apart) and the old check only compared against places already saved.
+  const kmzNameKey = (n) => String(n || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const kept = [];
+  kmzRows.forEach((r) => {
+    if (!r.include) return;
+    const twin = kept.find(
+      (k) =>
+        k.key === kmzNameKey(r.name) ||
+        (kmzHaversineM(r.lat, r.lng, k.lat, k.lng) < 40 &&
+          kmzNameSimilarity(k.name, r.name) >= 0.6),
+    );
+    if (twin) {
+      r.duplicateOf = twin.name;
+      r.dupInFile = true;
+      r.include = false;
+      return;
+    }
+    kept.push({ key: kmzNameKey(r.name), name: r.name, lat: r.lat, lng: r.lng });
+  });
+
+  const dupes = kmzRows.filter((r) => r.duplicateOf && !r.dupInFile).length;
+  const inFile = kmzRows.filter((r) => r.dupInFile).length;
+  const outside = kmzRows.filter((r) => !r.inArea).length;
+  kmzMsg =
+    kmzRows.length + ' placemark' + (kmzRows.length === 1 ? '' : 's') + ' parsed' +
     (dupes ? ' · ' + dupes + ' already on the map (unticked)' : '') +
+    (inFile ? ' · ' + inFile + ' repeated inside the file (unticked)' : '') +
     (outside ? ' · ' + outside + ' outside San Vicente (unticked)' : '');
   renderAdminDest();
 }
@@ -393,7 +487,7 @@ function adminKmzPanelHtml() {
                 <td><input type="checkbox" ${r.include ? 'checked' : ''} onchange="adminKmzToggleRow(${i})"></td>
                 <td>
                   <span title="${escapeHtml(r.description || r.folder || '')}">${escapeHtml(r.name)}</span>
-                  ${r.duplicateOf ? `<div style="opacity:.6;">already on map: ${escapeHtml(r.duplicateOf)}</div>` : ''}
+                  ${r.duplicateOf ? `<div style="opacity:.6;">${r.dupInFile ? 'repeat in file' : 'already on map'}: ${escapeHtml(r.duplicateOf)}</div>` : ''}
                   ${!r.inArea ? '<div style="opacity:.6;">outside San Vicente</div>' : ''}
                 </td>
                 <td>${r.lat.toFixed(4)}</td>
