@@ -807,6 +807,9 @@
       deadCovers: adminDeadCovers,
     });
     var incomplete = model.contentStatus(places, { deadCovers: adminDeadCovers }).needsWork;
+    var draftCount = places.filter(function (p) {
+      return model.statusOf(p.status) === "draft";
+    }).length;
     var groups = window.adminDestGroups(filtered);
     var connected = typeof destinationsSource !== "undefined" && destinationsSource === "supabase";
     var canWrite = typeof adminCanWrite !== "undefined" && adminCanWrite;
@@ -820,6 +823,11 @@
       ${!publishingReady() ? '<div class="admin-notice warning">Publish, draft and archive controls become active after the one-time destination publishing SQL migration is applied. Existing listings remain published.</div>' : ""}
       <button type="button" class="admin-add-btn" onclick="adminNewDest()">+ Add business or tourist place</button>
       ${adminPlaceFilterHtml()}
+      ${
+        draftCount && publishingReady() && connected && canWrite
+          ? `<button type="button" class="admin-mini-btn accent" style="margin:0 0 10px;" onclick="adminPublishAllDrafts()">Publish ${draftCount} draft${draftCount === 1 ? "" : "s"} to the map</button>`
+          : ""
+      }
       <div class="admin-dir-toolbar">
         <button type="button" onclick="adminSetAllCats(false)">Expand all</button>
         <button type="button" onclick="adminSetAllCats(true)">Collapse all</button>
@@ -992,6 +1000,96 @@
     }
     return true;
   }
+
+  // 106 places arrived from one KMZ import and every one of them is a draft.
+  // Publishing them one at a time (More -> Publish) is not a realistic job, and
+  // the single-place route refuses without a cover photo. This publishes every
+  // draft in one go, says how many have no photo yet, and offers one-click undo.
+  window.adminPublishAllDrafts = async function () {
+    if (!publishingReady()) {
+      showNotice(
+        "Apply the destination publishing SQL migration before changing publish states.",
+        "error",
+      );
+      return false;
+    }
+    if (!window.adminRequireWrite()) return false;
+    var drafts = allPlaces().filter(function (p) {
+      return model.statusOf(p.status) === "draft";
+    });
+    if (!drafts.length) {
+      showNotice("There are no drafts to publish.", "info");
+      return false;
+    }
+    var noPhoto = drafts.filter(function (p) {
+      var cover = String(p.image || "").trim() || (Array.isArray(p.images) && p.images[0]) || "";
+      return !cover;
+    }).length;
+    var message =
+      "Publish " +
+      drafts.length +
+      " draft" +
+      (drafts.length === 1 ? "" : "s") +
+      " to the public map?";
+    if (noPhoto) {
+      message +=
+        "\n\n" +
+        noPhoto +
+        " have no photo yet — their cards will show a colour block until you add one.";
+    }
+    message += "\n\nYou can put them all back into drafts straight afterwards if something looks wrong.";
+    if (!window.confirm(message)) return false;
+
+    var ids = drafts.map(function (p) {
+      return Number(p.id);
+    });
+    var published = 0;
+    var failure = null;
+    for (var i = 0; i < ids.length; i += 50) {
+      var slice = ids.slice(i, i + 50);
+      var result = await sb.from("destinations").update({ status: "published" }).in("id", slice);
+      if (result.error) {
+        failure = result.error;
+        break;
+      }
+      published += slice.length;
+    }
+
+    await window.loadDataFromSupabase();
+    window.renderAdminDest();
+    if (typeof rebuildMarkers === "function") rebuildMarkers();
+
+    if (failure) {
+      showNotice(
+        published + " published, then it stopped: " + failure.message,
+        published ? "warning" : "error",
+      );
+      return published > 0;
+    }
+    recordActivity("place status", published + " drafts published", null);
+    showNotice(
+      published +
+        " draft" +
+        (published === 1 ? "" : "s") +
+        " published — they are on the map now.",
+      "success",
+    );
+    showUndo("Published " + published + " draft" + (published === 1 ? "" : "s") + ".", function () {
+      return (async function () {
+        for (var j = 0; j < ids.length; j += 50) {
+          await sb
+            .from("destinations")
+            .update({ status: "draft" })
+            .in("id", ids.slice(j, j + 50));
+        }
+        await window.loadDataFromSupabase();
+        window.renderAdminDest();
+        if (typeof rebuildMarkers === "function") rebuildMarkers();
+        showNotice("All " + ids.length + " moved back to drafts.", "success");
+      })();
+    });
+    return true;
+  };
 
   window.adminSetPlaceStatus = setPlaceStatus;
   window.adminPublishDest = function (id) {
