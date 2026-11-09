@@ -11,6 +11,12 @@ Last updated: 2026-10-26
 > is now `app-backoffice.js`, with `admin-studio.js` still overriding
 > `window.openAdminPanel`. Read the body below as history, not as current
 > instruction.
+>
+> **Note, 2026-11-09.** One more correction: `vercel.json` deploys `public/site`
+> statically with no build, and the React `/admin` route described below has been
+> **deleted** along with `/api/admin`. The in-app Backoffice (logo ×3, no
+> passcode) is the only admin surface. Current facts live in
+> `docs/tech-stack-and-code-tree.md`.
 
 ## Scope of the audit
 

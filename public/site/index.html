@@ -886,10 +886,9 @@ svg.lucide{vertical-align:-.15em}
 </button>
 
 <!-- ═══ STAFF ADMIN ═══
-     The floating gear is gone: on phones it slid under the Layers/Locate
-     stack and could not be tapped at all. The Backoffice now opens by tapping
-     the SANVIC.PH logo in the header three times (see adminBrandClick).
-     Nothing else is needed here. -->
+     There is no visible admin control in the product. The Backoffice opens by
+     tapping the SANVIC.PH logo in the header three times (see adminBrandClick)
+     or by adding ?admin=1 to the URL. No PIN, no sign-in. -->
 
 <!-- ═══ MAP TOOLS: separate basemap and boundary controls ═══ -->
 <div class="map-layer-toggle" id="mapLayerToggle">
@@ -962,13 +961,6 @@ svg.lucide{vertical-align:-.15em}
   <button class="dock-item" onclick="dockNav('journey')" data-tab="journey">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/><path d="M9 19h6a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6"/></svg>
     <span>My Journey</span>
-  </button>
-  <!-- Backoffice. In the dock, not floating over the map: the old top-right gear
-       landed underneath the Layers/Locate stack on phones and could not be
-       tapped at all. Three taps on the SANVIC.PH logo still work too. -->
-  <button class="dock-item dock-admin" id="adminDockBtn" onclick="openAdminPanel()" aria-label="Open the Backoffice">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 7 19.4a1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0-1.2-2.9H1a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 2.6 7a1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 7 2.6h.1A1.7 1.7 0 0 0 8.6 1V1a2 2 0 1 1 4 0v.1A1.7 1.7 0 0 0 15 2.6a1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v.1a1.7 1.7 0 0 0 1.5 1h.2a2 2 0 1 1 0 4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg>
-    <span>Admin</span>
   </button>
 </div>
 
@@ -2314,7 +2306,7 @@ svg.lucide{vertical-align:-.15em}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-11-02-app-split-r1';
+  window.SANVIC_DEPLOY_VERSION = '2026-11-09-riddle-admin';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by the app scripts and entry-flow.js so the two
   // timers cannot drift apart. Raise it to hold the first page longer.
