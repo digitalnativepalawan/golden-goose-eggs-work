@@ -6,11 +6,11 @@
 
 **An interactive destination guide and community platform for San Vicente, Palawan.**
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vite.dev/)
+[![JavaScript](https://img.shields.io/badge/JavaScript-vanilla-F7DF1E?style=flat-square&logo=javascript&logoColor=black)](https://developer.mozilla.org/docs/Web/JavaScript)
+[![Leaflet](https://img.shields.io/badge/Leaflet-1.9-199900?style=flat-square&logo=leaflet&logoColor=white)](https://leafletjs.com/)
 [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?style=flat-square&logo=supabase&logoColor=black)](https://supabase.com/)
-[![Tailwind](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat-square&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Vercel](https://img.shields.io/badge/deploy-Vercel-static-000000?style=flat-square&logo=vercel&logoColor=white)](https://vercel.com/)
+[![No build step](https://img.shields.io/badge/build-none%20required-0d9488?style=flat-square)](docs/tech-stack-and-code-tree.md)
 
 </div>
 
@@ -43,148 +43,159 @@ booking links.
 ![Explore San Vicente](docs/images/explore-map.png)
 
 _Explore — the layered map of San Vicente with category filters, barangay
-selection and 33 mapped places._
+selection and live place markers._
 
-<details>
-<summary><strong>More screenshots</strong></summary>
+_More captures (Tribes, The Hunt, place detail, Today) belong in
+[`docs/screenshots/`](docs/screenshots/README.md). That folder currently holds
+only its own README, so the table below lists what still needs capturing rather
+than pointing at files that do not exist._
 
-|                                                |                                                  |
-| ---------------------------------------------- | ------------------------------------------------ |
-| **Tribes** — Pulse, live groups and happenings | **The Hunt** — daily hunt and nearby discoveries |
-| ![Tribes](docs/screenshots/tribes.png)         | ![The Hunt](docs/screenshots/hunt.png)           |
-| **Place detail** — media, editorial, booking   | **Today** — Tala, the San Vicente concierge      |
-| ![Place](docs/screenshots/place.png)           | ![Today](docs/screenshots/today.png)             |
-
-</details>
+| View                                           | File                          | Status  |
+| ---------------------------------------------- | ----------------------------- | ------- |
+| **Tribes** — Pulse, live groups and happenings | `docs/screenshots/tribes.png` | pending |
+| **The Hunt** — daily hunt and nearby finds     | `docs/screenshots/hunt.png`   | pending |
+| **Place detail** — media, editorial, booking   | `docs/screenshots/place.png`  | pending |
+| **Today** — Tala, the San Vicente concierge    | `docs/screenshots/today.png`  | pending |
 
 ---
 
 ## Tech Stack
 
+The shipped product is deliberately **buildless**: static HTML, CSS and JS served
+exactly as written, with Leaflet and Supabase loaded from CDNs. The React /
+TanStack app in `src/` is a development shell — `vercel.json` does not build it.
+
 ### Languages
 
-| Language             | Where it's used                                                          | Share of the codebase |
-| -------------------- | ------------------------------------------------------------------------ | --------------------- |
-| **TypeScript / TSX** | Application shell, components, hooks, Supabase integration               | 31 files              |
-| **JavaScript**       | The SANVIC client in `public/site/` - map engine, views, personalization | 16 modules            |
-| **CSS**              | Design system in `src/styles.css` and `explore-ux.css`                   | Tailwind + custom     |
-| **SQL**              | PostgreSQL schema, RLS policies, functions and seed data                 | 32 migrations         |
-| **HTML**             | `public/site/index.html` — the application document                      | 1                     |
+| Language             | Where it's used                                                      | Size                                    |
+| -------------------- | -------------------------------------------------------------------- | --------------------------------------- |
+| **JavaScript**       | `public/site/` — map, Explore, Pulse, Today, Backoffice, KMZ         | 16 files; 22,657 lines incl. HTML + CSS |
+| **HTML**             | `public/site/index.html` — every screen's markup + the design system | 1 file, 2,497 lines                     |
+| **CSS**              | inline `<style>` in `index.html`, `explore-ux.css`, `admin-ux.css`   | 2,972 lines in the two stylesheets      |
+| **TypeScript / TSX** | React dev shell, Tala server, KMZ parser                             | 31 files                                |
+| **SQL**              | schema, RLS policies, functions, seed data                           | 32 historical migrations                |
 
-### Frontend
+### Front end (the product)
 
-- **React 19** + **TypeScript** — application shell
-- **TanStack Start** + **TanStack Router** — file-based routing, SSR, build target
-- **TanStack Query** — server state
-- **Vite 8** — dev server and build pipeline
-- **Tailwind CSS 4** — design tokens and utility styling
-- **Radix UI** + **shadcn/ui** — 9 primitives kept in `src/components/ui/` (nothing outside that folder imports them today)
-- **Leaflet** — mapping engine, loaded from unpkg CDN, not from npm
-- **Lucide** — iconography
-- **@supabase/supabase-js** — loaded from unpkg CDN as a UMD bundle
+- **Vanilla JavaScript**, one shared global scope, strict load order — no
+  bundler, no framework, no TypeScript
+- **Leaflet 1.9.4** — map engine, CDN
+- **@supabase/supabase-js v2** — UMD bundle, CDN
+- **Google Fonts** — Cormorant Garamond + DM Sans
+- Hand-rolled glassmorphic design system: CSS custom properties in
+  `index.html`, with Explore and Backoffice stylesheets layered on top
 
-### Mapping & Geodata
+### Dev shell (`src/`, not deployed)
+
+- **React 19** + **TypeScript 5.8**
+- **TanStack Start 1.168** + **TanStack Router** — file-based routes, SSR
+- **TanStack Query**, **Vite 8**, **Tailwind CSS 4**
+- **Radix UI / shadcn** — 9 primitives in `src/components/ui/` (imported by
+  nothing today; kept as scaffolding)
+- **Lucide** icons in the shell; the product inlines its own Lucide SVGs
+- **Nitro** build target (Cloudflare-compatible), available but unused by
+  `vercel.json`
+
+### Mapping & geodata
 
 - **Leaflet** with **OpenStreetMap** street and dark tiles
-- **Esri** satellite imagery, **OpenTopMap** terrain
-- **Philippine Statistics Authority (PSA)** barangay boundaries, December 2023
+- **Esri** satellite imagery, **OpenTopoMap** terrain
+- **Philippine Statistics Authority** barangay boundaries, December 2023
 - **OpenStreetMap contributors** — attribution displayed in-app
 
 ### Backend
 
-- **Supabase** — managed PostgreSQL, Auth, Storage and Realtime
-- **PostgreSQL 17** with **Row Level Security** on every public table
+- **Supabase** — managed PostgreSQL 17, Auth, Storage, Realtime
+- **Row Level Security** on every public table; 31 tables queried by the client
 - **PostgREST** via `@supabase/supabase-js`
-- **Storage buckets** for destination images and video
+- **Storage buckets** — `destination-images`, `destination-videos`, `media`,
+  `traveler-experiences`, `pulse-media`
+- **Tala AI proxy** — `api/tala.js` (Vercel Function) → `server/tala.js` →
+  OpenRouter; the key lives only in `OPENROUTER_API_KEY`
 
-### Tooling
+### Tooling & deploy
 
-- **npm** / Node 24
-- **Nitro** build output (Cloudflare-compatible)
-- **ESLint** + **Prettier**
-- **node --test** for the 9 files in `tests/` (no framework, no Vitest)
+- **npm**, Node 20+ (verified on 22.22.3)
+- **ESLint 9** + **Prettier 3**
+- **`node --test`** — 10 test files, 72 assertions, no framework
+- **Vercel** — static `public/site` + one function; no framework, no build step
 
 ---
 
 ## Code Tree
 
 ```
-golden-goose-eggs/
-├── public/
-│   └── site/                        # The SANVIC client
-│       ├── index.html               # Application document (all views)
-│       ├── app-core.js              # Data, samples policy, live-data state
-│       ├── app-map-explore-today.js # Identity, taxonomy/icons, map, Today, Explore
-│       ├── app-pulse.js             # Pulse: feed, tribes, events, Lounge
-│       ├── app-weather.js           # Hero weather widget, then boot on load
-│       ├── app-backoffice.js        # The in-app Backoffice panel
-│       ├── app-place-details.js     # Place sheet: gallery, video, tips, contacts
-│       ├── app-pulse-admin-my-sanvic-hunt.js # Moderation, My Sanvic, the Hunt
-│       ├── entry-flow.js            # Onboarding and entry flow
-│       ├── explore-model.js         # Explore state model
-│       ├── explore-ux.css           # Explore-specific styling
-│       ├── personalize.js           # Localisation and preferences
-│       ├── pulse-demo-content.js    # Tribes / Pulse content
-│       ├── admin-model.js           # Backoffice rules
-│       ├── admin-studio.js          # Backoffice UI (Studio)
-│       ├── admin-ux.css             # Backoffice layout
-│       ├── kmz-import.js            # KMZ upload and preview
-│       ├── barangays.geojson.js     # PSA barangay geometry
-│       ├── supabase-config.js       # Public Supabase connection
-│       └── assets/                  # Photography, logos, Pulse imagery
+golden-goose-eggs-work/
+├── public/site/                     # THE PRODUCT — static, 22,657 lines, no build
+│   ├── index.html      2,497 ln     # every screen's markup + the design system CSS
+│   ├── app-core.js       252 ln     # data, samples policy, live-data state
+│   ├── app-map-explore-today.js 2,943 ln  # identity, taxonomy + icons, map, Today, Explore
+│   ├── app-pulse.js    2,644 ln     # Pulse: feed, tribes, events, Lounge
+│   ├── app-weather.js  1,374 ln     # hero weather widget, then boot on `load`
+│   ├── app-backoffice.js 1,413 ln   # the in-app Backoffice panel
+│   ├── app-place-details.js 2,595 ln # place sheet: gallery, video, tips, contacts
+│   ├── app-pulse-admin-my-sanvic-hunt.js 1,390 ln # moderation, My Sanvic, the Hunt
+│   ├── admin-studio.js 2,979 ln     # Backoffice UI (overrides openAdminPanel)
+│   ├── admin-model.js    447 ln     # Backoffice rules (pure, unit-tested)
+│   ├── explore-model.js  258 ln     # Explore filtering/sorting (pure, unit-tested)
+│   ├── kmz-import.js     426 ln     # KMZ/KML upload + preview
+│   ├── entry-flow.js     235 ln     # first-visit questions — currently OFF
+│   ├── personalize.js    129 ln     # locale, units, preferences
+│   ├── pulse-demo-content.js 73 ln  # Pulse seed content
+│   ├── supabase-config.js 26 ln     # `sb` client + loads three experience modules
+│   ├── barangays.geojson.js         # PSA barangay geometry (32 KB)
+│   ├── explore-ux.css  1,146 ln     # Explore sheet + map controls
+│   ├── admin-ux.css    1,826 ln     # Backoffice layout
+│   └── assets/                      # logo, 4 hero photos, 6 Pulse photos
 │
-├── src/                             # Application shell
+├── src/                             # React shell — dev only under vercel.json
 │   ├── routes/
-│   │   ├── __root.tsx               # Document shell, SEO, error boundary
-│   │   ├── index.tsx                # Entry → mounts the SANVIC client
-│   │   └── api/
-│   │       └── tala-chat.ts         # Tala concierge endpoint
+│   │   ├── __root.tsx               # document shell, SEO, error boundary
+│   │   ├── index.tsx                # / → /site/index.html?v=…
+│   │   ├── admin.tsx                # passcode table / media / KMZ browser
+│   │   ├── api/admin.ts             # service-role endpoint behind the PIN
+│   │   └── api/tala-chat.ts         # Tala endpoint for `npm run dev`
 │   ├── components/
-│   │   ├── admin/kmz-panel.tsx      # KMZ import review UI
-│   │   └── ui/                      # 9 Radix / shadcn primitives (unimported, kept as scaffolding)
-│   ├── integrations/
-│   │   └── supabase/
-│   │       ├── client.ts            # Browser client
-│   │       ├── client.server.ts     # Server client
-│   │       ├── auth-middleware.ts   # Session middleware
-│   │       ├── auth-attacher.ts     # Auth context attachment
-│   │       └── types.ts             # Generated database types
-│   ├── hooks/
-│   │   └── use-mobile.tsx
-│   ├── lib/
-│   │   ├── buildVersion.ts          # Deploy cache-busting stamp
-│   │   ├── error-capture.ts
-│   │   ├── error-page.ts
-│   │   └── utils.ts
-│   ├── styles.css                   # Design system
-│   ├── server.ts                    # SSR entry
-│   └── router.tsx
+│   │   ├── admin/kmz-panel.tsx      # KMZ review UI
+│   │   └── ui/                      # 9 Radix / shadcn primitives (unimported)
+│   ├── integrations/supabase/       # browser + server clients, auth, types.ts
+│   ├── hooks/use-mobile.tsx
+│   ├── lib/                         # admin-helpers, kmz-parser, buildVersion, errors
+│   ├── router.tsx · start.ts · server.ts · styles.css · routeTree.gen.ts
+│   └── (31 .ts/.tsx files)
+│
+├── server/tala.js           352 ln  # OpenRouter proxy: prompt, knowledge, rate limit
+├── api/tala.js               18 ln  # Vercel Function served at /api/tala-chat
 │
 ├── supabase/
-│   ├── migrations/                  # 32 historical SQL migrations
+│   ├── migrations/                  # 32 files — historical, not replayable
+│   ├── scripts/                     # health check, make_admin, 2 verifications
 │   ├── config.toml
 │   └── seed_images.sql
 │
-├── tests/                           # 9 files, run with node --test
-│   ├── admin-model.test.cjs
-│   ├── admin-ui.test.cjs
-│   ├── content-policy.test.cjs
-│   ├── dom-contract.test.cjs
-│   ├── explore-model.test.cjs
-│   ├── feed.test.cjs
-│   ├── kmz-import.test.mjs
-│   ├── map-tools.test.cjs
-│   └── tala-server.test.mjs
+├── tests/                           # 10 test files + support/client.cjs
+│   ├── admin-model · admin-ui · content-policy · dom-contract
+│   ├── explore-model · explore-search · feed · map-tools
+│   ├── kmz-import.test.mjs · tala-server.test.mjs
+│   └── support/client.cjs           # rebuilds the client from the loader lists
 │
 ├── docs/
-│   ├── tech-stack-and-code-tree.md
-│   ├── admin-backoffice-audit.md
-│   └── explore-ux-v2-review.md
+│   ├── tech-stack-and-code-tree.md  # stack, boot order, flow, current state
+│   ├── admin-backoffice-audit.md    # October audit (historical)
+│   ├── explore-ux-v2-review.md      # Explore v2 review (historical)
+│   ├── images/explore-map.png
+│   └── screenshots/                 # README captures, see its README
 │
-├── .env.example                     # Public Supabase config (safe to commit)
-├── AGENTS.md                        # Working notes for this codebase
-└── package.json
+├── vercel.json                      # static public/site + /api rewrite + cache
+├── vite.config.ts                   # React shell only
+├── package.json · tsconfig.json · eslint.config.js · .prettierrc
+├── .env.example                     # public Supabase values only
+├── components.json                  # shadcn config
+└── README.md · AGENTS.md · HANDOFF.md · THIRD-PARTY-NOTICES.md
 ```
+
+Full detail — boot order, data flow, and the current-state notes — is in
+[`docs/tech-stack-and-code-tree.md`](docs/tech-stack-and-code-tree.md).
 
 ---
 
@@ -192,38 +203,51 @@ golden-goose-eggs/
 
 ### Prerequisites
 
-- Node.js 20 or newer (developed on 24)
-- A Supabase project
+- Node.js 20 or newer (verified on 22.22.3)
+- A Supabase project — `.env.example` already points at the live one
 
 ### Setup
 
 ```bash
 git clone https://github.com/digitalnativepalawan/golden-goose-eggs-work.git
 cd golden-goose-eggs-work
-npm install
+npm ci
 cp .env.example .env
 npm run dev
 ```
 
-The dev server prints its local URL. The React shell mounts the SANVIC client
-from `public/site/`.
+The dev server prints its URL (Vite picks **8080**, or the next free port). `/`
+renders the React shell, which redirects into `public/site/index.html`; the
+static client can also be opened directly at `/site/index.html`.
+
+`.env` is only needed for the React shell, the passcode `/admin` tooling and the
+Tala proxy. The product itself carries its public Supabase URL and publishable
+key in `public/site/supabase-config.js`, so a static deploy needs no environment
+variables.
 
 ### Scripts
 
-| Command           | Purpose                      |
-| ----------------- | ---------------------------- |
-| `npm run dev`     | Development server           |
-| `npm run build`   | Production build             |
-| `npm run preview` | Preview the production build |
-| `npm run lint`    | ESLint                       |
-| `npm run format`  | Prettier                     |
+| Command           | Purpose                                       |
+| ----------------- | --------------------------------------------- |
+| `npm run dev`     | Vite dev server (React shell + static client) |
+| `npm run build`   | Nitro production build → `.output/`           |
+| `npm run preview` | Preview that build                            |
+| `npm test`        | `node --test tests/*.test.*`                  |
+| `npm run lint`    | ESLint                                        |
+| `npm run format`  | Prettier                                      |
 
 ### Configuration
 
-Configuration lives in `.env`, which is git-ignored. `.env.example` is committed
-and contains only public values — project ID, URL and publishable key. These are
-embedded in the client bundle by design and are safe to publish; all access is
-governed by Row Level Security policies in the database.
+Two layers:
+
+- **Product** — `public/site/supabase-config.js` holds the project URL and the
+  publishable key. Both are public by design; every table is governed by Row
+  Level Security.
+- **Shell & server** — `.env` (git-ignored, copied from `.env.example`) feeds the
+  React shell and the Tala function: `SUPABASE_*`, `VITE_SUPABASE_*`,
+  optional `ADMIN_PIN` / `ADMIN_SESSION_SECRET` / `SUPABASE_SERVICE_ROLE_KEY`
+  for `/admin`, and `OPENROUTER_API_KEY` for live AI. Secrets stay server-side
+  and are never given a `VITE_` prefix.
 
 > **Never commit a secret key or the database password.**
 
@@ -238,9 +262,10 @@ governed by Row Level Security policies in the database.
 - **87 Row Level Security policies** in `supabase/migrations/`; RLS enabled on 18 tables
 - **11 functions** for roles, moderation, tribe guards and travel profiles
 
-Counted from the files on disk on 2026-11-01 (branch `cleanup/verdict`):
-32 migration files, 22 `CREATE TABLE`, 87 `CREATE POLICY`. Tables that predate the
-migration history are not in those counts but are queried by the client.
+Counted from the files on disk on 2026-11-09: 32 migration files,
+22 `CREATE TABLE`, 87 `CREATE POLICY`, 18 `ENABLE ROW LEVEL SECURITY`.
+Tables that predate the migration history are not in those counts but are
+queried by the client.
 
 ### Working with the database
 
@@ -250,16 +275,24 @@ Applying the migration files to a fresh project is not supported.
 
 ### Backoffice
 
-The task-oriented **SANVIC Studio** opens from the site's Staff admin control,
-or directly at `/site/index.html?admin=1`. It uses Supabase Auth and RLS for
-places, map pins, photos, categories and the existing content editors. The
-separate `/admin` route remains available for raw table/media tooling.
+The task-oriented **SANVIC Studio** opens from the **Admin** button in the dock,
+by tapping the SANVIC.PH logo three times, or directly at
+`/site/index.html?admin=1`. There is **no login and no PIN** for content edits:
+it writes with the publishable key, and RLS plus
+`supabase/migrations/20261101090000_open_backoffice_writes.sql` permit that.
+Photo **uploads** are the exception — they require a signed-in Supabase Auth
+session.
+
+The separate React `/admin` route (passcode, service-role `/api/admin`) is a raw
+table/media/KMZ browser for development. Under the current `vercel.json` it is
+not part of the production deploy.
 
 Before using Draft, Published and Archived states, apply
 `supabase/migrations/20261026120000_destination_publishing.sql` in the Supabase
 SQL Editor and verify it with
 `supabase/scripts/03_verify_admin_publishing.sql`. See
-`docs/admin-backoffice-audit.md` for the full audit and workflow notes.
+`docs/admin-backoffice-audit.md` for the historical audit and
+`docs/tech-stack-and-code-tree.md` for the current map of the code.
 
 ---
 
@@ -277,13 +310,28 @@ Working toward a public launch.
 **In progress**
 
 - Interface and content work
-- Permanent hosting (currently a temporary tunnel for review)
+- First-visit onboarding is built but switched off (`ENTRY_QUESTIONS_ON`
+  in `public/site/entry-flow.js`) — turn it on before launch
+
+**Hosting**
+
+- **Vercel**, static: `vercel.json` serves `public/site/` verbatim and runs one
+  function at `api/tala.js`. There is no build step and no tunnel in the
+  deployment path. The React shell in `src/` runs locally only.
+
+**Verified 2026-11-09**
+
+- `npm ci`, `npm run lint` (0 errors, 2 warnings), `npx tsc --noEmit`,
+  `npm test` (72 assertions: 68 pass, 4 skipped) and `npm run build` all pass
 
 **Known gaps**
 
 - Some destination images and videos still need re-uploading to Storage — a
   database dump restores the rows that reference media, never the media itself
+- Photo uploads in the Backoffice need an authenticated admin account; content
+  edits do not
 - Auth provider configuration (magic link, Google) and redirect URLs are pending
+- Screenshots for Tribes, The Hunt, Place detail and Today still need capturing
 
 ---
 
@@ -366,5 +414,6 @@ potential to reach far beyond it.
 
 Proprietary — © Palawan Collective. All rights reserved.
 
-Photography and imagery are licensed separately; credits are recorded in
-`public/photo-credits.json`.
+Photography and imagery are licensed separately; per-image credits are stored
+on the content rows (`destinations.image_credit`, plus the tribe and event credit
+columns) and are editable in the Backoffice.
