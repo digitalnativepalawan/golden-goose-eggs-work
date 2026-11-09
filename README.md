@@ -273,12 +273,15 @@ Applying the migration files to a fresh project is not supported.
 The task-oriented **SANVIC Studio** opens by tapping the SANVIC.PH logo in the
 header three times, or directly at `/site/index.html?admin=1`. There is no Admin
 button in the dock — staff access is deliberately unlabelled. The **Hunt** tab
-edits the riddles (verse, answer coordinates, hint, photo, show/hide). There is **no login and no PIN** for content edits:
+edits the riddles (verse, answer coordinates, hint, photo, show/hide); on the
+site the riddle photo is shown whole and tapping it opens the full picture with
+the verse. There is **no login and no PIN** for content edits:
 it writes with the publishable key, and RLS plus
 `supabase/migrations/20261101090000_open_backoffice_writes.sql` permit that.
 Photo uploads need no sign-in either: the media gallery posts to the
 `destination-images` bucket with the publishable key, which
-`20261101090000_open_backoffice_writes.sql` opened.
+`20261101090000_open_backoffice_writes.sql` opened. Photos straight from a phone
+work too — HEIC/HEIF is converted to JPEG in the browser before upload.
 
 The old passcode `/admin` page (React route plus service-role `/api/admin`) was
 removed on 2026-11-09. It was a second, redundant admin surface; the in-app
