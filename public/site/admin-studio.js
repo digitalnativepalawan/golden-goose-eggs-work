@@ -2489,10 +2489,16 @@
 
   async function studioStoreImageFile(file, onProgress) {
     if (!file) throw new Error("No image was selected.");
+    // There is no sign-in on this site. Storage was opened to the publishable
+    // key by 20261101090000_open_backoffice_writes.sql, so photos upload with
+    // that key and the request carries a session token only if one happens to
+    // exist. This used to throw "Sign in with an admin account" and made every
+    // photo picker in the Backoffice fail.
     var sessionResult = await sb.auth.getSession();
     var session = sessionResult && sessionResult.data && sessionResult.data.session;
-    if (!session || !session.access_token)
-      throw new Error("Sign in with an admin account before uploading photos.");
+    var apiKey =
+      typeof SUPABASE_ANON_KEY !== "undefined" ? SUPABASE_ANON_KEY : (sb && sb.supabaseKey) || "";
+    if (!apiKey) throw new Error("Supabase Storage is not configured.");
     var ext =
       ((file.name || "").split(".").pop() || "jpg")
         .toLowerCase()
@@ -2508,13 +2514,12 @@
       baseUrl.replace(/\/+$/, "") +
       "/storage/v1/object/destination-images/" +
       encodeURIComponent(path);
-    var apiKey =
-      typeof SUPABASE_ANON_KEY !== "undefined" ? SUPABASE_ANON_KEY : (sb && sb.supabaseKey) || "";
     return new Promise(function (resolve, reject) {
       var xhr = new XMLHttpRequest();
       xhr.open("POST", uploadUrl, true);
       xhr.setRequestHeader("apikey", apiKey);
-      xhr.setRequestHeader("Authorization", "Bearer " + session.access_token);
+      if (session && session.access_token)
+        xhr.setRequestHeader("Authorization", "Bearer " + session.access_token);
       xhr.setRequestHeader("x-upsert", "false");
       xhr.setRequestHeader("cache-control", "3600");
       xhr.setRequestHeader("Content-Type", file.type || "image/jpeg");

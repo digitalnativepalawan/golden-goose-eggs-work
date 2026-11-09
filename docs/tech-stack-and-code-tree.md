@@ -64,9 +64,12 @@ does today.
    taps on the SANVIC.PH logo in the header, or via `?admin=1`. Writes with the
    public publishable key, permitted by
    `supabase/migrations/20261101090000_open_backoffice_writes.sql`. Photo
-   **upload** is the exception: `studioStoreImageFile()` requires a signed-in
-   Supabase Auth session (`sb.auth.getSession()`), because Storage policies were
-   not opened to `anon`.
+   Photo uploads use the publishable key too. The shared gallery
+   (`mediaGalleryHtml` → `studioStoreImageFile`) posts to the
+   `destination-images` bucket, which
+   `20261101090000_open_backoffice_writes.sql` opened to `anon`; a session token
+   is sent only when one happens to exist. Before 2026-11-09 this path threw
+   "Sign in with an admin account" and every photo picker silently failed.
 2. **The old `/admin` React page is gone.** Removed 2026-11-09 together with
    `src/routes/api/admin.ts`, `src/lib/admin-helpers.ts`,
    `src/components/admin/kmz-panel.tsx` and the service-role client it used. It
@@ -260,19 +263,19 @@ Clearing browser data resets that person. There is nothing to recover, by design
 
 ## 5. Map of features to code
 
-| Feature                         | Markup                 | Logic                                                                                      |
-| ------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------ |
-| Map, pins, layers, zoom         | `#map` in `index.html` | `app-map-explore-today.js`, `mountMap`, `renderPins`, single-active-layer system           |
-| Place detail sheet              | `.dest-sheet`          | `app-place-details.js`, `openDestSheet`                                                    |
-| Explore list + filters          | `#exploreSheet`        | `explore-model.js` (pure) + `app-map-explore-today.js`                                     |
-| Today                           | `#todayScroll`         | `app-map-explore-today.js`, `openTodaySheet`, `refreshTodayPicks`                          |
-| Tribes / Events / Lounge / Feed | `#pulsePane`           | `app-pulse.js` (feed, tribes, events, Lounge)                                              |
-| The Hunt (riddles)              | Hunt pane              | `app-pulse-admin-my-sanvic-hunt.js`, `hunt_riddles`, 200 m GPS unlock                      |
-| My Journey                      | Journey pane           | `app-pulse-admin-my-sanvic-hunt.js` (My Sanvic panel)                                      |
-| Search                          | `#searchInput`         | `app-map-explore-today.js`                                                                 |
-| Tala (assistant)                | Tala sheet             | `app-map-explore-today.js` (keyword replies) + `/api/tala-chat` (AI, optional)             |
-| Backoffice                      | `#adminPanelOverlay`   | `admin-studio.js` + `app-backoffice.js` + `app-pulse-admin-my-sanvic-hunt.js` (moderation) |
-| Entry questions                 | `#sanvicEntry`         | `entry-flow.js` — **off while building**                                                   |
+| Feature                         | Markup                 | Logic                                                                                                                                                                  |
+| ------------------------------- | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Map, pins, layers, zoom         | `#map` in `index.html` | `app-map-explore-today.js`, `mountMap`, `renderPins`, single-active-layer system                                                                                       |
+| Place detail sheet              | `.dest-sheet`          | `app-place-details.js`, `openDestSheet`                                                                                                                                |
+| Explore list + filters          | `#exploreSheet`        | `explore-model.js` (pure) + `app-map-explore-today.js`                                                                                                                 |
+| Today                           | `#todayScroll`         | `app-map-explore-today.js`, `openTodaySheet`, `refreshTodayPicks`                                                                                                      |
+| Tribes / Events / Lounge / Feed | `#pulsePane`           | `app-pulse.js` (feed, tribes, events, Lounge)                                                                                                                          |
+| The Hunt (riddles)              | Hunt pane              | `app-pulse-admin-my-sanvic-hunt.js` renders, `hunt_riddles`, 200 m GPS unlock; edited in Backoffice → The Hunt → Riddles (`adminEditRiddle` in `app-place-details.js`) |
+| My Journey                      | Journey pane           | `app-pulse-admin-my-sanvic-hunt.js` (My Sanvic panel)                                                                                                                  |
+| Search                          | `#searchInput`         | `app-map-explore-today.js`                                                                                                                                             |
+| Tala (assistant)                | Tala sheet             | `app-map-explore-today.js` (keyword replies) + `/api/tala-chat` (AI, optional)                                                                                         |
+| Backoffice                      | `#adminPanelOverlay`   | `admin-studio.js` + `app-backoffice.js` + `app-pulse-admin-my-sanvic-hunt.js` (moderation)                                                                             |
+| Entry questions                 | `#sanvicEntry`         | `entry-flow.js` — **off while building**                                                                                                                               |
 
 `admin-studio.js` defines `window.openAdminPanel`, which **overrides** the
 function of the same name in `app-backoffice.js`. When changing how admin opens,

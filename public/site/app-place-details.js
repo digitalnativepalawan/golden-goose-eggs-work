@@ -2051,16 +2051,21 @@ async function renderAdminHunt() {
   body.innerHTML = '<div class="admin-empty">Loading…</div>';
   let rewards = [];
   let settings = {};
+  let riddles = [];
   try {
-    const [rewardsRes, settingsRes] = await Promise.all([
+    const [rewardsRes, settingsRes, riddlesRes] = await Promise.all([
       sb.from("hunt_rewards").select("*").order("sort_order"),
       sb.from("hunt_settings").select("*"),
+      sb.from("hunt_riddles").select("*").order("sort_order"),
     ]);
     if (rewardsRes.error) throw rewardsRes.error;
     rewards = rewardsRes.data || [];
     (settingsRes.data || []).forEach((r) => {
       settings[r.key] = r.value;
     });
+    // Riddles are optional here: if the table is missing, the rest of the tab
+    // still works.
+    if (!riddlesRes.error) riddles = riddlesRes.data || [];
   } catch (e) {
     body.innerHTML = `<div class="admin-empty">Load failed: ${escapeHtml(e.message)}</div>`;
     return;
@@ -2098,6 +2103,42 @@ async function renderAdminHunt() {
           <div class="admin-row-actions">
             <button class="admin-mini-btn" onclick="adminEditReward('${r.id}')">Edit</button>
             <button class="admin-mini-btn danger" onclick="adminDeleteReward('${r.id}')">Delete</button>
+          </div>
+        </div>
+      </div>`;
+    });
+  }
+  // ── Riddles ──────────────────────────────────────────────────────────────
+  // Each riddle owns its verse, its answer coordinate and one photo.
+  html += `
+    <div class="admin-section-toggle" style="margin-top:20px;">
+      <span>${lucideSvg("image", 13)} Riddles</span>
+      <span class="admin-section-count">${riddles.length}</span>
+    </div>
+    <div class="admin-field" style="font-size:.72rem;color:var(--white-dim);margin:6px 0 10px;">
+      The Hunt's riddles. The first photo on a riddle is the one shown on its card; with no photo the card shows a placeholder.
+    </div>
+    <button class="admin-add-btn" onclick="adminEditRiddle('new')">+ Add riddle</button>`;
+  if (!riddles.length) {
+    html += '<div class="admin-empty">No riddles yet. Add the first one above.</div>';
+  } else {
+    riddles.forEach((r) => {
+      const img = r.image_url || "";
+      html += `
+      <div class="admin-list-item">
+        <div class="admin-list-item-head">
+          ${
+            img
+              ? `<img src="${escT(img)}" alt="" style="width:54px;height:54px;border-radius:9px;object-fit:cover;margin-right:10px;flex-shrink:0;" onerror="this.style.display='none'">`
+              : ""
+          }
+          <div style="flex:1;min-width:0;">
+            <strong>${escapeHtml(r.title || "Untitled riddle")}</strong><br>
+            <span style="color:var(--white-dim);font-size:.7rem;">${r.active === false ? "Hidden · " : ""}${escapeHtml(r.difficulty || "no difficulty")} · ${img ? "has photo" : "no photo yet"}</span>
+          </div>
+          <div class="admin-row-actions">
+            <button class="admin-mini-btn" onclick="adminEditRiddle('${r.id}')">Edit</button>
+            <button class="admin-mini-btn danger" onclick="adminDeleteRiddle('${r.id}')">Delete</button>
           </div>
         </div>
       </div>`;
@@ -2206,6 +2247,129 @@ async function adminDeleteReward(id) {
   if (!confirm("Delete this reward?")) return;
   try {
     await sb.from("hunt_rewards").delete().eq("id", id);
+    renderAdminHunt();
+  } catch (e) {
+    alert("Delete failed: " + e.message);
+  }
+}
+
+// ── RIDDLE EDITOR ────────────────────────────────────────────────────────
+// hunt_riddles was read by the Hunt but never editable anywhere, so a photo
+// could only be added by writing to the database by hand. This is the missing
+// screen: verse, answer coordinate, hint, one photo, on/off.
+function adminSlug(text) {
+  return String(text || "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+async function adminEditRiddle(id) {
+  const body = document.getElementById("adminBody");
+  const isNew = id === "new";
+  let r = {
+    title: "",
+    verse: "",
+    hint: "",
+    difficulty: "",
+    lat: "",
+    lng: "",
+    image_url: "",
+    active: true,
+    sort_order: 0,
+  };
+  if (!isNew) {
+    const { data, error } = await sb.from("hunt_riddles").select("*").eq("id", id).single();
+    if (error || !data) {
+      alert("Could not load that riddle: " + (error ? error.message : "not found"));
+      return;
+    }
+    r = data;
+  }
+  __mediaGallery = r.image_url ? [r.image_url] : [];
+  body.innerHTML = `
+    <div class="admin-edit-box">
+      <div class="admin-field"><label>Title</label><input id="ahrdTitle" value="${escapeHtml(r.title || "")}" placeholder="The Wild Way Back"></div>
+      <div class="admin-field"><label>Verse — the riddle itself</label><textarea id="ahrdVerse" rows="7" placeholder="Not far from Poblacion's busy heart…">${escapeHtml(r.verse || "")}</textarea></div>
+      <div class="admin-grid-2">
+        <div class="admin-field"><label>Difficulty</label><input id="ahrdDiff" value="${escapeHtml(r.difficulty || "")}" placeholder="Easy / Medium / Hard"></div>
+        <div class="admin-field"><label>Sort order</label><input type="number" id="ahrdSort" value="${Number(r.sort_order) || 0}"></div>
+      </div>
+      <div class="admin-grid-2">
+        <div class="admin-field"><label>Latitude — where the answer is</label><input id="ahrdLat" type="number" step="any" value="${r.lat != null ? r.lat : ""}" placeholder="10.5286"></div>
+        <div class="admin-field"><label>Longitude — where the answer is</label><input id="ahrdLng" type="number" step="any" value="${r.lng != null ? r.lng : ""}" placeholder="119.2364"></div>
+      </div>
+      <div class="admin-field"><label>Hint (optional)</label><input id="ahrdHint" value="${escapeHtml(r.hint || "")}"></div>
+      <label class="admin-toggle-row" for="ahrdActive"><span>Show this riddle in The Hunt</span><input type="checkbox" id="ahrdActive"${r.active === false ? "" : " checked"}></label>
+      <div style="margin-top:12px;">${mediaGalleryHtml("ahrd", "riddle")}</div>
+      <div class="admin-field" style="font-size:.72rem;color:var(--white-dim);">The first photo is the one used on the riddle card. One is enough; extra photos are ignored.</div>
+      <div class="admin-edit-actions">
+        <button class="admin-save-btn" onclick="adminSaveRiddle('${isNew ? "" : id}')">${isNew ? "Create riddle" : "Save riddle"}</button>
+        <button class="admin-cancel-btn" onclick="renderAdminHunt()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+async function adminSaveRiddle(id) {
+  if (!adminRequireWrite()) return;
+  const isNew = id === "new";
+  const title = document.getElementById("ahrdTitle").value.trim();
+  const verse = document.getElementById("ahrdVerse").value.trim();
+  const lat = parseFloat(document.getElementById("ahrdLat").value);
+  const lng = parseFloat(document.getElementById("ahrdLng").value);
+  if (!title) return alert("Give the riddle a title.");
+  if (!verse) return alert("The riddle needs its verse.");
+  if (!isFinite(lat) || !isFinite(lng))
+    return alert("Add the latitude and longitude of the answer.");
+  const payload = {
+    title,
+    verse,
+    lat,
+    lng,
+    difficulty: document.getElementById("ahrdDiff").value.trim() || null,
+    hint: document.getElementById("ahrdHint").value.trim() || null,
+    image_url: (__mediaGallery && __mediaGallery[0]) || null,
+    active: document.getElementById("ahrdActive").checked,
+    sort_order: parseInt(document.getElementById("ahrdSort").value, 10) || 0,
+  };
+  try {
+    if (isNew) {
+      // The slug keys saved progress on a device, so it must be unique and then
+      // never change.
+      payload.slug = (adminSlug(title) || "riddle") + "-" + Date.now().toString(36).slice(-5);
+      const { error } = await sb.from("hunt_riddles").insert(payload);
+      if (error) throw error;
+    } else {
+      const { error } = await sb.from("hunt_riddles").update(payload).eq("id", id);
+      if (error) throw error;
+    }
+    adminRefreshHuntRiddles();
+    renderAdminHunt();
+  } catch (err) {
+    alert("Save failed: " + err.message);
+  }
+}
+
+// Drop the cached copy so The Hunt reads the riddles again the next time it opens.
+function adminRefreshHuntRiddles() {
+  try {
+    huntRiddlesLoaded = false;
+    HUNT_RIDDLES = [];
+    if (typeof renderHunt === "function") renderHunt();
+  } catch (_) {
+    /* The Hunt is not on screen */
+  }
+}
+
+async function adminDeleteRiddle(id) {
+  if (!adminRequireWrite()) return;
+  if (!confirm("Delete this riddle? Visitors lose any progress on it.")) return;
+  try {
+    const { error } = await sb.from("hunt_riddles").delete().eq("id", id);
+    if (error) throw error;
+    adminRefreshHuntRiddles();
     renderAdminHunt();
   } catch (e) {
     alert("Delete failed: " + e.message);

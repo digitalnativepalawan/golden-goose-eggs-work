@@ -67,8 +67,9 @@ passcode page any more.
   database dump restores the rows that reference them, never the files.
 - ⬜ **Screenshots** — `docs/screenshots/` only has its README; the four views
   listed there still need capturing.
-- ⬜ **Auth providers** (magic link, Google) and redirect URLs are not configured.
-  Only needed if photo uploads should work outside a manually signed-in session.
+- ⬜ **Auth providers** (magic link, Google) are not configured. Nothing in the
+  product needs them: content edits and photo uploads both work with the
+  publishable key.
 - ⬜ **Site-wide theming** — palette and font controls. Per-place marker colours
   already exist (`destinations.color`); global theming does not.
 - ⬜ Optional tidy-up: `@hookform/resolvers`, `date-fns` and `zod` are unimported
