@@ -248,5 +248,19 @@ let heroTitle = DEFAULT_HERO_TITLE;
 let heroSubtitle = DEFAULT_HERO_SUBTITLE;
 let splashSubtext = DEFAULT_SPLASH_SUBTEXT;
 let splashFooter = DEFAULT_SPLASH_FOOTER;
+// Off by default: the Explore search box and the barangay / Near me row stay out
+// of the way. Backoffice -> Site -> "Explore search + barangay row" turns them on
+// for everyone without touching any markup.
+var exploreFiltersVisible = false;
 let dataReady = false;
+function applyExploreFiltersVisibility() {
+  const sheet = document.getElementById("exploreSheet");
+  if (!sheet) return;
+  sheet.classList.toggle("es-no-filters", !exploreFiltersVisible);
+  try {
+    if (typeof syncExploreFiltersHeight === "function") syncExploreFiltersHeight();
+  } catch (e) {
+    /* the Explore sheet may not be measured yet; it re-measures on open */
+  }
+}
 let destinationsSource = "loading";

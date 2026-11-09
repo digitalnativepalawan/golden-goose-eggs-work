@@ -384,7 +384,13 @@ async function loadDataFromSupabase() {
         sb
           .from("site_settings")
           .select("*")
-          .in("key", ["hero_title", "hero_subtitle", "splash_subtext", "splash_footer"]),
+          .in("key", [
+            "hero_title",
+            "hero_subtitle",
+            "splash_subtext",
+            "splash_footer",
+            "explore_filters",
+          ]),
         sb.from("destination_categories").select("*").order("sort_order", { ascending: true }),
         sb.from("nearby_places").select("*").order("sort_order", { ascending: true }),
         sb.from("tala_settings").select("key,value").in("key", ["ai_enabled", "ai_model"]),
@@ -442,6 +448,11 @@ async function loadDataFromSupabase() {
       splashSubRow && splashSubRow.value != null ? splashSubRow.value : DEFAULT_SPLASH_SUBTEXT;
     splashFooter =
       splashFootRow && splashFootRow.value != null ? splashFootRow.value : DEFAULT_SPLASH_FOOTER;
+    // Optional Explore search + barangay row: only shown when the Backoffice
+    // switch is on. Anything else (missing row, old data) keeps it hidden.
+    const filtersRow = siteRows.find((r) => r.key === "explore_filters");
+    exploreFiltersVisible = !!(filtersRow && String(filtersRow.value).toLowerCase() === "true");
+    applyExploreFiltersVisibility();
 
     // Load Today content from DB. An answered query wins, including "no rows":
     // a card with nothing in it is better than a packaged status report about
