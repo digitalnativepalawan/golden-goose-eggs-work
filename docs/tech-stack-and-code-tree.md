@@ -59,8 +59,8 @@ does today.
 ### Two admin surfaces — know the difference
 
 1. **In-app Backoffice** (`admin-studio.js` + `app-backoffice.js` + the other
-   app scripts). No login, no PIN. Opens from the **Admin** button in the dock,
-   from three taps on the SANVIC.PH logo, or via `?admin=1`. Writes with the
+   app scripts). No login, no PIN, and no visible control: it opens from three
+   taps on the SANVIC.PH logo in the header, or via `?admin=1`. Writes with the
    public publishable key, permitted by
    `supabase/migrations/20261101090000_open_backoffice_writes.sql`. Photo
    **upload** is the exception: `studioStoreImageFile()` requires a signed-in

@@ -275,9 +275,9 @@ Applying the migration files to a fresh project is not supported.
 
 ### Backoffice
 
-The task-oriented **SANVIC Studio** opens from the **Admin** button in the dock,
-by tapping the SANVIC.PH logo three times, or directly at
-`/site/index.html?admin=1`. There is **no login and no PIN** for content edits:
+The task-oriented **SANVIC Studio** opens by tapping the SANVIC.PH logo in the
+header three times, or directly at `/site/index.html?admin=1`. There is no Admin
+button in the dock — staff access is deliberately unlabelled. There is **no login and no PIN** for content edits:
 it writes with the publishable key, and RLS plus
 `supabase/migrations/20261101090000_open_backoffice_writes.sql` permit that.
 Photo **uploads** are the exception — they require a signed-in Supabase Auth

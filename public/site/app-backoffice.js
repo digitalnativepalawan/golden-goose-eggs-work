@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════
-// ADMIN PANEL — triple-click the "SANVIC.PH" brand label, or the
-// gear in the header. No PIN, no sign-in, no read-only state:
+// ADMIN PANEL — triple-tap the "SANVIC.PH" brand label in the header, or add
+// ?admin=1 to the URL. No PIN, no sign-in, no read-only state:
 // openAdminFromButton() opens the panel and every save is allowed.
 // The database side is
 // supabase/migrations/20261101090000_open_backoffice_writes.sql.

@@ -92,7 +92,7 @@ npm run dev              # Vite on 8080, or the next free port
 |---|---|
 | Product | `http://localhost:8080/site/index.html` |
 | Shell redirect | `http://localhost:8080/` |
-| Backoffice | Admin button in the dock, three taps on the SANVIC.PH logo, or `?admin=1` |
+| Backoffice | Three taps on the SANVIC.PH logo, or `?admin=1` (no dock button) |
 | Passcode admin | `http://localhost:8080/admin` (needs `ADMIN_PIN` in `.env`) |
 
 `npm run build` produces `.output/` for a full Nitro deploy, but `vercel.json`
