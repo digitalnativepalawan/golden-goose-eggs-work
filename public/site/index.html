@@ -460,7 +460,11 @@ svg.lucide{vertical-align:-.15em}
 /* ═══════════════════════════════════
    PULSE — community layer
    ═══════════════════════════════════ */
-.pulse-panel{position:fixed;inset:0;z-index:80;background:var(--charcoal-deep);transform:translateY(100%);transition:transform .5s var(--ease-out-expo);display:flex;flex-direction:column;overflow:hidden;pointer-events:none}
+.pulse-panel{position:fixed;inset:0;z-index:80;background:var(--charcoal-deep);transform:translateY(100%);transition:transform .5s var(--ease-out-expo);display:block;overflow:hidden;pointer-events:none}
+/* One page that scrolls, like The Hunt: the title, the tab row and the filter
+   chips ride up with the list instead of being frozen and eating the screen. */
+.pv2-scroll{height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;scrollbar-width:none}
+.pv2-scroll::-webkit-scrollbar{display:none}
 .pulse-panel.open{transform:translateY(0);pointer-events:auto}
 .pulse-head{flex-shrink:0;padding:calc(var(--safe-top) + 14px) 18px 0}
 .pulse-head-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2px}
@@ -988,9 +992,16 @@ svg.lucide{vertical-align:-.15em}
      the metrics, and you had to drag the sheet up before you could read anything.
      Same geometry as #pulsePanel and #huntPanel so all three behave identically. */
   .today-panel{position:fixed;inset:0;z-index:80;background:var(--charcoal-deep);
-    display:flex;flex-direction:column;overflow:hidden;pointer-events:none;
+    display:block;overflow:hidden;pointer-events:none;
     transform:translateY(100%);transition:transform .5s var(--ease-out-expo)}
   .today-panel.open{transform:translateY(0);pointer-events:auto}
+  /* Same as The Hunt and Tribes: the greeting and the metrics scroll away with
+     the cards, so the cards get the whole phone screen. Only the close button
+     stays put. */
+  .today-page{height:100%;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;touch-action:pan-y;scrollbar-width:thin}
+  .today-page::-webkit-scrollbar{width:8px;background:rgba(255,255,255,.04);border-radius:4px}
+  .today-page::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:4px}
   .today-head{position:relative;flex-shrink:0;padding:calc(var(--safe-top) + 20px) 18px 12px}
   .today-title-row{display:flex;align-items:center;gap:10px;min-width:0}
   .today-head-title{font-family:var(--font-display);font-size:2rem;font-weight:400;letter-spacing:.02em;text-transform:uppercase;color:#fff;line-height:1}
@@ -1003,10 +1014,10 @@ svg.lucide{vertical-align:-.15em}
   .today-metric{display:flex;align-items:flex-start;gap:6px;font-family:var(--font-body);font-size:.76rem;color:rgba(255,255,255,.76);min-width:0;line-height:1.35}
   .today-metric strong{color:rgba(255,255,255,.98);font-weight:600}
   .today-metric svg{width:16px;height:16px;flex-shrink:0}
-  .today-close{position:absolute;top:calc(var(--safe-top) + 16px);right:16px;z-index:5;width:40px;height:40px;border-radius:50%;
+  .today-close{position:absolute;top:calc(var(--safe-top) + 16px);right:max(16px, calc(50% - 344px));z-index:5;width:40px;height:40px;border-radius:50%;
     border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.06);color:rgba(255,255,255,.9);
     display:flex;align-items:center;justify-content:center;cursor:pointer}
-  .today-scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;
+  .today-scroll{flex:none;overflow:visible;scrollbar-width:thin;
     display:flex;flex-direction:column;gap:12px;padding:6px 14px calc(100px + var(--safe-bottom));-webkit-overflow-scrolling:touch}
   .today-scroll::-webkit-scrollbar{width:8px;background:rgba(255,255,255,.04);border-radius:4px}
   .today-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:4px}
@@ -1079,8 +1090,9 @@ svg.lucide{vertical-align:-.15em}
   }
 </style>
 <div class="today-panel" id="todayPanel" aria-hidden="true">
+  <button class="today-close" onclick="closeTodaySheet()" aria-label="Close Today"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+  <div class="today-page" id="todayPage">
   <div class="today-head">
-    <button class="today-close" onclick="closeTodaySheet()" aria-label="Close Today"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     <div class="today-title-row">
       <span class="today-head-title">Today</span>
       <svg class="today-wave" viewBox="0 0 34 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 8 6 8 9 2 14 14 18 8 22 4 26 12 30 8 33 8"/></svg>
@@ -1094,6 +1106,7 @@ svg.lucide{vertical-align:-.15em}
     </div>
   </div>
   <div class="today-scroll" id="todayScroll"></div>
+  </div>
 </div>
 
 <!-- ═══ EXPLORE DRAWER (3-snap bottom sheet, permanent places only) ═══ -->
@@ -1442,7 +1455,7 @@ svg.lucide{vertical-align:-.15em}
   .pv2-catchev{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:22px;height:22px;
     display:grid;place-items:center;color:rgba(255,255,255,.55);pointer-events:none;
     background:linear-gradient(90deg,transparent,rgba(4,10,26,.92) 40%)}
-  .pv2-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:8px 14px calc(96px + var(--safe-bottom,0px));
+  .pv2-body{flex:none;min-height:0;overflow:visible;padding:8px 14px calc(96px + var(--safe-bottom,0px));
     scrollbar-width:none;display:flex;flex-direction:column;gap:12px}
   .pv2-body::-webkit-scrollbar{display:none}
   .pv2-listhead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:6px 4px 2px}
@@ -1583,6 +1596,7 @@ svg.lucide{vertical-align:-.15em}
   }
 </style>
 <div class="pulse-panel" id="pulsePanel" data-view="tribes">
+ <div class="pv2-scroll" id="pv2Scroll">
   <div class="pv2-head">
     <div class="pv2-title-row">
       <span class="pv2-title" id="pv2Title">Tribes</span>
@@ -1630,6 +1644,7 @@ svg.lucide{vertical-align:-.15em}
   </div>
 
   <div class="pv2-body" id="pulseBody"></div>
+ </div>
 </div>
 
 <!-- ═══ PULSE COMPOSE ═══ -->
@@ -2369,7 +2384,7 @@ svg.lucide{vertical-align:-.15em}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-11-09-hunt-scroll';
+  window.SANVIC_DEPLOY_VERSION = '2026-11-09-one-page-scroll';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by the app scripts and entry-flow.js so the two
   // timers cannot drift apart. Raise it to hold the first page longer.
