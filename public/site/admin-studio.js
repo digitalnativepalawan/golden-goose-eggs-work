@@ -1786,8 +1786,6 @@
       ? d.color
       : (typeof catStyle !== "undefined" && catStyle[d.category] && catStyle[d.category].color) ||
         "#0EA5E9";
-    var dot = document.getElementById("adfPreviewMarkerDot");
-    if (dot) dot.style.setProperty("--pin-color", color);
     var visibility = model.markerVisibility(
       d.category,
       (typeof catStyle !== "undefined" && catStyle[d.category] && catStyle[d.category].label) ||
@@ -1858,7 +1856,6 @@
     adminRestoreFormFields();
     studioCurrentStatus = currentFormStatus();
     adminInitFormEvents();
-    adminInitPinMap();
     adminUpdatePreview();
     if (typeof studioRenderUploadList === "function")
       studioRenderUploadList(studioMediaContainer || "adf");
@@ -2007,18 +2004,7 @@
                   <button type="button" class="admin-mini-btn" onclick="adminUseMyLocation()" aria-label="Use my current location">${icon("locate-fixed", 16)}</button>
                 </div>
                 <div id="adfGeocodeResults" class="admin-geocode-results" aria-live="polite"></div>
-                <div class="admin-map-wrap">
-                  <div class="admin-map-toolbar">
-                    <div class="admin-hint">Drag the pin, tap the map, or enter decimal coordinates. The marker uses the category colour from the public map.</div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap">
-                      <button type="button" class="admin-mini-btn" onclick="adminSetPinFromCenter()">Use map centre</button>
-                      <button type="button" class="admin-mini-btn" onclick="adminClearPin()">Clear pin</button>
-                    </div>
-                  </div>
-                  <div id="adfMapCanvas" class="admin-map-canvas" aria-label="Drag the pin to set this place's location"></div>
-                  <div class="admin-pin-preview"><span class="admin-pin-dot" id="adfPreviewMarkerDot"></span><span><strong>Public marker preview</strong><small id="adfPreviewMarkerText">Visible when visitors zoom in.</small></span></div>
-                  <div class="admin-map-guidance" id="adfCoordinatesGuidance" role="status">Checking coordinates…</div>
-                </div>
+                <div class="admin-map-guidance" id="adfCoordinatesGuidance" role="status" style="margin-top:10px;">Checking coordinates…</div>
                 <div class="admin-grid-2" style="margin-top:12px">
                   <div class="admin-field"><label for="adfLat">Latitude</label><input id="adfLat" inputmode="decimal" value="${valueAttr("adfLat")}" placeholder="10.49620" oninput="adminSyncPinFromFields()"><p class="admin-field-error" id="adfCoordinatesError"></p></div>
                   <div class="admin-field"><label for="adfLng">Longitude</label><input id="adfLng" inputmode="decimal" value="${valueAttr("adfLng")}" placeholder="119.26070" oninput="adminSyncPinFromFields()"></div>
@@ -2127,46 +2113,6 @@
       iconSize: [36, 36],
       iconAnchor: [18, 18],
     });
-  }
-
-  function adminInitPinMap() {
-    var node = document.getElementById("adfMapCanvas");
-    if (!node || typeof L === "undefined") return;
-    if (studioPinMap) {
-      try {
-        studioPinMap.remove();
-      } catch (_) {}
-    }
-    var d = adminReadForm();
-    var c = model.coordinates(d);
-    var center = c.valid ? [c.lat, c.lng] : [10.5, 119.22];
-    studioPinMap = L.map(node, {
-      zoomControl: true,
-      attributionControl: true,
-      scrollWheelZoom: false,
-      dragging: true,
-      tap: true,
-    }).setView(center, c.valid ? 15 : 11);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap contributors",
-    }).addTo(studioPinMap);
-    studioPinMarker = L.marker(center, {
-      draggable: true,
-      keyboard: true,
-      title: "Drag to set the place location",
-      icon: adminPinIcon(d.color, d.status),
-    }).addTo(studioPinMap);
-    studioPinMarker.on("dragend", function () {
-      var p = studioPinMarker.getLatLng();
-      adminSetPinLatLng(p.lat, p.lng);
-    });
-    studioPinMap.on("click", function (event) {
-      adminSetPinLatLng(event.latlng.lat, event.latlng.lng);
-    });
-    setTimeout(function () {
-      if (studioPinMap) studioPinMap.invalidateSize();
-    }, 80);
   }
 
   function adminUpdatePinMarker() {
