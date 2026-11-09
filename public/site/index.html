@@ -1990,7 +1990,10 @@ svg.lucide{vertical-align:-.15em}
   /* ═══ THE HUNT PANEL ═══ */
   #huntPanel{position:fixed;inset:0;z-index:80;background:var(--charcoal-deep);transform:translateY(100%);transition:transform .5s var(--ease-out-expo);display:flex;flex-direction:column;overflow:hidden;pointer-events:none}
   #huntPanel.open{transform:translateY(0);pointer-events:auto}
-  .hunt-body{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:18px 16px 110px;scrollbar-width:none !important;-ms-overflow-style:none !important;scroll-behavior:smooth}
+  .hunt-body{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;
+    -webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;
+    padding:18px 16px calc(150px + env(safe-area-inset-bottom,0px));
+    scrollbar-width:none !important;-ms-overflow-style:none !important}
   .hunt-body::-webkit-scrollbar{display:none !important;width:0 !important;height:0 !important}
   .hunt-close{position:absolute;top:14px;right:14px;z-index:5;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
   .hunt-head{padding:26px 4px 6px;position:relative;display:flex;flex-direction:column;gap:6px}
@@ -2096,7 +2099,8 @@ svg.lucide{vertical-align:-.15em}
   .hunt-riddle{flex-direction:column;gap:10px}
   /* The riddle photo is shown whole — never cropped or zoomed — at the same
      shape on every device. Tapping it opens the full-screen viewer below. */
-  .hunt-riddle .hunt-spot-media{width:100%;height:auto;aspect-ratio:16/10;background:#08101f;border:0;padding:0;display:block;cursor:zoom-in;text-align:left}
+  .hunt-riddle .hunt-spot-media{width:100%;height:auto;aspect-ratio:16/10;background:#08101f;border:0;padding:0;display:block;cursor:zoom-in;text-align:left;touch-action:pan-y}
+  .hunt-spot,.hunt-spot-body{touch-action:pan-y}
   .hunt-riddle .hunt-spot-media:active{transform:scale(.995)}
   .hunt-riddle .hunt-spot-thumb{background-size:contain;background-repeat:no-repeat;background-position:center;transform:none;filter:none}
   .hunt-riddle .hunt-spot-thumb-none{background:#08101f;color:rgba(255,255,255,.3)}
@@ -2110,8 +2114,8 @@ svg.lucide{vertical-align:-.15em}
   .riddle-view{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;
     padding:calc(12px + env(safe-area-inset-top,0px)) 12px calc(12px + env(safe-area-inset-bottom,0px));
     background:rgba(2,8,20,.94);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-    opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s}
-  .riddle-view.open{opacity:1;visibility:visible}
+    opacity:0;visibility:hidden;pointer-events:none;transition:opacity .25s,visibility .25s}
+  .riddle-view.open{opacity:1;visibility:visible;pointer-events:auto}
   .riddle-view-card{position:relative;width:100%;max-width:560px;max-height:100%;display:flex;flex-direction:column;
     border-radius:20px;overflow:hidden;background:#0a1526;border:1px solid rgba(255,255,255,.1);
     box-shadow:0 24px 60px rgba(0,0,0,.6)}
@@ -2128,6 +2132,12 @@ svg.lucide{vertical-align:-.15em}
   .riddle-view-title{font-family:var(--font-display);font-size:1.4rem;color:#fff;line-height:1.15;margin-bottom:4px}
   .riddle-view-diff{font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(94,234,212,.85);font-weight:700;margin-bottom:10px}
   .riddle-view-verse{white-space:pre-line;font-size:.9rem;line-height:1.65;color:rgba(255,255,255,.86);margin-bottom:14px}
+  .riddle-view-nav{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .riddle-view-navbtn{min-width:44px;height:38px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.16);
+    background:rgba(255,255,255,.05);color:#e8fffb;font-family:var(--font-body);font-size:.8rem;font-weight:600;
+    cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:4px}
+  .riddle-view-navbtn:disabled{opacity:.3;cursor:default}
+  .riddle-view-count{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.5)}
   @media(min-width:700px){ .hunt-spots{grid-template-columns:1fr 1fr} }
   /* ── INFO SHEET: event and tribe detail + tribe chat ───────────────── */
   .info-overlay{position:fixed;inset:0;z-index:120;background:rgba(2,14,38,.5);backdrop-filter:blur(2px);opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}
@@ -2340,6 +2350,11 @@ svg.lucide{vertical-align:-.15em}
       <div class="riddle-view-title" id="riddleViewTitle">Riddle</div>
       <div class="riddle-view-diff" id="riddleViewDiff"></div>
       <div class="riddle-view-verse" id="riddleViewVerse"></div>
+      <div class="riddle-view-nav">
+        <button class="riddle-view-navbtn" id="riddleViewPrev" type="button" onclick="riddleViewStep(-1)" aria-label="Previous riddle">‹ Prev</button>
+        <span class="riddle-view-count" id="riddleViewCount" aria-live="polite"></span>
+        <button class="riddle-view-navbtn" id="riddleViewNext" type="button" onclick="riddleViewStep(1)" aria-label="Next riddle">Next ›</button>
+      </div>
       <button class="hunt-cta-teal" id="riddleViewUnlock" type="button">Unlock at the spot</button>
     </div>
   </div>
@@ -2354,7 +2369,7 @@ svg.lucide{vertical-align:-.15em}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-11-09-riddle-photo';
+  window.SANVIC_DEPLOY_VERSION = '2026-11-09-hunt-scroll';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by the app scripts and entry-flow.js so the two
   // timers cannot drift apart. Raise it to hold the first page longer.
