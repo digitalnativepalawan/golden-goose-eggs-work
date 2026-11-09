@@ -899,12 +899,13 @@ function huntRiddleCard(r, i) {
 
 // ── RIDDLE VIEWER ─────────────────────────────────────────────────────────
 // A phone cannot read a verse and squint at a cropped photo at the same time.
-// Tapping the picture opens the whole photo plus the words, in one fixed
-// layout: the image is contained (never cropped), the text scrolls under it.
-function openRiddleView(slug) {
-  const r = HUNT_RIDDLES.find((x) => String(x.slug) === String(slug));
-  const view = document.getElementById("riddleView");
-  if (!r || !view) return;
+// Tapping a riddle opens the whole photo plus its words, with Prev / Next (and a
+// sideways swipe) to move through every riddle without closing and reopening.
+let riddleViewIndex = 0;
+
+function riddleViewRender() {
+  const r = HUNT_RIDDLES[riddleViewIndex];
+  if (!r) return;
   const media = document.getElementById("riddleViewMedia");
   const img = document.getElementById("riddleViewImg");
   const empty = !r.image_url;
@@ -930,14 +931,38 @@ function openRiddleView(slug) {
   const unlock = document.getElementById("riddleViewUnlock");
   if (unlock)
     unlock.onclick = function () {
+      const slug = r.slug;
       closeRiddleView();
-      huntStartRiddle(r.slug);
+      huntStartRiddle(slug);
     };
+  const count = document.getElementById("riddleViewCount");
+  if (count) count.textContent = riddleViewIndex + 1 + " of " + HUNT_RIDDLES.length;
+  const prev = document.getElementById("riddleViewPrev");
+  const next = document.getElementById("riddleViewNext");
+  if (prev) prev.disabled = riddleViewIndex <= 0;
+  if (next) next.disabled = riddleViewIndex >= HUNT_RIDDLES.length - 1;
+  const body = document.querySelector("#riddleView .riddle-view-body");
+  if (body) body.scrollTop = 0;
+}
+
+function openRiddleView(slug) {
+  const i = HUNT_RIDDLES.findIndex((x) => String(x.slug) === String(slug));
+  const view = document.getElementById("riddleView");
+  if (i < 0 || !view) return;
+  riddleViewIndex = i;
+  riddleViewRender();
   view.classList.add("open");
   view.setAttribute("aria-hidden", "false");
   document.body.classList.add("riddle-view-open");
   const close = document.getElementById("riddleViewClose");
   if (close && close.focus) close.focus({ preventScroll: true });
+}
+
+function riddleViewStep(delta) {
+  const next = riddleViewIndex + delta;
+  if (next < 0 || next >= HUNT_RIDDLES.length) return;
+  riddleViewIndex = next;
+  riddleViewRender();
 }
 
 function closeRiddleView(evt) {
@@ -950,8 +975,46 @@ function closeRiddleView(evt) {
   document.body.classList.remove("riddle-view-open");
 }
 
+// Swipe left / right on the card to move between riddles.
+(function bindRiddleViewSwipe() {
+  let startX = 0,
+    startY = 0,
+    tracking = false;
+  document.addEventListener(
+    "touchstart",
+    function (e) {
+      const view = document.getElementById("riddleView");
+      if (!view || !view.classList.contains("open")) return;
+      if (!e.target || !e.target.closest || !e.target.closest(".riddle-view-card")) return;
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      startX = t.clientX;
+      startY = t.clientY;
+      tracking = true;
+    },
+    { passive: true },
+  );
+  document.addEventListener(
+    "touchend",
+    function (e) {
+      if (!tracking) return;
+      tracking = false;
+      const t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy)) riddleViewStep(dx < 0 ? 1 : -1);
+    },
+    { passive: true },
+  );
+})();
+
 document.addEventListener("keydown", function (e) {
+  const view = document.getElementById("riddleView");
+  const open = view && view.classList.contains("open");
   if (e.key === "Escape") closeRiddleView();
+  else if (open && e.key === "ArrowRight") riddleViewStep(1);
+  else if (open && e.key === "ArrowLeft") riddleViewStep(-1);
 });
 
 // The riddle version of huntStart: same GPS rule, coordinates from the riddle.
@@ -1092,6 +1155,8 @@ function huntSaveState(s) {
 function openHuntPanel() {
   const p = document.getElementById("huntPanel");
   if (!p) return;
+  // Never inherit a leftover viewer state: it locks the page scroll.
+  closeRiddleView();
   p.classList.add("open");
   p.setAttribute("aria-hidden", "false");
   renderHunt();
@@ -1109,6 +1174,7 @@ function closeHuntPanel() {
   p.classList.remove("open");
   p.setAttribute("aria-hidden", "true");
   closeHuntOverlay();
+  closeRiddleView();
 }
 function showHuntOverlay(title, sub) {
   const o = document.getElementById("huntOverlay");
