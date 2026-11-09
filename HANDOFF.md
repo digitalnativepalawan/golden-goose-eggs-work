@@ -30,10 +30,11 @@ with the publishable key, and the Backoffice works without a login.
 | | Surface | Status | What it is |
 |---|---|---|---|
 | **`public/site/`** | **The product.** Static HTML/CSS/JS, no build step, 22,657 lines. | **Live — this is what ships.** | Map, Explore, Today, Tribes/Pulse, Events, The Hunt, place sheets, the in-app Backoffice, KMZ import. |
-| **`src/`** | React 19 + TanStack Start shell. | **Development only** under the current `vercel.json`. | `/` redirect into the static client, the passcode `/admin` table/media/KMZ browser, the shadcn scaffolding, the Tala dev endpoint. |
+| **`src/`** | React 19 + TanStack Start shell. | **Development only** under the current `vercel.json`. | `/` redirect into the static client, the shadcn scaffolding, the Tala dev endpoint. |
 
-If a task is about what a visitor sees, the answer is almost always in
-`public/site/`. If it is about the passcode admin tooling, it is in `src/`.
+If a task is about what a visitor sees, the answer is in `public/site/`.
+Admin is the in-app Backoffice — triple-tap the SANVIC.PH logo. There is no
+passcode page any more.
 
 ---
 
@@ -50,8 +51,8 @@ If a task is about what a visitor sees, the answer is almost always in
   unit-tested
 - Dead scripts removed, search matching fixed, everything Prettier can reach is
   formatted
-- Admin built: passcode `/admin`, table browser with inline editing, media
-  manager, KMZ import with preview and review (dev surface)
+- Old passcode `/admin` deleted (2026-11-09): the in-app Backoffice is the only
+  admin surface now
 - In-app Backoffice built: no login, publishing states, photos, categories, site
   text, Tala, Today, Tribes, Events, My Sanvic, Hunt, Pulse moderation
 - Tala: keyword client replies plus an optional OpenRouter proxy with rate
@@ -64,11 +65,6 @@ If a task is about what a visitor sees, the answer is almost always in
   `public/site/entry-flow.js`. That is the only switch.
 - ⬜ **Re-upload media** — image and video binaries were never migrated; a
   database dump restores the rows that reference them, never the files.
-- ⬜ **Decide the fate of the React `/admin`** — it is not in the production
-  deploy. Either keep it as a dev tool or remove it before launch. It is the
-  only credential gate left in the repo, and its passcode is a convenience lock,
-  not real security (the PIN is readable in the page source; the service-role
-  key never reaches the browser).
 - ⬜ **Screenshots** — `docs/screenshots/` only has its README; the four views
   listed there still need capturing.
 - ⬜ **Auth providers** (magic link, Google) and redirect URLs are not configured.
@@ -93,7 +89,6 @@ npm run dev              # Vite on 8080, or the next free port
 | Product | `http://localhost:8080/site/index.html` |
 | Shell redirect | `http://localhost:8080/` |
 | Backoffice | Three taps on the SANVIC.PH logo, or `?admin=1` (no dock button) |
-| Passcode admin | `http://localhost:8080/admin` (needs `ADMIN_PIN` in `.env`) |
 
 `npm run build` produces `.output/` for a full Nitro deploy, but `vercel.json`
 does not use it. Bump `SANVIC_DEPLOY_VERSION` in `public/site/index.html` for any
@@ -108,11 +103,9 @@ deploy that changes JS.
 - Set **`OPENROUTER_API_KEY`** in Vercel → Project → Settings → Environment
   Variables for live Tala. Without it the endpoint reports `configured: false`
   and the client falls back to keyword replies.
-- Optional admin-tool variables: `ADMIN_PIN`, `ADMIN_SESSION_SECRET`,
-  `SUPABASE_SERVICE_ROLE_KEY`. Server-side only — never `VITE_`-prefixed.
-- `.env` and database backups are git-ignored. Keep it that way. The passcode and
-  any service-role key that was ever written into a document should be treated as
-  compromised and rotated rather than copied forward.
+- `.env` and database backups are git-ignored. Keep it that way. Any key that was
+  ever written into a document should be treated as compromised and rotated
+  rather than copied forward.
 
 ---
 

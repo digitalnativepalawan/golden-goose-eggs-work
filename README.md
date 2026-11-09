@@ -152,17 +152,13 @@ golden-goose-eggs-work/
 │   ├── routes/
 │   │   ├── __root.tsx               # document shell, SEO, error boundary
 │   │   ├── index.tsx                # / → /site/index.html?v=…
-│   │   ├── admin.tsx                # passcode table / media / KMZ browser
-│   │   ├── api/admin.ts             # service-role endpoint behind the PIN
 │   │   └── api/tala-chat.ts         # Tala endpoint for `npm run dev`
-│   ├── components/
-│   │   ├── admin/kmz-panel.tsx      # KMZ review UI
-│   │   └── ui/                      # 9 Radix / shadcn primitives (unimported)
-│   ├── integrations/supabase/       # browser + server clients, auth, types.ts
+│   ├── components/ui/               # 9 Radix / shadcn primitives (unimported)
+│   ├── integrations/supabase/       # browser client, auth, types.ts
 │   ├── hooks/use-mobile.tsx
-│   ├── lib/                         # admin-helpers, kmz-parser, buildVersion, errors
+│   ├── lib/                         # kmz-parser, buildVersion, error pages, utils
 │   ├── router.tsx · start.ts · server.ts · styles.css · routeTree.gen.ts
-│   └── (31 .ts/.tsx files)
+│   └── (26 .ts/.tsx files)
 │
 ├── server/tala.js           352 ln  # OpenRouter proxy: prompt, knowledge, rate limit
 ├── api/tala.js               18 ln  # Vercel Function served at /api/tala-chat
@@ -220,9 +216,9 @@ The dev server prints its URL (Vite picks **8080**, or the next free port). `/`
 renders the React shell, which redirects into `public/site/index.html`; the
 static client can also be opened directly at `/site/index.html`.
 
-`.env` is only needed for the React shell, the passcode `/admin` tooling and the
-Tala proxy. The product itself carries its public Supabase URL and publishable
-key in `public/site/supabase-config.js`, so a static deploy needs no environment
+`.env` is only needed for the React shell and the Tala proxy. The product itself
+carries its public Supabase URL and publishable key in
+`public/site/supabase-config.js`, so a static deploy needs no environment
 variables.
 
 ### Scripts
@@ -244,10 +240,9 @@ Two layers:
   publishable key. Both are public by design; every table is governed by Row
   Level Security.
 - **Shell & server** — `.env` (git-ignored, copied from `.env.example`) feeds the
-  React shell and the Tala function: `SUPABASE_*`, `VITE_SUPABASE_*`,
-  optional `ADMIN_PIN` / `ADMIN_SESSION_SECRET` / `SUPABASE_SERVICE_ROLE_KEY`
-  for `/admin`, and `OPENROUTER_API_KEY` for live AI. Secrets stay server-side
-  and are never given a `VITE_` prefix.
+  React shell and the Tala function: `SUPABASE_*`, `VITE_SUPABASE_*` and the
+  optional `OPENROUTER_API_KEY` for live AI. Secrets stay server-side and are
+  never given a `VITE_` prefix.
 
 > **Never commit a secret key or the database password.**
 
@@ -283,9 +278,9 @@ it writes with the publishable key, and RLS plus
 Photo **uploads** are the exception — they require a signed-in Supabase Auth
 session.
 
-The separate React `/admin` route (passcode, service-role `/api/admin`) is a raw
-table/media/KMZ browser for development. Under the current `vercel.json` it is
-not part of the production deploy.
+The old passcode `/admin` page (React route plus service-role `/api/admin`) was
+removed on 2026-11-09. It was a second, redundant admin surface; the in-app
+Backoffice above is the only one now. Nothing in production depended on it.
 
 Before using Draft, Published and Archived states, apply
 `supabase/migrations/20261026120000_destination_publishing.sql` in the Supabase

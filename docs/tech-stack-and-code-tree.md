@@ -16,10 +16,10 @@ The Hunt, stories (Pulse) and a Backoffice for the people who edit the content.
 
 One repository, **two surfaces**, and only one of them is in the deploy.
 
-| Surface                                                     | Path           | Status                                                                                                        |
-| ----------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------- |
-| **The product** — vanilla-JS single page                    | `public/site/` | Live. All real work happens here. 22,657 lines, no build step.                                                |
-| **React/TanStack shell** (SSR, `/`, `/admin`, `/api/admin`) | `src/`         | Development only under the current `vercel.json`. Not built, not served in production. Used by `npm run dev`. |
+| Surface                                               | Path           | Status                                                                                                        |
+| ----------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------- |
+| **The product** — vanilla-JS single page              | `public/site/` | Live. All real work happens here. 22,657 lines, no build step.                                                |
+| **React/TanStack shell** (SSR, `/`, `/api/tala-chat`) | `src/`         | Development only under the current `vercel.json`. Not built, not served in production. Used by `npm run dev`. |
 
 The product is **static files with no build step**. The app scripts and
 `index.html` are loaded as written. There is no bundler, no TypeScript and no
@@ -47,8 +47,9 @@ Function at `api/tala.js`**. No `vite build` runs on Vercel. Consequences:
 
 - `/site/index.html` is the app; `/` on Vercel has no SSR redirect (the static
   host serves `public/site` as the root, so `/` resolves to `index.html`).
-- `src/routes/admin.tsx` and `src/routes/api/admin.ts` are **not reachable in
-  production** under this config. They still run under `npm run dev`.
+- The React shell's routes are not reachable in production. The old passcode
+  `/admin` page was deleted on 2026-11-09; the only admin surface now is the
+  in-app Backoffice below.
 - Cache headers: HTML `max-age=0, must-revalidate`, `/assets/*` immutable for a
   year, `/api/*` `no-store`.
 
@@ -56,7 +57,7 @@ Function at `api/tala.js`**. No `vite build` runs on Vercel. Consequences:
 full TanStack Start deploy remains possible. It is simply not what `vercel.json`
 does today.
 
-### Two admin surfaces — know the difference
+### One admin surface
 
 1. **In-app Backoffice** (`admin-studio.js` + `app-backoffice.js` + the other
    app scripts). No login, no PIN, and no visible control: it opens from three
@@ -66,10 +67,11 @@ does today.
    **upload** is the exception: `studioStoreImageFile()` requires a signed-in
    Supabase Auth session (`sb.auth.getSession()`), because Storage policies were
    not opened to `anon`.
-2. **`/admin` React page** (`src/routes/admin.tsx` + `src/routes/api/admin.ts`).
-   A passcode-gated raw table/media/KMZ browser backed by a server-side
-   service-role key. It exists in the repo and runs in dev; it is not part of the
-   production deploy. Nothing in the product links to it.
+2. **The old `/admin` React page is gone.** Removed 2026-11-09 together with
+   `src/routes/api/admin.ts`, `src/lib/admin-helpers.ts`,
+   `src/components/admin/kmz-panel.tsx` and the service-role client it used. It
+   was a redundant second admin surface with a passcode; git history keeps it if
+   it is ever wanted again. There is no passcode anywhere in the repo now.
 
 ---
 
@@ -163,17 +165,13 @@ golden-goose-eggs-work/
 │   ├── routes/
 │   │   ├── __root.tsx      135 ln  # document shell, SEO meta
 │   │   ├── index.tsx        36 ln  # / → window.location.replace('/site/index.html?v=…')
-│   │   ├── admin.tsx       397 ln  # passcode table/media/KMZ Backoffice
-│   │   ├── api/admin.ts    304 ln  # service-role reads/writes behind the PIN
-│   │   ├── api/tala-chat.ts 14 ln  # same Tala handler as the Vercel Function
+│   │   └── api/tala-chat.ts 14 ln  # same Tala handler as the Vercel Function
 │   │   └── README.md               # TanStack file-routing conventions
-│   ├── components/
-│   │   ├── admin/kmz-panel.tsx     # KMZ review UI (imported only by admin.tsx)
-│   │   └── ui/                     # 9 shadcn primitives, imported by nothing (see §8)
-│   ├── integrations/supabase/      # browser client, service-role client,
-│   │                               # auth middleware/attacher, types.ts (993 ln)
-│   ├── lib/                        # admin-helpers, kmz-parser, buildVersion,
-│   │                               # error-capture, error-page, utils
+│   ├── components/ui/              # 9 shadcn primitives, imported by nothing (see §8)
+│   ├── integrations/supabase/      # browser client, auth middleware/attacher,
+│   │                               # types.ts (993 ln)
+│   ├── lib/                        # kmz-parser, buildVersion, error-capture,
+│   │                               # error-page, utils
 │   ├── hooks/use-mobile.tsx
 │   ├── router.tsx · start.ts · server.ts · styles.css
 │   ├── routeTree.gen.ts            # generated — never edit by hand
@@ -216,7 +214,7 @@ golden-goose-eggs-work/
 └── README.md · AGENTS.md · HANDOFF.md · THIRD-PARTY-NOTICES.md
 ```
 
-Totals: **22,657 lines** in `public/site`, **31 TypeScript files** in `src`,
+Totals: **22,657 lines** in `public/site`, **26 TypeScript files** in `src`,
 **352 lines** of Tala server code, **32 migrations**, **10 test files**.
 
 ---
@@ -353,15 +351,15 @@ Skip, for now: `src/`, the shadcn primitives, the AST-ish checks in
   intact: `openWhenReady()` still holds for `SANVIC_SPLASH_HOLD` and would mount
   the card. **Flip the flag to `true` to bring the questions back**; nothing else
   needs to change.
-- **No visitor login and no admin PIN in the product.** `/admin` in the React
-  shell still has a passcode (and is dev-only under `vercel.json`). Two
-  directories are called admin; the in-app one is the product.
+- **No visitor login and no admin PIN anywhere.** The in-app Backoffice opens
+  from three taps on the logo (or `?admin=1`) and has no passcode. The old React
+  `/admin` page was deleted on 2026-11-09.
 - **`src/` is not in the production deploy.** `vercel.json` serves
   `public/site/` with no build. If the React shell is still wanted in
   production, that is a deliberate config change, not a bug fix.
 - **`src/components/ui/` is 9 files** (button, dialog, input, label, separator,
-  sheet, skeleton, toggle, tooltip). Nothing outside that folder imports them;
-  `KmzPanel` is imported only by `admin.tsx`. Kept as scaffolding.
+  sheet, skeleton, toggle, tooltip). Nothing outside that folder imports them.
+  Kept as scaffolding.
 - **Unused direct dependencies:** `@hookform/resolvers`, `date-fns`, `zod`.
   All three predate the cleanup and are unimported; they are harmless but are
   the obvious first candidates if the dependency list is ever trimmed.

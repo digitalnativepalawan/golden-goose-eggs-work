@@ -6,10 +6,10 @@ Backoffice.
 
 ## Two surfaces — read this first
 
-| Surface                                             | Path           | Ships?                                              |
-| --------------------------------------------------- | -------------- | --------------------------------------------------- |
-| **The product** — static HTML/CSS/JS, no build step | `public/site/` | **Yes.** `vercel.json` serves this folder verbatim. |
-| **React/TanStack shell** — SSR, `/`, `/admin`       | `src/`         | **No.** Dev only under the current `vercel.json`.   |
+| Surface                                               | Path           | Ships?                                              |
+| ----------------------------------------------------- | -------------- | --------------------------------------------------- |
+| **The product** — static HTML/CSS/JS, no build step   | `public/site/` | **Yes.** `vercel.json` serves this folder verbatim. |
+| **React/TanStack shell** — SSR, `/`, `/api/tala-chat` | `src/`         | **No.** Dev only under the current `vercel.json`.   |
 
 If a change affects what visitors see, it belongs in `public/site/`.
 
@@ -45,8 +45,8 @@ open `http://localhost:8080/site/index.html` directly.
 
 - `public/site/supabase-config.js` — public project URL and publishable key.
   Safe to ship; RLS is the control plane.
-- `.env` — git-ignored. Feeds the React shell, the passcode `/admin` tools and
-  the Tala proxy. `.env.example` is committed and contains only public values.
+- `.env` — git-ignored. Feeds the React shell and the Tala proxy. `.env.example`
+  is committed and contains only public values.
 
 Never commit a secret key or the database password. Never give a secret a
 `VITE_` prefix.
