@@ -153,7 +153,7 @@ golden-goose-eggs-work/
 │   ├── app-pulse-admin-my-sanvic-hunt.js 1,390 ln # moderation, My Sanvic, the Hunt
 │   ├── admin-studio.js   2,979 ln  # Backoffice UI (overrides openAdminPanel)
 │   ├── admin-model.js      447 ln  # Backoffice rules: publishing, validation (unit-tested)
-│   ├── kmz-import.js       426 ln  # KMZ/KML upload + preview
+│   ├── kmz-import.js       500 ln  # KMZ/KML upload + preview (points only, folder→category/barangay, in-file dups)
 │   ├── entry-flow.js       235 ln  # first-visit questions (OFF — see §8)
 │   ├── personalize.js      129 ln  # locale, units, preferences
 │   ├── explore-model.js    258 ln  # Explore filtering/sorting (unit-tested, pure)
