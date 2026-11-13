@@ -92,12 +92,13 @@ test(
     });
     const boundary = layer(),
       street = layer(),
+      dark = layer(),
       terrain = layer(),
       satellite = layer();
     boundary.addTo(map);
     const c = context({
       map,
-      window: { _mS: street, _mTerrain: terrain, _mSatellite: satellite },
+      window: { _mS: street, _mDark: dark, _mTerrain: terrain, _mSatellite: satellite },
       sessionStorage: { setItem: (k, v) => (saved[k] = v) },
       document: {
         body: { classList: { toggle: (k, on) => (on ? classes.add(k) : classes.delete(k)) } },
@@ -139,6 +140,15 @@ test(
     const c = context({
       sb: { from: query },
       window: {},
+      partnerDemoMode: false,
+      setTodayPartnerDemo: noop,
+      setPulsePartnerDemo: noop,
+      syncPartnerDemoUI: noop,
+      PULSE_TRIBES: [],
+      PULSE_EVENTS: [],
+      MYSV_TRIBES: [],
+      MYSV_EVENTS: [],
+      TODAY_LIVE_KEYS: ["happening", "joinable", "locals", "notices"],
       console: { warn: noop },
       document: { getElementById: () => null },
       DEFAULT_DESTINATIONS: places,
