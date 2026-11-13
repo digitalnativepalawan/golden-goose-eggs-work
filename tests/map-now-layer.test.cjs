@@ -299,7 +299,28 @@ test("tribe cards fill missing photos with labeled local samples and keep real p
   assert.match(real, /class="pv2-sample-photo-tag" hidden/);
 });
 
-test("map controls are consolidated and map search shares a row with Explore", () => {
+test("map header shows only a uniform logo; search and Explore CTA stay out of the header", () => {
+  const header =
+    html.match(/<header class="mysv-top-header" id="heroOverlay">[\s\S]*?<\/header>/)?.[0] || "";
+  const dockStart = html.indexOf('<div class="bottom-dock" id="bottomDock">');
+  const dock = html.slice(dockStart, html.indexOf("<!-- ═══ TOP-RIGHT MAP UTILITIES", dockStart));
+  assert.ok(header);
+  assert.match(header, /id="heroBrand"/);
+  assert.doesNotMatch(dock, /id="heroBrand"|dock-brand|Backoffice/);
+  assert.match(
+    exploreCss,
+    /body\[data-map-tools="on"\] #heroOverlay \{[\s\S]*width: 128px !important/,
+  );
+  assert.match(exploreCss, /body\[data-map-tools="on"\] #heroBrand img \{[\s\S]*width: 124px/);
+  assert.match(exploreCss, /body\[data-map-tools="on"\] #heroOverlay > :not\(#heroBrand\)/);
+  assert.match(
+    exploreCss,
+    /body\[data-map-tools="on"\] #mapExploreBar \{[\s\S]*display: none !important/,
+  );
+  assert.match(html, /aria-label="SANVIC.PH — tap three times to open Backoffice"/);
+});
+
+test("map header stays brand-only while Explore retains the place search", () => {
   assert.equal((html.match(/id="layersButton"/g) || []).length, 1);
   assert.equal((html.match(/id="legendButton"/g) || []).length, 0);
   assert.equal((html.match(/id="mapNearbyBtn"/g) || []).length, 0);
@@ -307,14 +328,11 @@ test("map controls are consolidated and map search shares a row with Explore", (
   assert.match(html, /Place markers/);
   assert.match(html, /id="locateMeBtn"[^>]*onclick="toggleMapNearby\(\)"/);
   assert.match(html, /aria-label="Use my location and show the nearest places"/);
-  assert.match(
-    html,
-    /class="map-search-row"[\s\S]*?id="mapSearchInput"[\s\S]*?class="explore-reopen"[\s\S]*?Explore places/,
-  );
+  assert.match(html, /class="es-search"[\s\S]*id="esSearchInput"/);
   assert.match(mapApp, /const nearbyButton = document\.getElementById\("locateMeBtn"\)/);
   assert.match(
     exploreCss,
-    /body\[data-map-tools="on"\] #heroSearch[\s\S]*display: none !important/,
+    /body\[data-map-tools="on"\] #mapExploreBar \{[\s\S]*display: none !important/,
   );
   assert.match(exploreCss, /body\.explore-open #mapExploreBar[\s\S]*visibility: hidden !important/);
   assert.match(html, /es-no-filters \.es-filter-row[\s\S]*es-no-filters \.es-stay-row/);

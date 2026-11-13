@@ -1858,14 +1858,51 @@ body.place-open #mapExploreBar .explore-reopen {
   }
 }
 
-/* Keep the map as one task at a time: one place-search in map view, or the
-   Explore sheet's own search while the sheet is open. The hero/TALA ask bar is
-   a separate feature and steps off this surface so it cannot read as a second
-   place-search. Secondary stay/category controls live in Explore filters. */
-body[data-map-tools="on"] #heroOverlay,
-body[data-map-tools="on"] #heroFade,
-body[data-map-tools="on"] #heroSearch,
-body[data-map-tools="on"] #heroWeather {
+/* Keep the map header brand-only: no duplicate map search or Explore CTA here.
+   Search remains available inside the Explore panel. Use one fixed wordmark size
+   and position on phones, tablets and desktops so it cannot clip or collide. */
+body[data-map-tools="on"] #heroOverlay {
+  position: fixed !important;
+  top: calc(env(safe-area-inset-top, 0px) + 10px) !important;
+  left: 12px !important;
+  right: auto !important;
+  width: 128px !important;
+  height: 48px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  z-index: 90 !important;
+  opacity: 1 !important;
+  transform: none !important;
+  pointer-events: none !important;
+  text-align: left !important;
+}
+body[data-map-tools="on"] #heroOverlay > :not(#heroBrand),
+body[data-map-tools="on"] #heroFade {
+  display: none !important;
+}
+body[data-map-tools="on"] #heroBrand {
+  display: flex !important;
+  width: 128px !important;
+  max-width: 128px !important;
+  height: 48px !important;
+  margin: 0 !important;
+  align-items: center;
+  justify-content: flex-start;
+  pointer-events: auto !important;
+}
+body[data-map-tools="on"] #heroBrand img {
+  display: block;
+  width: 124px;
+  max-width: 124px;
+  height: auto;
+  margin: 0;
+  filter: brightness(0) invert(1) drop-shadow(0 1px 5px rgba(94, 234, 212, 0.3));
+  opacity: 1;
+}
+body[data-map-tools="on"] #mapExploreBar {
   display: none !important;
 }
 body.explore-open #mapExploreBar {

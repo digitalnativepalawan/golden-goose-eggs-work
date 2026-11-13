@@ -866,9 +866,9 @@ svg.lucide{vertical-align:-.15em}
 <!-- ═══ FOREGROUND UI LAYER (z:10, click-through by default) ═══ -->
 <div id="uiLayer" class="ui-layer">
 
-<!-- ═══ TOP HEADER: logo → greeting → weather → search ═══ -->
+<!-- ═══ TOP INTRO: greeting, weather and TALA search ═══ -->
 <header class="mysv-top-header" id="heroOverlay">
-  <a class="mysv-logo" id="heroBrand" role="button" aria-label="SANVIC.PH"><img src="assets/sanvic-logo.png" alt="SANVIC.PH"/></a>
+  <a class="mysv-logo" id="heroBrand" role="button" tabindex="0" aria-label="SANVIC.PH — tap three times to open Backoffice" title="Tap three times for Backoffice" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();adminBrandClick()}"><img src="assets/sanvic-logo.png" alt="SANVIC.PH"/></a>
   <h1 class="hero-headline" id="heroHeadline">Discover Palawan<br><em>Differently.</em></h1>
   <p class="hero-subtitle" id="heroSubtitle"></p>
   <div class="hero-weather" id="heroWeather" style="display:none;"></div>
@@ -884,12 +884,10 @@ svg.lucide{vertical-align:-.15em}
 </header>
 <div class="hero-fade" id="heroFade"></div>
 
-<!-- The map carries a compact search and a single Explore action; the hero
-     remains the first-visit introduction and gives way to these map tools. -->
+<!-- Map header is brand-only. Place search remains inside the Explore panel. -->
 <!-- ═══ STAFF ADMIN ═══
-     There is no visible admin control in the product. The Backoffice opens by
-     tapping the SANVIC.PH logo in the header three times (see adminBrandClick)
-     or by adding ?admin=1 to the URL. No PIN, no sign-in. -->
+     Backoffice opens by tapping the SANVIC.PH logo in the map header three times
+     (see adminBrandClick), or by adding ?admin=1 to the URL. -->
 
 <!-- ═══ MAP TOOLS: one options menu for basemaps, boundaries and legend ═══ -->
 <div class="map-layer-toggle" id="mapLayerToggle">
@@ -2442,7 +2440,7 @@ svg.lucide{vertical-align:-.15em}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-11-12-pulse-sample-media-r6';
+  window.SANVIC_DEPLOY_VERSION = '2026-11-13-header-brand-only-r11';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by the app scripts and entry-flow.js so the two
   // timers cannot drift apart. Raise it to hold the first page longer.
@@ -2569,7 +2567,7 @@ svg.lucide{vertical-align:-.15em}
   <div class="carousel-dots" id="carouselDots"></div>
 </div>
 
-<link rel="stylesheet" href="explore-ux.css?v=2026-11-12-map-controls-r3">
+<link rel="stylesheet" href="explore-ux.css?v=2026-11-13-header-brand-only-r8">
 <style id="sanvicNoHScroll">
   /* ── Nothing in the product scrolls sideways. ─────────────────────────────
      Chip rows wrap; card strips wrap into uniform full-width rows. The same
