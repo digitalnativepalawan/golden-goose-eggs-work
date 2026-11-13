@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════
-// ADMIN PANEL — triple-tap the "SANVIC.PH" brand label in the header, or add
+// ADMIN PANEL — triple-tap the "SANVIC.PH" brand in the map header, or add
 // ?admin=1 to the URL. No PIN, no sign-in, no read-only state:
 // openAdminFromButton() opens the panel and every save is allowed.
 // The database side is
@@ -32,10 +32,8 @@ function adminRequireWrite() {
   return true;
 }
 
-// The only way into the Backoffice: tap the SANVIC.PH logo in the header three
-// times. The old floating gear sat in the top-right corner and, on a phone, slid
-// underneath the Layers / Locate stack - it could not be tapped at all. The logo
-// is always in the header on the map view and collides with nothing.
+// The primary Backoffice shortcut is the SANVIC.PH wordmark in the map header.
+// It stays in a clear top-left slot without competing with map controls.
 //
 // Counted from pointerdown, not click. A phone can swallow clicks (double-tap
 // zoom, slow taps on old Android) and then three taps never arrive as three
