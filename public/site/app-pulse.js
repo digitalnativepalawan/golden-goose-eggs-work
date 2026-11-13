@@ -1,11 +1,7 @@
 // ═══════════════════════════════════════════════════════
-// PULSE — live community layer (UI/mock-data phase).
-// Posts below are realistic placeholder content matching the
-// approved design mockups. No real posting/accounts yet — that's
-// a deliberate follow-up phase once user identity exists. The
-// "Create Post" button and category/tab structure are wired up
-// so the real data layer can slot in later without changing the
-// UI shell.
+// PULSE — live community layer with an explicit partner-preview fixture set.
+// Packaged examples are opt-in only, clearly labeled across the app, and their
+// engagement actions never write to the real community tables.
 // ═══════════════════════════════════════════════════════
 
 let PULSE_CATEGORIES = {
@@ -179,6 +175,118 @@ const PULSE_EVENTS = [
     tags: ["Nightlife", "Food & Drinks"],
   },
 ];
+const PARTNER_DEMO_TRIBE_MEDIA = [
+  ["assets/pulse/island-boats-beach.jpg", "assets/pulse/island-boats-aerial.jpg"],
+  ["assets/pulse/island-boats-aerial.jpg", "assets/pulse/kayak-lagoon.jpg"],
+  ["assets/pulse/street-food-skewers.jpg", "assets/pulse/bulalo-boodle.jpg"],
+  ["assets/san-vicente-long-beach.jpg", "assets/san-vicente-waterfalls.jpg"],
+  ["assets/pulse/kayak-lagoon.jpg", "assets/pulse/island-boats-beach.jpg"],
+];
+const PARTNER_DEMO_IMAGE_NOTE = "Illustrative sample image · partner preview only";
+const PULSE_MISSING_PHOTOS = [
+  "assets/pulse/island-boats-beach.jpg",
+  "assets/pulse/island-boats-aerial.jpg",
+  "assets/pulse/kayak-lagoon.jpg",
+  "assets/pulse/street-food-skewers.jpg",
+  "assets/pulse/bulalo-boodle.jpg",
+  "assets/san-vicente-long-beach.jpg",
+  "assets/san-vicente-waterfalls.jpg",
+];
+function pulseMissingPhoto(item) {
+  const key = String((item && (item.id || item.title)) || "listing");
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
+  return PULSE_MISSING_PHOTOS[hash % PULSE_MISSING_PHOTOS.length];
+}
+const PARTNER_DEMO_TRIBES = PULSE_TRIBES.map((item, index) => {
+  const images = PARTNER_DEMO_TRIBE_MEDIA[index] || PARTNER_DEMO_TRIBE_MEDIA[0];
+  return {
+    ...item,
+    thumb: images[0],
+    images: [...images],
+    imageCredit: PARTNER_DEMO_IMAGE_NOTE,
+    tags: [...(item.tags || [])],
+  };
+});
+const PARTNER_DEMO_EVENT_MEDIA = [
+  "assets/pulse/island-boats-beach.jpg",
+  "assets/pulse/bulalo-boodle.jpg",
+  "assets/pulse/street-food-skewers.jpg",
+];
+const PARTNER_DEMO_EVENTS = PULSE_EVENTS.map((item, index) => {
+  const image = PARTNER_DEMO_EVENT_MEDIA[index] || PARTNER_DEMO_EVENT_MEDIA[0];
+  return {
+    ...item,
+    images: [image],
+    imageCredit: PARTNER_DEMO_IMAGE_NOTE,
+    description: item.description || `${item.title} — illustrative partner-preview listing.`,
+    tags: [...(item.tags || [])],
+  };
+});
+function partnerDemoWhen(start) {
+  const date = new Date(start);
+  const today = new Date();
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const dayLabel =
+    date.toDateString() === today.toDateString()
+      ? "Today"
+      : date.toDateString() === tomorrow.toDateString()
+        ? "Tomorrow"
+        : date.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  return `${dayLabel}, ${date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+}
+function setPulsePartnerDemo(enabled) {
+  if (!enabled) return;
+  const now = Date.now();
+  const tribeOffsets = [55, 1450, 330, 1260, 1600];
+  const tribeSpots = [
+    [10.4962, 119.2607],
+    [10.4102, 119.1771],
+    [10.5318, 119.2822],
+    [10.55, 119.09],
+    [10.5318, 119.2822],
+  ];
+  PULSE_TRIBES.splice(
+    0,
+    PULSE_TRIBES.length,
+    ...PARTNER_DEMO_TRIBES.map((item, index) => {
+      const startsAt = new Date(now + tribeOffsets[index] * 60000);
+      return {
+        ...item,
+        starts_at: startsAt.toISOString(),
+        lat: tribeSpots[index][0],
+        lng: tribeSpots[index][1],
+        when: partnerDemoWhen(startsAt),
+      };
+    }),
+  );
+  const eventOffsets = [210, 90, 150];
+  const eventSpots = [
+    [10.4962, 119.2607],
+    [10.5318, 119.2822],
+    [10.5318, 119.2822],
+  ];
+  PULSE_EVENTS.splice(
+    0,
+    PULSE_EVENTS.length,
+    ...PARTNER_DEMO_EVENTS.map((item, index) => {
+      const startsAt = new Date(now + eventOffsets[index] * 60000);
+      return {
+        ...item,
+        starts_at: startsAt.toISOString(),
+        lat: eventSpots[index][0],
+        lng: eventSpots[index][1],
+        when: partnerDemoWhen(startsAt),
+      };
+    }),
+  );
+}
+if (partnerDemoMode) setPulsePartnerDemo(true);
+else {
+  PULSE_TRIBES.length = 0;
+  PULSE_EVENTS.length = 0;
+}
 // The lounge starts empty on purpose. It used to be seeded with three invented
 // travellers — one of them quoting a real-looking boat rental price — which a
 // visitor would take for real people. Messages are not stored server-side yet,
@@ -603,6 +711,7 @@ function todayHappeningItem(i) {
 }
 
 function todayInterestToggle(key, doneMsg) {
+  if (partnerDemoMode) return toast("Sample activity — interest is not saved in preview.");
   ensurePerson(async (person) => {
     const on = myToday.has(key);
     try {
@@ -814,20 +923,25 @@ function tribeCardHTML(t) {
   const allImages = [];
   if (t.thumb) allImages.push(t.thumb);
   if (t.images && Array.isArray(t.images)) allImages.push(...t.images);
-  const uniqueImages = [...new Set(allImages)];
+  const uniqueImages = [...new Set(allImages.filter((image) => String(image || "").trim()))];
+  const fallbackPhoto = pulseMissingPhoto(t);
+  const isSamplePhoto =
+    uniqueImages.length === 0 || /illustrative sample/i.test(String(t.imageCredit || ""));
+  const displayThumb = uniqueImages[0] || fallbackPhoto;
   const thumbClick =
     uniqueImages.length > 1
-      ? `onclick="openCarousel(${JSON.stringify(uniqueImages).replace(/"/g, "&quot;")},0)"`
+      ? (() => {
+          const imagesArg = JSON.stringify(uniqueImages).replace(/"/g, "&quot;");
+          return `role="button" tabindex="0" aria-label="View ${uniqueImages.length} tribe photos" onclick="openCarousel(${imagesArg},0)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openCarousel(${imagesArg},0)}"`;
+        })()
       : "";
-  // A tribe with no photo used to render an empty grey box. It now falls back to
-  // the palm mark on a tinted tile, so a card never looks broken mid-scroll.
-  const hasThumb = !!(t.thumb && String(t.thumb).trim());
-  const thumbStyle = hasThumb
-    ? `background-image:url('${escT(t.thumb)}')${uniqueImages.length > 1 ? ";cursor:pointer" : ""}`
-    : "";
+  // Missing photos use a local illustrative image, clearly marked as a sample.
+  // Real photos already on a listing always take priority over this fallback.
+  const hasThumb = !!displayThumb;
+  const thumbImage = `<img src="${escT(displayThumb)}" alt="${isSamplePhoto ? "Illustrative sample photo" : "Photo for " + escT(t.title)}" loading="lazy" onerror="this.onerror=null;this.src='${escT(fallbackPhoto)}';this.nextElementSibling.hidden=false">`;
   return `
   <div class="pv2-tribe">
-    <div class="pv2-tribe-thumb${hasThumb ? "" : " is-empty"}" style="${thumbStyle}" ${thumbClick}>${hasThumb ? "" : lucideSvg("palmtree", 26)}</div>
+    <div class="pv2-tribe-thumb${hasThumb ? "" : " is-empty"}" ${thumbClick} aria-label="${isSamplePhoto ? "Illustrative sample photo" : "Tribe photo"}">${thumbImage}<span class="pv2-sample-photo-tag"${isSamplePhoto ? "" : " hidden"}>Illustrative sample</span></div>
     <div class="pv2-tribe-body">
       <div class="pv2-tribe-title" role="button" tabindex="0" style="cursor:pointer" onclick="openTribeDetail('${t.id}')">${t.title}</div>
       <div class="pv2-tribe-meta">
@@ -848,14 +962,18 @@ function tribeCardHTML(t) {
   </div>`;
 }
 function eventCardHTML(e) {
-  const allImages = e.images && Array.isArray(e.images) && e.images.length ? e.images : [];
+  const allImages =
+    e.images && Array.isArray(e.images)
+      ? e.images.filter((image) => String(image || "").trim())
+      : [];
+  const isSamplePhoto =
+    !allImages.length || /illustrative sample/i.test(String(e.imageCredit || ""));
+  const displayImage = allImages[0] || pulseMissingPhoto(e);
   const interested = eventRealCount(e.id);
   const mine = myEvents.has(String(e.id));
-  // This used to require more than one image, so an event with a single photo -
-  // which is the normal case - rendered no photo at all. One image now renders.
-  const imageHtml = allImages.length
-    ? `<img class="pulse-card-image" src="${escT(allImages[0])}" alt="" loading="lazy"${allImages.length > 1 ? ` style="cursor:pointer" onclick="openCarousel(${JSON.stringify(allImages).replace(/"/g, "&quot;")},0)"` : ""} onerror="this.style.display='none'">`
-    : "";
+  // A single real image is enough to show the card photo. Listings with no
+  // image receive a clearly marked local illustration until the admin replaces it.
+  const imageHtml = `<div class="pv2-event-image"><img class="pulse-card-image" src="${escT(displayImage)}" alt="${isSamplePhoto ? "Illustrative sample photo" : ""}" loading="lazy"${allImages.length > 1 ? ` style="cursor:pointer" onclick="openCarousel(${JSON.stringify(allImages).replace(/"/g, "&quot;")},0)"` : ""} onerror="this.onerror=null;this.src='${escT(pulseMissingPhoto(e))}';this.nextElementSibling.hidden=false"><span class="pv2-sample-photo-tag"${isSamplePhoto ? "" : " hidden"}>Illustrative sample</span></div>`;
   return `
   <div class="pv2-event">
     ${imageHtml}
@@ -983,6 +1101,10 @@ function openEventDetail(id) {
   }
   infoContext = { kind: "event", id: String(id) };
   const imgs = (e.images || []).filter(Boolean);
+  if (!imgs.length) imgs.push(pulseMissingPhoto(e));
+  const samplePhoto =
+    !(Array.isArray(e.images) && e.images.some(Boolean)) ||
+    /illustrative sample/i.test(String(e.imageCredit || ""));
   const mine = typeof myEvents !== "undefined" && myEvents ? myEvents.has(String(e.id)) : false;
   openInfoSheet({
     kicker: "Event",
@@ -991,7 +1113,7 @@ function openEventDetail(id) {
       .filter(Boolean)
       .join("   ·   "),
     body: `
-      ${imgs.length ? `<div class="info-media" style="background-image:url('${escapeHtml(imgs[0])}')"></div>` : ""}
+      ${imgs.length ? `<div class="info-media" style="background-image:url('${escapeHtml(imgs[0])}')">${samplePhoto ? '<span class="pv2-sample-photo-tag">Illustrative sample</span>' : ""}</div>` : ""}
       <div class="info-copy">${e.description ? escapeHtml(e.description) : '<span class="info-muted">The organiser has not written the details yet.</span>'}</div>
       ${e.imageCredit ? `<div class="info-credit">Photo: ${escapeHtml(e.imageCredit)}</div>` : ""}
       <div class="info-actions">
@@ -1019,7 +1141,13 @@ function openTribeDetail(id) {
     return;
   }
   infoContext = { kind: "tribe", id: String(id) };
-  const imgs = (t.images || []).filter(Boolean);
+  const imgs = [
+    ...new Set([t.thumb, ...(Array.isArray(t.images) ? t.images : [])].filter(Boolean)),
+  ];
+  if (!imgs.length) imgs.push(pulseMissingPhoto(t));
+  const samplePhoto =
+    (!t.thumb && !(Array.isArray(t.images) && t.images.some(Boolean))) ||
+    /illustrative sample/i.test(String(t.imageCredit || ""));
   const mine = typeof myTribes !== "undefined" && myTribes ? myTribes.has(String(t.id)) : false;
   const desc = t.description || t.extra || t.sub || "";
   openInfoSheet({
@@ -1027,7 +1155,8 @@ function openTribeDetail(id) {
     title: t.title,
     meta: [t.where, t.when, t.by ? "Started by " + t.by : ""].filter(Boolean).join("   ·   "),
     body: `
-      ${imgs.length ? `<div class="info-media" style="background-image:url('${escapeHtml(imgs[0])}')"></div>` : ""}
+      ${imgs.length ? `<div class="info-media" style="background-image:url('${escapeHtml(imgs[0])}')">${samplePhoto ? '<span class="pv2-sample-photo-tag">Illustrative sample</span>' : ""}</div>` : ""}
+      ${t.imageCredit ? `<div class="info-credit">${escapeHtml(t.imageCredit)}</div>` : ""}
       <div class="info-copy">${desc ? escapeHtml(desc) : '<span class="info-muted">The organiser has not written the details yet — say hello in the tribe chat below.</span>'}</div>
       <div class="info-actions">
         <button class="info-cta" onclick="infoJoinTribe('${escT(String(t.id))}')">${mine ? "Leave this tribe" : "Join this tribe"}</button>
@@ -1053,6 +1182,12 @@ function infoIsUuid(id) {
 async function loadTribeChat(tribeId) {
   const host = document.getElementById("infoChat");
   if (!host) return;
+  if (partnerDemoMode) {
+    host.innerHTML = `<div class="info-chat-head">Sample tribe chat · preview only</div>
+      <div class="info-msg"><div class="info-msg-name">Sample traveler</div>Meet by the Long Beach access at 5:30?</div>
+      <div class="info-msg"><div class="info-msg-name">Sample organizer</div>Sounds good. I’ll share the exact pin here.</div>`;
+    return;
+  }
   if (!infoIsUuid(tribeId)) {
     host.innerHTML = `<div class="info-chat-head">Tribe chat</div>
       <div class="info-note">This tribe was made before tribes were saved for everyone, so it has no chat room. Form a new tribe to get one.</div>`;
@@ -1123,6 +1258,12 @@ function sendTribeMessage(tribeId) {
 async function loadEventChat(eventId) {
   const host = document.getElementById("infoChatEvent");
   if (!host) return;
+  if (partnerDemoMode) {
+    host.innerHTML = `<div class="info-chat-head">Sample event chat · preview only</div>
+      <div class="info-msg"><div class="info-msg-name">Sample attendee</div>What time should we arrive?</div>
+      <div class="info-msg"><div class="info-msg-name">Sample organizer</div>Come a little before the music starts.</div>`;
+    return;
+  }
   host.innerHTML = `<div class="info-chat-head">Event chat</div><div class="info-note">Loading…</div>`;
   let rows = [];
   try {
@@ -1367,6 +1508,7 @@ const EMPTY_FORM_DRAFT = {
   plan: "",
   when: "",
   whenCustom: "",
+  whenTime: "",
   wherePick: "",
   whereText: "",
   whereSearch: "",
@@ -1377,6 +1519,7 @@ const EMPTY_FORM_DRAFT = {
   note: "",
   imageFile: null,
   imagePreview: "",
+  imageIsSample: false,
 };
 let formDraft = Object.assign({}, EMPTY_FORM_DRAFT);
 function selectPulseView_reset() {
@@ -1415,12 +1558,16 @@ function renderPulseWizard() {
       <button class="pv2-wiz-chip${formDraft.when === "Today" ? " on" : ""}" onclick="wizPick(this,'when','Today')">Today</button>
       <button class="pv2-wiz-chip${formDraft.when === "Tomorrow" ? " on" : ""}" onclick="wizPick(this,'when','Tomorrow')">Tomorrow</button>
       <button class="pv2-wiz-chip${formDraft.when === "custom" ? " on" : ""}" onclick="wizPick(this,'when','custom',true)">Pick date/time</button>
-    </div>${formDraft.when === "custom" ? `<input class="pv2-wiz-input" type="datetime-local" value="${formDraft.whenCustom}" oninput="formDraft.whenCustom=this.value">` : ""}`;
+    </div>${formDraft.when === "custom" ? `<input class="pv2-wiz-input" type="datetime-local" aria-label="Start date and time" value="${formDraft.whenCustom}" oninput="formDraft.whenCustom=this.value">` : ["Today", "Tomorrow"].includes(formDraft.when) ? `<input class="pv2-wiz-input" type="time" aria-label="Start time" value="${formDraft.whenTime}" oninput="formDraft.whenTime=this.value">` : ""}`;
     hint =
-      formDraft.when && (formDraft.when !== "custom" || formDraft.whenCustom)
-        ? ""
-        : formDraft.when === "custom"
-          ? "Pick the date and time."
+      formDraft.when === "custom"
+        ? formDraft.whenCustom
+          ? ""
+          : "Pick the date and time."
+        : ["Today", "Tomorrow"].includes(formDraft.when)
+          ? formDraft.whenTime
+            ? ""
+            : "Pick a start time so people can find this on the live map."
           : "Pick when it happens.";
   } else if (wizStep === 2) {
     // "Choose Place" used to be a dead chip. It set a flag, never asked which
@@ -1470,8 +1617,10 @@ function renderPulseWizard() {
       <div class="pv2-wiz-photo">
         <label class="pv2-wiz-photobtn" for="wizImage">${lucideSvg("camera", 14)} <span>${formDraft.imagePreview ? "Change photo" : "Add a photo"}</span></label>
         <input type="file" id="wizImage" accept="image/*" onchange="wizPickImage(this)" hidden>
+        ${partnerDemoMode ? `<button class="pv2-wiz-sample" type="button" onclick="wizUseSamplePhoto()">Use sample photo</button>` : ""}
         <div class="pv2-wiz-photoprev${formDraft.imagePreview ? " has" : ""}" id="wizImagePrev" style="${formDraft.imagePreview ? `background-image:url('${escT(formDraft.imagePreview)}')` : ""}">${formDraft.imagePreview ? "" : lucideSvg("image", 22)}</div>
       </div>
+      ${partnerDemoMode ? `<div class="pv2-wiz-photo-note">Preview only. Sample and selected photos stay on this device; nothing uploads or publishes while partner preview is on.</div>` : ""}
       <textarea class="pv2-wiz-textarea" placeholder="Looking for 2 more people to split a boat tomorrow morning." oninput="formDraft.note=this.value">${escT(formDraft.note)}</textarea>`;
   }
   const last = wizStep === WIZ_STEPS - 1;
@@ -1518,6 +1667,11 @@ function wizStepState() {
     if (!formDraft.when) return { ok: false, hint: "Pick when it happens." };
     if (formDraft.when === "custom" && !String(formDraft.whenCustom || "").trim())
       return { ok: false, hint: "Pick the date and time." };
+    if (["Today", "Tomorrow"].includes(formDraft.when) && !String(formDraft.whenTime || "").trim())
+      return { ok: false, hint: "Pick a start time so people can find this on the live map." };
+    const startsAt = pulseStartAtFromDraft();
+    if ((formDraft.when === "custom" || formDraft.whenTime) && !startsAt)
+      return { ok: false, hint: "Choose a valid start date and time." };
     return { ok: true };
   }
   if (wizStep === 2) {
@@ -1585,6 +1739,7 @@ function wizPickImage(input) {
     return;
   }
   formDraft.imageFile = f;
+  formDraft.imageIsSample = false;
   try {
     formDraft.imagePreview = URL.createObjectURL(f);
   } catch (e) {
@@ -1596,6 +1751,18 @@ function wizPickImage(input) {
     prev.style.backgroundImage = formDraft.imagePreview ? `url('${formDraft.imagePreview}')` : "";
     prev.innerHTML = "";
   }
+}
+function wizUseSamplePhoto() {
+  if (!partnerDemoMode) return;
+  if (formDraft.imagePreview && formDraft.imagePreview.startsWith("blob:")) {
+    try {
+      URL.revokeObjectURL(formDraft.imagePreview);
+    } catch (e) {}
+  }
+  formDraft.imageFile = null;
+  formDraft.imageIsSample = true;
+  formDraft.imagePreview = "assets/pulse/island-boats-beach.jpg";
+  renderPulseWizard();
 }
 function wizNext() {
   if (wizStep < WIZ_STEPS - 1) wizStep++;
@@ -1900,7 +2067,34 @@ async function cancelMyTribe(id) {
   }
 }
 
+function pulseStartAtFromDraft() {
+  if (formDraft.when === "custom") {
+    const date = new Date(formDraft.whenCustom);
+    return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+  }
+  if (!["Today", "Tomorrow"].includes(formDraft.when) || !formDraft.whenTime) return null;
+  const [hours, minutes] = String(formDraft.whenTime).split(":").map(Number);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+  const date = new Date();
+  if (formDraft.when === "Tomorrow") date.setDate(date.getDate() + 1);
+  date.setHours(hours, minutes, 0, 0);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+function isMissingPulseNowColumn(error) {
+  return (
+    ["42703", "PGRST204"].includes(String(error && error.code)) ||
+    /column .*?(starts_at|lat|lng).*?(does not exist|schema cache)/i.test(
+      String(error && error.message),
+    )
+  );
+}
+
 function wizCreate() {
+  if (partnerDemoMode) return toast("Turn off partner preview before creating a real tribe.");
+  if (formDraft.imageIsSample)
+    return toast(
+      "That sample photo is only for preview. Choose your own photo before creating a real tribe.",
+    );
   ensurePerson(async (person) => {
     // Never "Chosen place" again: a tribe is saved with the place the organiser
     // actually picked (a mapped spot), the point they tapped on the map, or the
@@ -1908,8 +2102,16 @@ function wizCreate() {
     const whereLabel =
       String(formDraft.whereText || "").trim() ||
       (formDraft.wherePick === "current" ? "Current map area" : "San Vicente");
+    const startsAt = pulseStartAtFromDraft();
+    const localStart = startsAt ? new Date(startsAt) : null;
     const whenLabel =
-      formDraft.when === "custom" ? formDraft.whenCustom.replace("T", ", ") : formDraft.when;
+      formDraft.when === "custom"
+        ? localStart
+          ? localStart.toLocaleString([], { dateStyle: "medium", timeStyle: "short" })
+          : formDraft.whenCustom.replace("T", ", ")
+        : startsAt
+          ? `${formDraft.when}, ${localStart.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`
+          : formDraft.when;
     // The organiser names their own tribe; the plan they picked becomes the tag
     // instead of the title.
     const title = (formDraft.name || "").trim() || formDraft.plan;
@@ -1940,25 +2142,30 @@ function wizCreate() {
           toast("The photo did not upload — creating the tribe without it.");
         }
       }
-      const { data, error } = await sb
-        .from("tribes")
-        .insert({
-          title,
-          where_text: whereLabel,
-          when_text: whenLabel,
-          sub: note || "Just formed.",
-          description: note || "",
-          tags: [formDraft.plan],
-          cap: capNum,
-          joined: 1,
-          extra: 0,
-          device_id: person.id,
-          display_name: person.name,
-          image_url: imageUrl || null,
-          thumb_url: imageUrl || "",
-        })
-        .select()
-        .single();
+      const tribeRow = {
+        title,
+        where_text: whereLabel,
+        when_text: whenLabel,
+        sub: note || "Just formed.",
+        description: note || "",
+        tags: [formDraft.plan],
+        cap: capNum,
+        joined: 1,
+        extra: 0,
+        device_id: person.id,
+        display_name: person.name,
+        image_url: imageUrl || null,
+        thumb_url: imageUrl || "",
+        lat: formDraft.whereLat,
+        lng: formDraft.whereLng,
+        starts_at: startsAt,
+      };
+      let insert = await sb.from("tribes").insert(tribeRow).select().single();
+      if (insert.error && isMissingPulseNowColumn(insert.error)) {
+        const { lat, lng, starts_at, ...legacyTribeRow } = tribeRow;
+        insert = await sb.from("tribes").insert(legacyTribeRow).select().single();
+      }
+      const { data, error } = insert;
       if (error) throw error;
       // Hold the cancel token: it is the only thing that can remove this tribe.
       rememberTribeToken(data.id, data.delete_token);
@@ -1967,6 +2174,9 @@ function wizCreate() {
         title: data.title,
         where: data.where_text,
         when: data.when_text,
+        starts_at: data.starts_at || startsAt,
+        lat: data.lat ?? formDraft.whereLat,
+        lng: data.lng ?? formDraft.whereLng,
         sub: data.sub,
         description: data.description,
         by: person.name,
@@ -2057,6 +2267,7 @@ function pulseCardHtml(post) {
 }
 
 async function togglePulseThread(postId) {
+  if (partnerDemoMode) return toast("Sample post — replies are not available in preview.");
   const wrap = document.getElementById("pulseThread-" + postId);
   if (!wrap) return;
   if (wrap.style.display !== "none") {
@@ -2156,6 +2367,50 @@ document.addEventListener("keydown", (e) => {
 let pulseLikedSet = new Set();
 // Cache of latest feed rows by id so togglePulseLike can update counts
 let pulseFeedById = new Map();
+const PARTNER_DEMO_FEED = [
+  {
+    id: 91001,
+    cat: "island",
+    name: "Sample traveler",
+    avatar: null,
+    admin: false,
+    text: "Example plan: sharing a boat from Port Barton for a relaxed island-hopping day.",
+    image: "assets/pulse/island-boats-aerial.jpg",
+    location: "Port Barton",
+    tag: "Sample trip idea",
+    likes: 12,
+    comments: 3,
+    minutesAgo: 11,
+  },
+  {
+    id: 91002,
+    cat: "surf",
+    name: "Sample local guide",
+    avatar: null,
+    admin: true,
+    text: "Example update: check the sea and wind again before heading out. Conditions can change quickly.",
+    image: "assets/san-vicente-long-beach.jpg",
+    location: "Alimanguan",
+    tag: "Sample surf note",
+    likes: 8,
+    comments: 2,
+    minutesAgo: 38,
+  },
+  {
+    id: 91003,
+    cat: "food",
+    name: "Sample traveler",
+    avatar: null,
+    admin: false,
+    text: "Example question: where can we find a relaxed dinner near Poblacion tonight?",
+    image: "assets/pulse/street-food-skewers.jpg",
+    location: "Poblacion",
+    tag: "Sample question",
+    likes: 5,
+    comments: 1,
+    minutesAgo: 74,
+  },
+];
 
 function relTime(iso) {
   if (!iso) return "";
@@ -2172,6 +2427,7 @@ function relTime(iso) {
 }
 
 async function togglePulseLike(btn, postId) {
+  if (partnerDemoMode) return toast("Sample post — likes are not saved in preview.");
   const device = pulseDeviceId();
   const liked = pulseLikedSet.has(postId);
   const span = btn.querySelector("span");
@@ -2233,6 +2489,18 @@ function setPulseFeedCategory(cat) {
 async function renderPulseFeed() {
   const body = document.getElementById("pulseBody");
   if (!body) return;
+  if (partnerDemoMode) {
+    const posts = PARTNER_DEMO_FEED.filter(
+      (post) => pulseFeedCategory === "all" || post.cat === pulseFeedCategory,
+    ).map((post) => ({
+      ...post,
+      time: relTime(new Date(Date.now() - post.minutesAgo * 60000).toISOString()),
+    }));
+    body.innerHTML = `${pulseFeedChromeHtml()}
+      <div class="partner-demo-feed-note">Sample feed posts · likes and replies are not saved.</div>
+      ${posts.length ? posts.map(pulseCardHtml).join("") : '<div class="pv2-empty">No sample posts in this channel.</div>'}`;
+    return;
+  }
 
   body.innerHTML = `${pulseFeedChromeHtml()}<div class="pulse-empty">Loading…</div>`;
 
@@ -2370,6 +2638,7 @@ function renderPulseComposeCategoryMenu() {
 }
 
 function openPulseCompose() {
+  if (partnerDemoMode) return toast("Turn off partner preview to publish a real post.");
   document.getElementById("pulseComposeText").value = "";
   renderPulseComposeCategoryMenu();
   const initCat = pulseFeedCategory !== "all" ? pulseFeedCategory : "all";
@@ -2596,6 +2865,7 @@ async function uploadPulseImage(blob) {
 
 let pulseLastPostAt = 0;
 async function submitPulsePost() {
+  if (partnerDemoMode) return toast("Turn off partner preview to publish a real post.");
   const text = document.getElementById("pulseComposeText").value.trim();
   if (!text && !pulseComposeImageBlob) return;
 

@@ -946,6 +946,15 @@ async function adminSaveSplashFooter() {
 
 let __mediaGallery = []; // current image URLs being edited
 let __mediaPrefix = "item"; // storage path prefix (dest_, tribe_, event_)
+const PULSE_ADMIN_SAMPLE_MEDIA = [
+  ["assets/pulse/island-boats-beach.jpg", "Long Beach boats"],
+  ["assets/pulse/island-boats-aerial.jpg", "Island boats"],
+  ["assets/pulse/kayak-lagoon.jpg", "Kayak lagoon"],
+  ["assets/pulse/street-food-skewers.jpg", "Street food"],
+  ["assets/pulse/bulalo-boodle.jpg", "Local meal"],
+  ["assets/san-vicente-long-beach.jpg", "San Vicente beach"],
+  ["assets/san-vicente-waterfalls.jpg", "Waterfalls"],
+];
 
 // One thumbnail, shared by every gallery in the Backoffice so the add / edit /
 // delete affordances cannot drift apart. Index 0 is the cover — the hero photo
@@ -990,6 +999,13 @@ function mediaGalleryHtml(containerId, prefix) {
         <span>+</span><small>Add photos</small>
       </label>
     </div>
+    <div class="admin-sample-picker" aria-label="Illustrative sample photos">
+      <div class="admin-sample-picker-heading"><strong>Or use a sample photo</strong><span>Clearly illustrative · replace before launch</span></div>
+      <div class="admin-sample-picker-list">${PULSE_ADMIN_SAMPLE_MEDIA.map(
+        ([url, label]) =>
+          `<button type="button" class="admin-sample-photo" onclick="legacyMediaAddSample('${containerId}','${url}')" aria-label="Add illustrative sample photo: ${label}"><img src="${url}" alt=""><span>${label}</span></button>`,
+      ).join("")}</div>
+    </div>
     <div class="admin-media-status" id="${containerId}MediaStatus"></div>
     <div style="display:flex;gap:6px;margin-top:6px;">
       <input id="${containerId}UrlInput" placeholder="Or paste image URL…" style="flex:1;padding:7px 10px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
@@ -1003,6 +1019,34 @@ function mediaAddUrl(containerId) {
   if (!url) return;
   __mediaGallery.push(url);
   inp.value = "";
+  mediaRefreshGrid(containerId);
+}
+
+function legacyMediaAddSample(containerId, url) {
+  if (!PULSE_ADMIN_SAMPLE_MEDIA.some(([sample]) => sample === url)) {
+    mediaSetStatus(containerId, "Choose a sample from the provided list.", true);
+    return;
+  }
+  if (__mediaGallery.includes(url)) {
+    mediaSetStatus(containerId, "That sample photo is already in this listing.", true);
+    return;
+  }
+  __mediaGallery.push(url);
+  const creditId =
+    containerId === "atbf"
+      ? "atbfCredit"
+      : containerId === "aevf"
+        ? "aevfCredit"
+        : containerId === "adf"
+          ? "adfCredit"
+          : "";
+  const credit = creditId && document.getElementById(creditId);
+  if (credit && !credit.value.trim())
+    credit.value = "Illustrative sample photo · replace before launch";
+  mediaSetStatus(
+    containerId,
+    "Illustrative sample photo added. Replace it with a real photo before launch.",
+  );
   mediaRefreshGrid(containerId);
 }
 
@@ -1610,6 +1654,57 @@ async function adminSaveToday() {
   }
 }
 
+function adminLocalDateTimeValue(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+function adminPulseNowFields(latId, lngId, startsAtId) {
+  const latText = document.getElementById(latId).value.trim();
+  const lngText = document.getElementById(lngId).value.trim();
+  const startsText = document.getElementById(startsAtId).value;
+  if (!!latText !== !!lngText)
+    throw new Error("Enter both latitude and longitude, or leave both blank.");
+  let lat = null;
+  let lng = null;
+  if (latText) {
+    lat = Number(latText);
+    lng = Number(lngText);
+    if (
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      lat < 6.5 ||
+      lat > 12.9 ||
+      lng < 116.6 ||
+      lng > 121
+    )
+      throw new Error("Location must be a valid point in the San Vicente area.");
+  }
+  let starts_at = null;
+  if (startsText) {
+    const date = new Date(startsText);
+    if (!Number.isFinite(date.getTime())) throw new Error("Enter a valid start date and time.");
+    starts_at = date.toISOString();
+  }
+  return { lat, lng, starts_at };
+}
+async function saveAdminPulseRow(table, id, payload) {
+  const isNew = !id || id === "new";
+  const save = (row) =>
+    isNew ? sb.from(table).insert(row) : sb.from(table).update(row).eq("id", id);
+  let result = await save(payload);
+  if (
+    result.error &&
+    typeof isMissingPulseNowColumnError === "function" &&
+    isMissingPulseNowColumnError(result.error)
+  ) {
+    const { lat, lng, starts_at, ...legacyPayload } = payload;
+    result = await save(legacyPayload);
+  }
+  if (result.error) throw result.error;
+}
+
 async function renderAdminTribes() {
   const body = document.getElementById("adminBody");
   body.innerHTML = '<div class="admin-empty">Loading…</div>';
@@ -1686,6 +1781,11 @@ async function adminEditTribe(id) {
         <div class="admin-field"><label>Where</label><input id="atbfWhere" value="${escapeHtml(t.where_text || "")}"></div>
         <div class="admin-field"><label>When</label><input id="atbfWhen" value="${escapeHtml(t.when_text || "")}"></div>
       </div>
+      <div class="admin-grid-2">
+        <div class="admin-field"><label>Map latitude</label><input id="atbfLat" type="number" step="any" value="${t.lat ?? ""}" placeholder="Optional"></div>
+        <div class="admin-field"><label>Map longitude</label><input id="atbfLng" type="number" step="any" value="${t.lng ?? ""}" placeholder="Optional"></div>
+      </div>
+      <div class="admin-field"><label>Structured start time (for the map's live Now layer)</label><input id="atbfStartsAt" type="datetime-local" value="${adminLocalDateTimeValue(t.starts_at)}"></div>
       <div class="admin-field"><label>Subtitle</label><input id="atbfSub" value="${escapeHtml(t.sub || "")}"></div>
       <div class="admin-field">
         <label>Full text — this is what opens the tribe window</label>
@@ -1713,12 +1813,13 @@ async function adminEditTribe(id) {
 
 async function adminSaveTribe(id) {
   if (!adminRequireWrite()) return;
-  const isNew = id === "new";
   try {
     const video = await mediaUploadVideoIfNeeded("atbf");
     const images = __mediaGallery.slice();
     const thumbUrl = images.shift() || "";
+    const pulseNowFields = adminPulseNowFields("atbfLat", "atbfLng", "atbfStartsAt");
     const payload = {
+      ...pulseNowFields,
       title: document.getElementById("atbfTitle").value.trim(),
       where_text: document.getElementById("atbfWhere").value.trim(),
       when_text: document.getElementById("atbfWhen").value.trim(),
@@ -1749,13 +1850,7 @@ async function adminSaveTribe(id) {
       alert("Title is required.");
       return;
     }
-    if (isNew) {
-      const { error } = await sb.from("tribes").insert(payload);
-      if (error) throw error;
-    } else {
-      const { error } = await sb.from("tribes").update(payload).eq("id", id);
-      if (error) throw error;
-    }
+    await saveAdminPulseRow("tribes", id, payload);
     renderAdminTribes();
   } catch (err) {
     alert("Save failed: " + err.message);
@@ -1845,6 +1940,11 @@ async function adminEditEvent(id) {
         <div class="admin-field"><label>Where</label><input id="aevfWhere" value="${escapeHtml(ev.where_text || "")}"></div>
         <div class="admin-field"><label>When</label><input id="aevfWhen" value="${escapeHtml(ev.when_text || "")}"></div>
       </div>
+      <div class="admin-grid-2">
+        <div class="admin-field"><label>Map latitude</label><input id="aevfLat" type="number" step="any" value="${ev.lat ?? ""}" placeholder="Optional"></div>
+        <div class="admin-field"><label>Map longitude</label><input id="aevfLng" type="number" step="any" value="${ev.lng ?? ""}" placeholder="Optional"></div>
+      </div>
+      <div class="admin-field"><label>Structured start time (for the map's live Now layer)</label><input id="aevfStartsAt" type="datetime-local" value="${adminLocalDateTimeValue(ev.starts_at)}"></div>
       <div class="admin-field"><label>Price</label><input id="aevfPrice" value="${escapeHtml(ev.price || "")}"></div>
       <div class="admin-field">
         <label>Full description — this is what opens the event window</label>
@@ -1864,10 +1964,11 @@ async function adminEditEvent(id) {
 
 async function adminSaveEvent(id) {
   if (!adminRequireWrite()) return;
-  const isNew = id === "new";
   try {
     const video = await mediaUploadVideoIfNeeded("aevf");
+    const pulseNowFields = adminPulseNowFields("aevfLat", "aevfLng", "aevfStartsAt");
     const payload = {
+      ...pulseNowFields,
       title: document.getElementById("aevfTitle").value.trim(),
       org: document.getElementById("aevfOrg").value.trim(),
       where_text: document.getElementById("aevfWhere").value.trim(),
@@ -1889,13 +1990,7 @@ async function adminSaveEvent(id) {
       alert("Title is required.");
       return;
     }
-    if (isNew) {
-      const { error } = await sb.from("events").insert(payload);
-      if (error) throw error;
-    } else {
-      const { error } = await sb.from("events").update(payload).eq("id", id);
-      if (error) throw error;
-    }
+    await saveAdminPulseRow("events", id, payload);
     renderAdminEvents();
   } catch (err) {
     alert("Save failed: " + err.message);

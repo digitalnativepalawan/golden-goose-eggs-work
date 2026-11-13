@@ -269,8 +269,13 @@ function buildCarouselImages(d) {
 // tables hang off the place itself.
 async function renderPlaceExtras(d) {
   const box = document.getElementById("deExtras");
+  const callAction = document.getElementById("deCall");
   if (!box) return;
   box.innerHTML = "";
+  if (callAction) {
+    callAction.style.display = "none";
+    callAction.removeAttribute("href");
+  }
   if (!d || d.id == null) return;
   let row = null;
   try {
@@ -290,9 +295,31 @@ async function renderPlaceExtras(d) {
   if (!currentDest || String(currentDest.id) !== String(d.id)) return;
 
   const det = Array.isArray(row.place_details) ? row.place_details[0] : row.place_details;
+  const statsBox = document.getElementById("deStats");
+  if (det && det.hours && statsBox) {
+    const emptyHours = statsBox.querySelector(".dest-exp-stat strong")?.textContent === "Hours";
+    if (emptyHours) {
+      statsBox.innerHTML = `<div class="dest-exp-stat"><strong>Hours</strong><span>${escapeHtml(det.hours)}</span></div>`;
+    } else {
+      statsBox.insertAdjacentHTML(
+        "beforeend",
+        `<div class="dest-exp-stat"><strong>Hours</strong><span>${escapeHtml(det.hours)}</span></div>`,
+      );
+    }
+  }
   const contacts = (row.place_contacts || [])
     .slice()
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  const phoneContact = contacts.find(
+    (c) =>
+      ["phone", "mobile"].includes(String(c.kind || "phone").toLowerCase()) &&
+      String(c.value || "").trim(),
+  );
+  if (callAction && phoneContact) {
+    const phone = String(phoneContact.value).trim();
+    callAction.href = "tel:" + phone.replace(/[^0-9+]/g, "");
+    callAction.style.display = "flex";
+  }
   const links = (row.place_links || [])
     .slice()
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
@@ -484,8 +511,131 @@ function renderPlaceCommunity(d) {
   box.innerHTML = `<div class="dest-community-title">People &amp; tribe chats around ${escT(d.barangay || d.name)}</div>${rows.map((r) => `<button class="dest-community-card" type="button" onclick="${r.onclick}"><span class="dcc-body"><strong class="dcc-t">${escT(r.title)}</strong><small class="dcc-m">${escT(r.kind)}${r.meta ? " · " + escT(r.meta) : ""}</small></span>${lucideSvg("chevron-right", 16)}</button>`).join("")}`;
 }
 
+let routeLine = null;
+let routeController = null;
+let routeWasDestExpanded = false;
+function closeRoutePreview() {
+  if (routeController) {
+    routeController.abort();
+    routeController = null;
+  }
+  const panel = document.getElementById("routePreview");
+  if (panel) panel.hidden = true;
+  if (routeLine && map && map.hasLayer(routeLine)) map.removeLayer(routeLine);
+  routeLine = null;
+  const sheet = document.getElementById("destSheet");
+  if (routeWasDestExpanded && sheet && currentDest) {
+    sheet.className = "dest-sheet expanded";
+    sheet.style.maxHeight = exploreIsSide() ? "" : "58dvh";
+  }
+  routeWasDestExpanded = false;
+  if (typeof renderNearestBar === "function") renderNearestBar();
+  if (typeof syncMapViewport === "function") syncMapViewport();
+}
+async function previewRouteToCurrentPlace() {
+  const d = currentDest;
+  const panel = document.getElementById("routePreview");
+  const summary = document.getElementById("routeSummary");
+  const note = document.getElementById("routeNote");
+  const google = document.getElementById("routeGoogle");
+  const waze = document.getElementById("routeWaze");
+  if (!d || !SanvicExplore.hasCoordinates(d) || !panel || !summary || !note) return;
+  if (!userLocationMarker) {
+    toast("Tap Near me first to preview a route from your location.");
+    return;
+  }
+  const start = userLocationMarker.getLatLng();
+  const destLat = Number(d.lat);
+  const destLng = Number(d.lng);
+  const googleUrl = `https://www.google.com/maps/dir/?api=1&origin=${start.lat},${start.lng}&destination=${destLat},${destLng}&travelmode=driving`;
+  const wazeUrl = `https://waze.com/ul?ll=${destLat}%2C${destLng}&navigate=yes`;
+  google.href = googleUrl;
+  waze.href = wazeUrl;
+  summary.textContent = "Checking the road route…";
+  note.textContent = "Road estimate only. Islands and ferry connections may not be covered.";
+  panel.hidden = false;
+  document.getElementById("nearestBar").hidden = true;
+  const sheet = document.getElementById("destSheet");
+  routeWasDestExpanded = !!sheet && sheet.classList.contains("expanded");
+  if (routeWasDestExpanded && !exploreIsSide()) {
+    sheet.className = "dest-sheet closed";
+    sheet.style.maxHeight = "";
+  }
+  if (routeLine && map && map.hasLayer(routeLine)) map.removeLayer(routeLine);
+  routeLine = null;
+  if (!map || typeof L === "undefined") {
+    summary.textContent = "Map is unavailable. Continue in your navigation app.";
+    return;
+  }
+  const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${destLng},${destLat}?overview=full&geometries=geojson&steps=false`;
+  const controller = new AbortController();
+  routeController = controller;
+  const timeout = window.setTimeout(() => controller.abort(), 12000);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) throw new Error("Routing service unavailable");
+    const data = await response.json();
+    const route = data && data.routes && data.routes[0];
+    const coordinates = route && route.geometry && route.geometry.coordinates;
+    if (!route || !Array.isArray(coordinates) || coordinates.length < 2) {
+      throw new Error("No road route found");
+    }
+    routeLine = L.polyline(
+      coordinates.map(([lng, lat]) => [lat, lng]),
+      {
+        color: "#25c7b5",
+        weight: 5,
+        opacity: 0.9,
+        lineCap: "round",
+        lineJoin: "round",
+      },
+    ).addTo(map);
+    map.fitBounds(routeLine.getBounds(), {
+      padding: [48, 48],
+      maxZoom: 15,
+      animate: !reducedMotion(),
+    });
+    const km = Number(route.distance) / 1000;
+    const minutes = Math.max(1, Math.round(Number(route.duration) / 60));
+    summary.textContent = `${km.toFixed(1)} km · about ${minutes} min driving`;
+    note.textContent =
+      "Road estimate only; this route may omit islands or ferry transfers. Confirm locally before setting out.";
+  } catch (err) {
+    summary.textContent = "No road route available for this trip.";
+    note.textContent =
+      "This is common for islands and ferry routes. You can still hand off the destination to your navigation app.";
+  } finally {
+    window.clearTimeout(timeout);
+    if (routeController === controller) routeController = null;
+  }
+}
+
+async function shareCurrentPlace() {
+  if (!currentDest) return;
+  const payload = {
+    title: currentDest.name || "San Vicente place",
+    text: [
+      currentDest.name,
+      currentDest.barangay ? "Barangay " + currentDest.barangay : "San Vicente, Palawan",
+    ].join(" · "),
+    url: new URL("#place/" + encodeURIComponent(String(currentDest.id)), window.location.href).href,
+  };
+  try {
+    if (navigator.share) await navigator.share(payload);
+    else if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(payload.text + " — " + payload.url);
+      toast("Place details copied to clipboard.");
+    } else {
+      toast("Sharing is not available in this browser.");
+    }
+  } catch (err) {
+    if (err && err.name !== "AbortError") toast("Could not share this place.");
+  }
+}
+
 function openDest(d, recordHistory = true) {
   if (!d) return;
+  closeRoutePreview();
   const fromExplore = document.body.classList.contains("explore-open");
   if (!fromExplore) {
     closeAllPanels();
@@ -510,9 +660,7 @@ function openDest(d, recordHistory = true) {
   highlightExplorePlace(d.id);
   renderPlaceExtras(d); // address, contacts, links, facilities — fetched per place
   if (recordHistory) {
-    const state = { sanvic: true, tab: "discover", place: String(d.id) };
-    if (history.state?.place) history.replaceState(state, "");
-    else history.pushState(state, "");
+    syncSanvicUrl("discover", !history.state?.place, d.id);
   }
   const category = catStyle[d.category] || {
     label: d.category || "Place",
@@ -534,7 +682,7 @@ function openDest(d, recordHistory = true) {
   media.replaceChildren();
   const placeholder = document.createElement("div");
   placeholder.className = "detail-image-placeholder";
-  placeholder.innerHTML = lucideSvg(category.icon || "map-pin", 36) + "<span>San Vicente</span>";
+  placeholder.innerHTML = lucideSvg(category.icon || "map-pin", 36) + "<span>No photo yet</span>";
   media.appendChild(placeholder);
   // Attribution is a licence condition for the CC BY / CC BY-SA photos in the
   // directory, so it is tied to the photo actually being shown: it appears with
@@ -609,33 +757,39 @@ function openDest(d, recordHistory = true) {
   cat.textContent = category.label;
   cat.style.background = category.bg;
   cat.style.color = category.color;
-  document.getElementById("deStats").innerHTML = [
+  const statRows = [
     stats.travel ? ["Access", stats.travel] : null,
     stats.season ? ["Season", stats.season] : null,
     stats.rating ? ["Listed rating", stats.rating + " · source not supplied"] : null,
-  ]
-    .filter(Boolean)
-    .map(
-      ([label, value]) =>
-        `<div class="dest-exp-stat"><strong>${escT(label)}</strong><span>${escT(value)}</span></div>`,
-    )
-    .join("");
+  ].filter(Boolean);
+  if (userLocationMarker && SanvicExplore.hasCoordinates(d)) {
+    const distance = SanvicExplore.distanceKm(userLocationMarker.getLatLng(), d);
+    statRows.push(["From you", distance.toFixed(1) + " km straight-line"]);
+  }
+  document.getElementById("deStats").innerHTML = statRows.length
+    ? statRows
+        .map(
+          ([label, value]) =>
+            `<div class="dest-exp-stat"><strong>${escT(label)}</strong><span>${escT(value)}</span></div>`,
+        )
+        .join("")
+    : `<div class="dest-exp-stat"><strong>Hours</strong><span>Not listed — call the branch</span></div>`;
   const desc = document.getElementById("deDesc");
   desc.textContent = d.description || "More details will be added by the local team.";
-  desc.classList.remove("collapsed");
-  document.getElementById("deReadMore").style.display = "none";
+  desc.classList.add("collapsed");
+  const readMore = document.getElementById("deReadMore");
+  readMore.textContent = "Read more";
+  readMore.style.display = "";
+  requestAnimationFrame(() => {
+    if (!desc.isConnected) return;
+    readMore.style.display = desc.scrollHeight > desc.clientHeight + 2 ? "" : "none";
+  });
   const tip = document.getElementById("deTip");
   tip.textContent = d.tip || "";
   tip.hidden = !d.tip;
   const directions = document.getElementById("deDirections");
   directions.disabled = !SanvicExplore.hasCoordinates(d);
-  directions.onclick = () =>
-    window.open(
-      "https://www.google.com/maps/dir/?api=1&destination=" +
-        encodeURIComponent(d.lat + "," + d.lng),
-      "_blank",
-      "noopener,noreferrer",
-    );
+  directions.onclick = previewRouteToCurrentPlace;
   const gbp = document.getElementById("deGbp"),
     url = SanvicExplore.safeUrl(d.googleBusinessUrl);
   gbp.style.display = url ? "" : "none";
@@ -784,6 +938,8 @@ function toggleDestSheet() {
   else attach();
 })();
 function closeDestSheet(restore = true) {
+  const routePreview = document.getElementById("routePreview");
+  if (routePreview && !routePreview.hidden) closeRoutePreview();
   const sheet = document.getElementById("destSheet");
   const wasOpen = !!currentDest;
   sheet.style.transform = "";
@@ -810,8 +966,7 @@ function closeDestSheet(restore = true) {
     (selected || document.getElementById("esSearchInput")).focus({ preventScroll: true });
   }
   exploreReturnView = null;
-  if (!handlingExploreHistory && history.state?.place)
-    history.replaceState({ sanvic: true, tab: "discover" }, "");
+  if (!handlingExploreHistory && history.state?.place) syncSanvicUrl("discover", false);
   schedulePanelOpen();
 }
 
@@ -1209,12 +1364,109 @@ function dismissDockIntro() {
   localStorage.setItem(DOCK_SEEN_KEY, "1");
 }
 let handlingExploreHistory = false;
+let preserveMapViewOnDock = false;
+function sanvicHashFor(tab, place = null) {
+  if (place != null) return "#place/" + encodeURIComponent(String(place));
+  if (tab === "discover") {
+    return exploreState.category && exploreState.category !== "all"
+      ? "#explore?cat=" + encodeURIComponent(exploreState.category)
+      : "#explore";
+  }
+  if (tab === "map") {
+    const center = map && map.getCenter ? map.getCenter() : { lat: 10.5, lng: 119.22 };
+    const zoom = map && map.getZoom ? map.getZoom() : 11;
+    return `#map/zoom=${Number(zoom).toFixed(0)}/lat=${Number(center.lat).toFixed(5)}/lng=${Number(center.lng).toFixed(5)}`;
+  }
+  return "#" + encodeURIComponent(tab || "map");
+}
+function syncSanvicUrl(tab, push = false, place = null) {
+  const state = { sanvic: true, tab: tab || "map" };
+  if (place != null) state.place = String(place);
+  const url = window.location.pathname + window.location.search + sanvicHashFor(tab, place);
+  if (push) history.pushState(state, "", url);
+  else history.replaceState(state, "", url);
+}
+let initialSanvicDeepLinkApplied = false;
+function applyInitialSanvicDeepLink() {
+  if (initialSanvicDeepLinkApplied || !map || !window.location.hash) return;
+  initialSanvicDeepLinkApplied = handleSanvicDeepLink(window.location.hash);
+}
+function handleSanvicDeepLink(hash = window.location.hash) {
+  if (!map || !hash) return false;
+  const placeMatch = hash.match(/^#place\/([^/?#]+)/i);
+  if (placeMatch) {
+    let id;
+    try {
+      id = decodeURIComponent(placeMatch[1]);
+    } catch (e) {
+      return false;
+    }
+    const d = destinations.find((x) => String(x.id) === id);
+    if (!d) return false;
+    dockNav("discover");
+    openDest(d, false);
+    syncSanvicUrl("discover", false, id);
+    return true;
+  }
+  const exploreMatch = hash.match(/^#explore(?:\?cat=([^&]+))?/i);
+  if (exploreMatch) {
+    dockNav("discover");
+    let requested = "all";
+    try {
+      requested = exploreMatch[1] ? decodeURIComponent(exploreMatch[1]) : "all";
+    } catch (e) {
+      return false;
+    }
+    const variants = new Set([requested.toLowerCase()]);
+    if (requested.toLowerCase().endsWith("es")) variants.add(requested.toLowerCase().slice(0, -2));
+    if (requested.toLowerCase().endsWith("s")) variants.add(requested.toLowerCase().slice(0, -1));
+    const category = Object.keys(catStyle).find((key) => {
+      const keyName = key.toLowerCase();
+      const label = String(catStyle[key].label || "").toLowerCase();
+      return (
+        variants.has(keyName) ||
+        variants.has(label) ||
+        keyName === requested.toLowerCase() ||
+        label === requested.toLowerCase()
+      );
+    });
+    selectExploreCategory(category || "all");
+    syncSanvicUrl("discover");
+    return true;
+  }
+  const mapMatch = hash.match(/^#map\/zoom=([\d.]+)\/lat=(-?[\d.]+)\/lng=(-?[\d.]+)$/i);
+  if (mapMatch) {
+    const zoom = Number(mapMatch[1]);
+    const lat = Number(mapMatch[2]);
+    const lng = Number(mapMatch[3]);
+    if (
+      !Number.isFinite(zoom) ||
+      !Number.isFinite(lat) ||
+      !Number.isFinite(lng) ||
+      zoom < 8 ||
+      zoom > 18 ||
+      lat < 6.5 ||
+      lat > 12.9 ||
+      lng < 116.6 ||
+      lng > 121
+    )
+      return false;
+    preserveMapViewOnDock = true;
+    dockNav("map");
+    preserveMapViewOnDock = false;
+    map.setView([lat, lng], zoom, { animate: false });
+    syncSanvicUrl("map");
+    return true;
+  }
+  return false;
+}
 function dockNav(tab) {
   dismissDockIntro();
   setActiveDock(tab);
   if (!handlingExploreHistory) {
-    if (!history.state?.sanvic) history.replaceState({ sanvic: true, tab }, "");
-    else if (history.state.tab !== tab) history.pushState({ sanvic: true, tab }, "");
+    if (!history.state?.sanvic) syncSanvicUrl(tab, false);
+    else if (history.state.tab !== tab) syncSanvicUrl(tab, true);
+    else syncSanvicUrl(tab, false);
   }
 
   switch (tab) {
@@ -1225,7 +1477,7 @@ function dockNav(tab) {
       document.getElementById("heroFade").classList.remove("hidden");
       if (map) {
         activeMarkerSet = allMarkers;
-        map.flyTo([10.5, 119.22], 11, { duration: 1 });
+        if (!preserveMapViewOnDock) map.flyTo([10.5, 119.22], 11, { duration: 1 });
         applyPinVisibility();
       }
       openTodaySheet();
@@ -1265,6 +1517,8 @@ function dockNav(tab) {
 
 function setActiveDock(tab) {
   document.body.dataset.activeTab = tab;
+  if (typeof renderPulseNowLayer === "function") renderPulseNowLayer();
+  if (typeof setPulseNowMapOpen === "function") setPulseNowMapOpen(tab === "map");
   // data-active-tab is an attribute write; the class-filtered MutationObserver
   // does not fire for it, so the map tools are refreshed explicitly here.
   refreshMapTools();
@@ -1275,6 +1529,7 @@ function setActiveDock(tab) {
     else d.removeAttribute("aria-current");
   });
 }
+window.addEventListener("load", applyInitialSanvicDeepLink);
 window.addEventListener("popstate", (e) => {
   if (!e.state?.sanvic) return;
   handlingExploreHistory = true;
@@ -1371,4 +1626,10 @@ window.addEventListener("load", () => {
       setTimeout(dismissDockIntro, 5200); // auto-dismiss if user never taps
     }
   }, 750);
+  setTimeout(
+    () => {
+      if (typeof maybeShowMapTour === "function") maybeShowMapTour();
+    },
+    (Number(window.SANVIC_SPLASH_HOLD) || 650) + 100,
+  );
 });

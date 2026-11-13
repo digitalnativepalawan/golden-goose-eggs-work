@@ -265,6 +265,8 @@ async function toggleSavePlace(destinationId, btnEl) {
       const { error } = await sb.from("saved_places").delete().eq("id", existing.id);
       if (error) throw error;
       if (btnEl) btnEl.classList.remove("saved");
+      savedPlaceIds.delete(String(destinationId));
+      savedPlacesLoaded = true;
       toast("Removed from saved places.");
     } else {
       const { error } = await sb
@@ -272,8 +274,11 @@ async function toggleSavePlace(destinationId, btnEl) {
         .insert({ ...owner.row, destination_id: destinationId });
       if (error && error.code !== "23505") throw error;
       if (btnEl) btnEl.classList.add("saved");
+      savedPlaceIds.add(String(destinationId));
+      savedPlacesLoaded = true;
       toast(isLoggedIn() ? "Saved to your places." : "Saved on this device.");
     }
+    if (savedPlacesOnly) applyPinVisibility();
   } catch (err) {
     console.warn("[SANVIC] Save failed:", err);
     toast("Could not update saved places just now.");
@@ -454,11 +459,10 @@ async function loadDataFromSupabase() {
     exploreFiltersVisible = !!(filtersRow && String(filtersRow.value).toLowerCase() === "true");
     applyExploreFiltersVisibility();
 
-    // Load Today content from DB. An answered query wins, including "no rows":
-    // a card with nothing in it is better than a packaged status report about
-    // an ATM that was never checked. Samples stand in only when the request
-    // failed (offline demo) or when SHOW_SAMPLES_WHEN_DB_IS_EMPTY is flipped on.
-    if (todayRes && !todayRes.error && Array.isArray(todayRes.data)) {
+    // Partner preview deliberately replaces activity with labeled sample content.
+    // Otherwise, real rows or honest empty states always win, including offline.
+    if (partnerDemoMode) setTodayPartnerDemo(true);
+    else if (todayRes && !todayRes.error && Array.isArray(todayRes.data)) {
       const todayByKey = {};
       todayRes.data.forEach((r) => {
         if (r && r.key) todayByKey[r.key] = r.data;
@@ -473,97 +477,92 @@ async function loadDataFromSupabase() {
       };
       Object.keys(target).forEach((key) => {
         if (todayByKey[key] !== undefined) TODAY_DATA[target[key]] = todayByKey[key];
-        else if (!SHOW_SAMPLES_WHEN_DB_IS_EMPTY && TODAY_LIVE_KEYS.indexOf(key) >= 0)
-          TODAY_DATA[target[key]] = [];
+        else if (TODAY_LIVE_KEYS.indexOf(key) >= 0) TODAY_DATA[target[key]] = [];
       });
-    }
-    // On a failed query nothing changes: that is offline demo mode, where the
-    // whole app (destinations included) is running on packaged content. The line
-    // we do not cross is mixing the two — real database, invented neighbours.
+    } else setTodayPartnerDemo(false);
 
-    // Load tribes from DB. An answered query replaces the samples even when it
-    // answers "none" — see SHOW_SAMPLES_WHEN_DB_IS_EMPTY at the top of this file.
-    if (
-      tribesRes &&
-      !tribesRes.error &&
-      Array.isArray(tribesRes.data) &&
-      (tribesRes.data.length || !SHOW_SAMPLES_WHEN_DB_IS_EMPTY)
-    ) {
-      PULSE_TRIBES.length = 0;
-      tribesRes.data.forEach((t) => {
-        PULSE_TRIBES.push({
-          id: t.id,
-          title: t.title,
-          where: t.where_text,
-          when: t.when_text,
-          sub: t.sub,
-          thumb: t.thumb_url,
-          images: t.images || [],
-          joined: t.joined,
-          extra: t.extra,
-          cap: t.cap,
-          tags: t.tags || [],
-          spots: t.spots,
-          seatsOpen: t.seats_open,
-          warn: t.spots > 0,
-          videoUrl: t.video_url || "",
-          videoType: t.video_type || "",
-          imageCredit: t.image_credit || "",
-          description: t.description || "",
-          by: t.display_name || "",
+    // Real data is shown by default. Samples appear only in explicit partner preview.
+    if (partnerDemoMode) setPulsePartnerDemo(true);
+    else {
+      // An answered query wins, including "none"; a failed request also leaves
+      // no packaged sample listings behind.
+      if (tribesRes && !tribesRes.error && Array.isArray(tribesRes.data)) {
+        PULSE_TRIBES.length = 0;
+        tribesRes.data.forEach((t) => {
+          PULSE_TRIBES.push({
+            id: t.id,
+            title: t.title,
+            where: t.where_text,
+            when: t.when_text,
+            sub: t.sub,
+            thumb: t.thumb_url,
+            images: t.images || [],
+            joined: t.joined,
+            extra: t.extra,
+            cap: t.cap,
+            tags: t.tags || [],
+            spots: t.spots,
+            seatsOpen: t.seats_open,
+            warn: t.spots > 0,
+            videoUrl: t.video_url || "",
+            videoType: t.video_type || "",
+            imageCredit: t.image_credit || "",
+            description: t.description || "",
+            by: t.display_name || "",
+          });
         });
-      });
-      MYSV_TRIBES.length = 0;
-      tribesRes.data.forEach((t) => {
-        MYSV_TRIBES.push({
-          id: t.id,
-          title: t.title,
-          meta: t.where_text + " • " + t.when_text,
-          more: t.extra,
-          grad: "linear-gradient(135deg,#f97316,#7c2d12)",
-          thumb: t.thumb_url,
-          images: t.images || [],
-          credit: t.image_credit || "",
+        MYSV_TRIBES.length = 0;
+        tribesRes.data.forEach((t) => {
+          MYSV_TRIBES.push({
+            id: t.id,
+            title: t.title,
+            meta: t.where_text + " • " + t.when_text,
+            more: t.extra,
+            grad: "linear-gradient(135deg,#f97316,#7c2d12)",
+            thumb: t.thumb_url,
+            images: t.images || [],
+            credit: t.image_credit || "",
+          });
         });
-      });
-    }
+      } else {
+        PULSE_TRIBES.length = 0;
+        MYSV_TRIBES.length = 0;
+      }
 
-    // Load events from DB. Same rule as tribes: the answer wins, even when empty.
-    if (
-      eventsRes &&
-      !eventsRes.error &&
-      Array.isArray(eventsRes.data) &&
-      (eventsRes.data.length || !SHOW_SAMPLES_WHEN_DB_IS_EMPTY)
-    ) {
-      PULSE_EVENTS.length = 0;
-      eventsRes.data.forEach((ev) => {
-        PULSE_EVENTS.push({
-          id: ev.id,
-          title: ev.title,
-          org: ev.org,
-          where: ev.where_text,
-          when: ev.when_text,
-          price: ev.price,
-          tags: ev.tags || [],
-          images: ev.images || [],
-          videoUrl: ev.video_url || "",
-          videoType: ev.video_type || "",
-          imageCredit: ev.image_credit || "",
-          description: ev.description || "",
+      if (eventsRes && !eventsRes.error && Array.isArray(eventsRes.data)) {
+        PULSE_EVENTS.length = 0;
+        eventsRes.data.forEach((ev) => {
+          PULSE_EVENTS.push({
+            id: ev.id,
+            title: ev.title,
+            org: ev.org,
+            where: ev.where_text,
+            when: ev.when_text,
+            price: ev.price,
+            tags: ev.tags || [],
+            images: ev.images || [],
+            videoUrl: ev.video_url || "",
+            videoType: ev.video_type || "",
+            imageCredit: ev.image_credit || "",
+            description: ev.description || "",
+          });
         });
-      });
-      MYSV_EVENTS.length = 0;
-      eventsRes.data.forEach((ev) => {
-        MYSV_EVENTS.push({
-          id: ev.id,
-          title: ev.title,
-          meta: ev.where_text + " • " + ev.when_text,
-          more: 0,
-          grad: "linear-gradient(135deg,#a78bfa,#1e1b4b)",
-          images: ev.images || [],
-          credit: ev.image_credit || "",
+        MYSV_EVENTS.length = 0;
+        eventsRes.data.forEach((ev) => {
+          MYSV_EVENTS.push({
+            id: ev.id,
+            title: ev.title,
+            meta: ev.where_text + " • " + ev.when_text,
+            more: 0,
+            grad: "linear-gradient(135deg,#a78bfa,#1e1b4b)",
+            images: ev.images || [],
+            credit: ev.image_credit || "",
+          });
         });
-      });
+      } else {
+        PULSE_EVENTS.length = 0;
+        MYSV_EVENTS.length = 0;
+      }
     }
 
     // Load upcoming items from DB
@@ -615,7 +614,17 @@ async function loadDataFromSupabase() {
     applyJoinRows(joinTribeRes && joinTribeRes.data, joinEventRes && joinEventRes.data);
     applyTodayInterestRows(joinTodayRes && joinTodayRes.data);
   } catch (err) {
-    console.warn("[SANVIC] Supabase load failed, using built-in defaults:", err);
+    console.warn("[SANVIC] Supabase load failed:", err);
+    if (partnerDemoMode) {
+      setTodayPartnerDemo(true);
+      setPulsePartnerDemo(true);
+    } else {
+      setTodayPartnerDemo(false);
+      PULSE_TRIBES.length = 0;
+      PULSE_EVENTS.length = 0;
+      MYSV_TRIBES.length = 0;
+      MYSV_EVENTS.length = 0;
+    }
     if (!directoryLoaded) {
       destinations = DEFAULT_DESTINATIONS;
       destinationsSource = "fallback";
@@ -636,7 +645,10 @@ async function loadDataFromSupabase() {
   applySplashText();
   window.destinations = destinations;
   dataReady = true;
+  syncPartnerDemoUI();
   if (document.getElementById("exploreSheet")?.classList.contains("open")) renderExploreContent();
+  if (document.getElementById("todayPanel")?.classList.contains("open")) renderTodayContent();
+  if (document.getElementById("pulsePanel")?.classList.contains("open")) renderPulseBody();
 }
 
 function applyHeroText() {
@@ -927,7 +939,14 @@ let talaHistory = []; // recent {role, content} turns, for follow-up questions
 
 async function getAILive(input) {
   const destMatch = getAI(input).dest;
-  const messages = talaHistory.concat([{ role: "user", content: input }]).slice(-TALA_HISTORY_MAX);
+  const placeContext =
+    currentDest && document.body.classList.contains("place-open")
+      ? `\n\nCurrent place shown in the app: ${currentDest.name}${currentDest.barangay ? ", Barangay " + currentDest.barangay : ""}.`
+      : "";
+  const contextualInput = String(input || "") + placeContext;
+  const messages = talaHistory
+    .concat([{ role: "user", content: contextualInput }])
+    .slice(-TALA_HISTORY_MAX);
   const res = await fetch(TALA_API_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -997,6 +1016,287 @@ let allMarkers = [];
 const PIN_VISIBLE_ZOOM = 13; // barangay overview first; beach/island POIs appear at 13
 const SANVICENTE_CENTER = [10.5, 119.22]; // municipality anchor + default view target
 let activeMarkerSet = []; // tracks whichever markers are "supposed" to be on the map right now (all, or a filtered category)
+let savedPlaceIds = new Set();
+let savedPlacesOnly = false;
+let savedPlacesLoaded = false;
+async function refreshSavedPlaceIds() {
+  const owner = saveOwner();
+  const { data, error } = await sb
+    .from("saved_places")
+    .select("destination_id")
+    .eq(owner.col, owner.val);
+  if (error) throw error;
+  savedPlaceIds = new Set((data || []).map((row) => String(row.destination_id)));
+  savedPlacesLoaded = true;
+}
+async function toggleSavedPlacesLayer(enabled) {
+  savedPlacesOnly = !!enabled;
+  if (savedPlacesOnly && !savedPlacesLoaded) {
+    try {
+      await refreshSavedPlaceIds();
+    } catch (err) {
+      savedPlacesOnly = false;
+      const toggle = document.getElementById("savedPlacesToggle");
+      if (toggle) toggle.checked = false;
+      mapNotice("Saved places could not be loaded. Try again in a moment.");
+      return;
+    }
+  }
+  applyPinVisibility();
+  if (savedPlacesOnly && !savedPlaceIds.size) {
+    mapNotice("You have no saved places on this device yet.");
+  } else if (savedPlacesOnly) {
+    mapNotice(
+      "Showing " +
+        savedPlaceIds.size +
+        " saved place" +
+        (savedPlaceIds.size === 1 ? "" : "s") +
+        ".",
+    );
+  } else {
+    mapNotice("");
+  }
+}
+let pulseNowDemoEnabled = !!partnerDemoMode;
+let pulseNowDemoTimer = null;
+let pulseNowDemoMarkers = [];
+const PULSE_NOW_DEMO_CREATED_AT = Date.now();
+const PULSE_NOW_DEMO_ITEMS = [
+  {
+    id: "demo-sunset",
+    recordId: "t1",
+    kind: "tribe",
+    title: "Tribe · Sunset Chasers",
+    barangay: "Poblacion",
+    lat: 10.5318,
+    lng: 119.2822,
+    startsInMinutes: 55,
+  },
+  {
+    id: "demo-acoustic",
+    recordId: "e3",
+    kind: "event",
+    title: "Event · Acoustic Night in Poblacion",
+    barangay: "Poblacion",
+    lat: 10.5318,
+    lng: 119.2822,
+    startsInMinutes: 150,
+  },
+];
+function clearPulseNowDemoMarkers() {
+  pulseNowDemoMarkers.forEach((marker) => {
+    try {
+      if (map && map.hasLayer(marker)) map.removeLayer(marker);
+    } catch (e) {}
+  });
+  pulseNowDemoMarkers = [];
+}
+function togglePulseNowDemo(enabled) {
+  pulseNowDemoEnabled = !!enabled;
+  if (pulseNowDemoTimer) window.clearInterval(pulseNowDemoTimer);
+  pulseNowDemoTimer = pulseNowDemoEnabled ? window.setInterval(renderPulseNowLayer, 60000) : null;
+  renderPulseNowLayer();
+}
+function syncPartnerDemoUI() {
+  const toggle = document.getElementById("pulseNowDemoToggle");
+  if (toggle) toggle.checked = !!partnerDemoMode;
+  const previewButton = document.getElementById("pulsePartnerPreviewBtn");
+  if (previewButton) previewButton.setAttribute("aria-pressed", String(!!partnerDemoMode));
+  const previewLabel = document.getElementById("pulsePartnerPreviewLabel");
+  if (previewLabel)
+    previewLabel.textContent = partnerDemoMode
+      ? "Exit partner preview"
+      : "Partner preview · sample photos";
+  const banner = document.getElementById("partnerDemoBanner");
+  if (banner) banner.hidden = !partnerDemoMode;
+}
+async function togglePartnerDemo(enabled) {
+  partnerDemoMode = !!enabled;
+  try {
+    localStorage.setItem("sanvic_partner_demo", partnerDemoMode ? "1" : "0");
+  } catch (e) {}
+  syncPartnerDemoUI();
+  togglePulseNowDemo(partnerDemoMode);
+  if (partnerDemoMode) {
+    livePulseNowRequest++;
+    clearLivePulseNowMarkers();
+  }
+  if (partnerDemoMode) {
+    setPulsePartnerDemo(true);
+    setTodayPartnerDemo(true);
+  } else {
+    setTodayPartnerDemo(false);
+    PULSE_TRIBES.length = 0;
+    PULSE_EVENTS.length = 0;
+    MYSV_TRIBES.length = 0;
+    MYSV_EVENTS.length = 0;
+  }
+  if (dataReady) await loadDataFromSupabase();
+  if (document.getElementById("todayPanel")?.classList.contains("open")) renderTodayContent();
+  if (document.getElementById("pulsePanel")?.classList.contains("open")) renderPulseBody();
+  renderPulseNowLayer();
+}
+syncPartnerDemoUI();
+if (partnerDemoMode) togglePulseNowDemo(true);
+let livePulseNowMarkers = [];
+let livePulseNowRequest = 0;
+let livePulseNowTimer = null;
+let pulseNowColumnsAvailable = true;
+function clearLivePulseNowMarkers() {
+  livePulseNowMarkers.forEach((marker) => {
+    try {
+      if (map && map.hasLayer(marker)) map.removeLayer(marker);
+    } catch (e) {}
+  });
+  livePulseNowMarkers = [];
+}
+function setPulseNowMapOpen(open) {
+  if (livePulseNowTimer) window.clearInterval(livePulseNowTimer);
+  livePulseNowTimer = null;
+  if (!open) {
+    livePulseNowRequest++;
+    clearLivePulseNowMarkers();
+    return;
+  }
+  refreshLivePulseNow();
+  livePulseNowTimer = window.setInterval(refreshLivePulseNow, 120000);
+}
+async function refreshLivePulseNow() {
+  if (
+    !map ||
+    !pulseNowColumnsAvailable ||
+    partnerDemoMode ||
+    document.body.dataset.activeTab !== "map" ||
+    typeof sb === "undefined" ||
+    !sb
+  )
+    return;
+  const request = ++livePulseNowRequest;
+  const now = new Date();
+  const until = new Date(now.getTime() + 4 * 60 * 60 * 1000);
+  const columns = "id,title,where_text,when_text,starts_at,lat,lng";
+  try {
+    const [tribesResult, eventsResult] = await Promise.all([
+      sb
+        .from("tribes")
+        .select(columns)
+        .gte("starts_at", now.toISOString())
+        .lte("starts_at", until.toISOString()),
+      sb
+        .from("events")
+        .select(columns)
+        .gte("starts_at", now.toISOString())
+        .lte("starts_at", until.toISOString()),
+    ]);
+    const failed = tribesResult.error || eventsResult.error;
+    if (failed) {
+      if (isMissingPulseNowColumnError(failed)) pulseNowColumnsAvailable = false;
+      throw failed;
+    }
+    if (request !== livePulseNowRequest || document.body.dataset.activeTab !== "map") return;
+    clearLivePulseNowMarkers();
+    const items = [
+      ...(tribesResult.data || []).map((item) => ({ ...item, kind: "TRIBE" })),
+      ...(eventsResult.data || []).map((item) => ({ ...item, kind: "EVENT" })),
+    ];
+    items.forEach((item) => {
+      const lat = Number(item.lat);
+      const lng = Number(item.lng);
+      const startsAt = new Date(item.starts_at);
+      if (
+        !Number.isFinite(lat) ||
+        !Number.isFinite(lng) ||
+        lat < 6.5 ||
+        lat > 12.9 ||
+        lng < 116.6 ||
+        lng > 121 ||
+        !Number.isFinite(startsAt.getTime()) ||
+        startsAt < now ||
+        startsAt > until
+      )
+        return;
+      const remainingMinutes = Math.max(0, Math.ceil((startsAt.getTime() - Date.now()) / 60000));
+      const timeLabel =
+        remainingMinutes < 60
+          ? `in ${remainingMinutes} min`
+          : `in ${Math.floor(remainingMinutes / 60)}h ${remainingMinutes % 60}m`;
+      const title = String(item.title || (item.kind === "EVENT" ? "Event" : "Tribe"));
+      const marker = L.marker([lat, lng], {
+        keyboard: true,
+        title: title + " · " + timeLabel,
+        zIndexOffset: 1350,
+        icon: L.divIcon({
+          className: "pulse-now-live-chip-marker",
+          html: `<span class="pulse-now-live-chip"><b>${item.kind}</b> ${escT(title)} <small>${timeLabel}</small></span>`,
+          iconSize: [210, 38],
+          iconAnchor: [105, 48],
+        }),
+      }).addTo(map);
+      const popup = document.createElement("div");
+      const heading = document.createElement("strong");
+      heading.textContent = title;
+      const details = document.createElement("small");
+      details.textContent = [
+        item.kind === "EVENT" ? "Event" : "Tribe",
+        item.when_text,
+        item.where_text,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      popup.append(heading, details);
+      marker.bindPopup(popup);
+      livePulseNowMarkers.push(marker);
+    });
+  } catch (error) {
+    if (error && !isMissingPulseNowColumnError(error)) {
+      console.warn("[SANVIC] Live Pulse Now data could not be loaded:", error);
+    }
+  }
+}
+function isMissingPulseNowColumnError(error) {
+  return (
+    ["42703", "PGRST204"].includes(String(error && error.code)) ||
+    /column .*?(starts_at|lat|lng).*?(does not exist|schema cache)/i.test(
+      String(error && error.message),
+    )
+  );
+}
+function renderPulseNowLayer() {
+  clearPulseNowDemoMarkers();
+  if (
+    !pulseNowDemoEnabled ||
+    !map ||
+    typeof L === "undefined" ||
+    document.body.dataset.activeTab !== "map"
+  )
+    return;
+  const elapsedMinutes = (Date.now() - PULSE_NOW_DEMO_CREATED_AT) / 60000;
+  PULSE_NOW_DEMO_ITEMS.filter((item) => {
+    const remaining = item.startsInMinutes - elapsedMinutes;
+    return remaining > 0 && remaining <= 240;
+  }).forEach((item) => {
+    const minutes = Math.max(1, Math.ceil(item.startsInMinutes - elapsedMinutes));
+    const label =
+      minutes < 60 ? `in ${minutes} min` : `in ${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+    const marker = L.marker([item.lat, item.lng], {
+      title: item.title + " — open sample details",
+      keyboard: true,
+      interactive: true,
+      zIndexOffset: 1300,
+      icon: L.divIcon({
+        className: "pulse-now-chip-marker",
+        html: `<span class="pulse-now-chip"><b>DEMO</b> ${escT(item.title)} <small>${label}</small></span>`,
+        iconSize: [190, 38],
+        iconAnchor: [95, 48],
+      }),
+    }).addTo(map);
+    marker.on("click", () => {
+      if (item.kind === "tribe") openTribeDetail(item.recordId);
+      else if (item.kind === "event") openEventDetail(item.recordId);
+    });
+    pulseNowDemoMarkers.push(marker);
+  });
+}
 let areaLabelMarker = null; // far-zoom "San Vicente" card that stands in for the pin cloud
 let placeClusterMarkers = [];
 
@@ -1042,6 +1342,70 @@ function orderOf(d) {
   return Number.isFinite(n) ? n : 9999;
 }
 
+let mapTourTimer = null;
+let mapTourDismiss = null;
+let mapTourCleanup = null;
+function dismissMapTour() {
+  if (mapTourTimer) window.clearTimeout(mapTourTimer);
+  mapTourTimer = null;
+  if (mapTourDismiss) document.removeEventListener("pointerdown", mapTourDismiss, true);
+  mapTourDismiss = null;
+  if (mapTourCleanup) mapTourCleanup();
+  mapTourCleanup = null;
+  document.getElementById("mapTourBubble")?.remove();
+}
+function maybeShowMapTour(force = false) {
+  const splash = document.getElementById("splash");
+  if (splash && !splash.classList.contains("hidden")) return;
+  if (!map || !allMarkers.length || document.getElementById("mapTourBubble")) return;
+  const params = new URLSearchParams(window.location.search);
+  if (!force && params.get("tour") !== "1") {
+    try {
+      if (localStorage.getItem("sanvic_map_tour_seen") === "1") return;
+    } catch (e) {}
+  }
+  const visible = allMarkers.filter((marker) => markerVisibleAtZoom(marker, map.getZoom()));
+  if (!visible.length) return;
+  const center = map.getCenter();
+  const target = visible
+    .slice()
+    .sort(
+      (a, b) =>
+        SanvicExplore.distanceKm(center, a.getLatLng()) -
+        SanvicExplore.distanceKm(center, b.getLatLng()),
+    )[0];
+  if (!target) return;
+  try {
+    localStorage.setItem("sanvic_map_tour_seen", "1");
+  } catch (e) {}
+  const bubble = document.createElement("button");
+  bubble.type = "button";
+  bubble.id = "mapTourBubble";
+  bubble.className = "map-tour-bubble";
+  bubble.setAttribute("aria-label", "Tap a map pin to explore a place. Tap to dismiss.");
+  bubble.innerHTML =
+    '<strong>Tap a pin to explore</strong><span>Places open with photos, details and directions.</span><i aria-hidden="true"></i>';
+  bubble.addEventListener("click", dismissMapTour);
+  document.body.appendChild(bubble);
+  const position = () => {
+    if (!bubble.isConnected || !map) return;
+    const point = map.latLngToContainerPoint(target.getLatLng());
+    const rect = map.getContainer().getBoundingClientRect();
+    const left = Math.max(rect.left + 120, Math.min(rect.right - 120, rect.left + point.x));
+    const top = Math.max(rect.top + 90, rect.top + point.y - 18);
+    bubble.style.left = left + "px";
+    bubble.style.top = top + "px";
+  };
+  position();
+  map.on("move zoom resize", position);
+  mapTourCleanup = () => map && map.off("move zoom resize", position);
+  mapTourDismiss = (event) => {
+    if (bubble.contains(event.target)) return;
+    dismissMapTour();
+  };
+  document.addEventListener("pointerdown", mapTourDismiss, true);
+  mapTourTimer = window.setTimeout(dismissMapTour, 4000);
+}
 function rebuildMarkers() {
   if (!map) return;
   allMarkers.forEach((m) => map.removeLayer(m));
@@ -1088,6 +1452,7 @@ function rebuildMarkers() {
   applyPinVisibility();
   renderDiscoverList(document.querySelector(".discover-cat.active")?.dataset.cat || "all");
   if (document.body.classList.contains("explore-open")) syncExploreMap();
+  maybeShowMapTour();
 }
 
 function mapMarkerGroup(marker) {
@@ -1122,7 +1487,10 @@ function updatePlaceClusterLayer() {
   const zoom = map.getZoom();
   if (zoom < 14 || zoom >= 15) return;
   const eligible = activeMarkerSet.filter(
-    (m) => ["food", "stays"].includes(mapMarkerGroup(m)) && markerVisibleAtZoom(m, zoom),
+    (m) =>
+      (!savedPlacesOnly || savedPlaceIds.has(String(m._d.id))) &&
+      ["food", "stays"].includes(mapMarkerGroup(m)) &&
+      markerVisibleAtZoom(m, zoom),
   );
   const points = eligible.map((marker) => ({
     marker,
@@ -1184,8 +1552,16 @@ function applyPinVisibility() {
   allMarkers.forEach((marker) => {
     if (map.hasLayer(marker)) map.removeLayer(marker);
   });
-  const visible = activeMarkerSet.filter((marker) => markerVisibleAtZoom(marker, zoom));
-  visible.forEach((marker) => marker.addTo(map));
+  const visible = activeMarkerSet.filter(
+    (marker) =>
+      (!savedPlacesOnly || savedPlaceIds.has(String(marker._d.id))) &&
+      markerVisibleAtZoom(marker, zoom),
+  );
+  visible.forEach((marker) => {
+    marker.addTo(map);
+    if (marker._icon)
+      marker._icon.classList.toggle("is-saved", savedPlaceIds.has(String(marker._d.id)));
+  });
   updatePlaceClusterLayer();
 }
 
@@ -1312,8 +1688,14 @@ function locateUser(nearby = false) {
         zIndexOffset: 1100,
       }).addTo(map);
       exploreState.nearby = !!nearby;
+      persistNearby();
       renderExploreContent();
       syncExploreMap();
+      renderNearestBar();
+      updateHuntCue();
+      if (typeof loadHuntRiddles === "function" && !huntRiddlesLoaded) {
+        loadHuntRiddles().then(updateHuntCue);
+      }
       map.setView([lat, lng], 14, { animate: !reducedMotion() });
       mapNotice(
         nearby
@@ -1366,16 +1748,36 @@ async function initMap() {
     maxBoundsViscosity: 1,
     worldCopyJump: false,
   });
-  const attribution =
+  const osmAttribution =
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>';
-  window._mS = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution,
-    maxZoom: 19,
-    maxNativeZoom: 19,
+  const streetAttribution =
+    "&copy; Esri — Sources: Esri, HERE, Garmin, FAO, NOAA, USGS, " +
+    osmAttribution +
+    ", and the GIS User Community";
+  window._mS = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+    {
+      attribution: streetAttribution,
+      maxZoom: 19,
+      maxNativeZoom: 19,
+    },
+  );
+  // Street and Dark share Esri's public street tiles. Dark is only a CSS
+  // treatment, so switching styles never changes tile providers or needs a key.
+  window._mDark = window._mS;
+  window._mS.on("tileerror", () => {
+    if (map.hasLayer(window._mS)) {
+      mapNotice(
+        "Street map tiles are temporarily unavailable. Try Satellite or Terrain in Map options.",
+      );
+    }
+  });
+  window._mS.on("tileload", () => {
+    if (map.hasLayer(window._mS)) mapNotice("");
   });
   window._mTerrain = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
     attribution:
-      attribution +
+      osmAttribution +
       ', SRTM | Style &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
     maxNativeZoom: 17,
     maxZoom: 19,
@@ -1429,10 +1831,21 @@ async function initMap() {
   map.on("zoomend", applyPinVisibility);
   map.on("moveend", () => {
     if (map.getZoom() < 9) setAreaLabel(true);
+    if (
+      document.body.dataset.activeTab === "map" &&
+      !document.body.classList.contains("place-open") &&
+      typeof syncSanvicUrl === "function"
+    )
+      syncSanvicUrl("map");
   });
   map.on("resize", () => highlightExplorePlace(exploreState.selected));
   syncMapViewport();
+  renderPulseNowLayer();
+  if (document.body.dataset.activeTab === "map") setPulseNowMapOpen(true);
   if (document.body.classList.contains("explore-open")) fitExploreResults();
+  if (window.location.hash && typeof applyInitialSanvicDeepLink === "function") {
+    setTimeout(applyInitialSanvicDeepLink, 0);
+  }
 }
 function getBarangayStyle() {
   const light = ["street", "terrain"].includes(window._mView);
@@ -1589,7 +2002,7 @@ function switchMapLayer(type) {
   if (!map) return;
   const layers = {
     street: window._mS,
-    dark: window._mS,
+    dark: window._mDark,
     terrain: window._mTerrain,
     satellite: window._mSatellite,
   };
@@ -1855,6 +2268,139 @@ const exploreState = {
   scroll: 0,
   nearby: false,
 };
+try {
+  exploreState.nearby = localStorage.getItem("sanvic_nearby_v1") === "1";
+} catch (e) {}
+function persistNearby() {
+  try {
+    localStorage.setItem("sanvic_nearby_v1", exploreState.nearby ? "1" : "0");
+  } catch (e) {}
+}
+function toggleMapNearby() {
+  if (exploreState.nearby) {
+    exploreState.nearby = false;
+    persistNearby();
+    renderExploreContent();
+    syncExploreMap();
+    return;
+  }
+  locateUser(true);
+}
+function toggleExploreFilters() {
+  const sheet = document.getElementById("exploreSheet");
+  const btn = document.getElementById("esMoreFilters");
+  if (!sheet || !btn) return;
+  const wasHidden = sheet.classList.contains("es-no-filters");
+  sheet.classList.toggle("es-no-filters");
+  btn.setAttribute("aria-expanded", String(wasHidden));
+  btn.textContent = wasHidden ? "Hide filters" : "More filters";
+}
+function getStayBarangay() {
+  try {
+    return localStorage.getItem("sanvic_stay_v1") || "";
+  } catch (e) {
+    return "";
+  }
+}
+function setStayBarangay(v) {
+  try {
+    if (v) localStorage.setItem("sanvic_stay_v1", String(v));
+    else localStorage.removeItem("sanvic_stay_v1");
+  } catch (e) {}
+  renderExploreContent();
+  syncExploreMap();
+}
+function openGoogleDirections(lat, lng) {
+  window.open(
+    "https://www.google.com/maps/dir/?api=1&destination=" +
+      encodeURIComponent(String(lat) + "," + String(lng)),
+    "_blank",
+    "noopener,noreferrer",
+  );
+}
+function renderNearestBar() {
+  const bar = document.getElementById("nearestBar");
+  const list = document.getElementById("nearestList");
+  if (!bar || !list) return;
+  if (!userLocationMarker || !Array.isArray(destinations) || !destinations.length) {
+    bar.hidden = true;
+    list.innerHTML = "";
+    return;
+  }
+  const p = userLocationMarker.getLatLng();
+  const nearest = destinations
+    .filter((d) => d && SanvicExplore.hasCoordinates(d))
+    .map((d) => ({ d, km: SanvicExplore.distanceKm(p, d) }))
+    .sort((a, b) => a.km - b.km)
+    .slice(0, 3);
+  if (!nearest.length) {
+    bar.hidden = true;
+    list.innerHTML = "";
+    return;
+  }
+  bar.hidden = false;
+  list.innerHTML = nearest
+    .map(
+      ({ d, km }) =>
+        `<div class="nearest-row"><button class="nearest-name" data-place-id="${escT(d.id)}" onclick="selectExplorePlace(this.dataset.placeId)">${escT(d.name)}</button><span class="nearest-dist">${km.toFixed(1)} km</span><button class="nearest-dir" data-lat="${Number(d.lat)}" data-lng="${Number(d.lng)}" onclick="openGoogleDirections(this.dataset.lat,this.dataset.lng)">Directions</button></div>`,
+    )
+    .join("");
+}
+let huntCueMarkers = [];
+let nearestRiddleSlug = null;
+function updateHuntCue() {
+  const pill = document.getElementById("huntCuePill");
+  if (!pill) return;
+  huntCueMarkers.forEach((m) => {
+    try {
+      if (map && map.hasLayer(m)) map.removeLayer(m);
+    } catch (e) {}
+  });
+  huntCueMarkers = [];
+  nearestRiddleSlug = null;
+  if (!userLocationMarker || typeof HUNT_RIDDLES === "undefined" || !HUNT_RIDDLES.length || !map) {
+    pill.hidden = true;
+    return;
+  }
+  const p = userLocationMarker.getLatLng();
+  const near = HUNT_RIDDLES.filter(
+    (r) =>
+      r &&
+      r.lat != null &&
+      r.lng != null &&
+      SanvicExplore.distanceKm(p, { lat: Number(r.lat), lng: Number(r.lng) }) <= 0.2,
+  );
+  if (!near.length) {
+    pill.hidden = true;
+    return;
+  }
+  near.sort(
+    (a, b) =>
+      SanvicExplore.distanceKm(p, { lat: Number(a.lat), lng: Number(a.lng) }) -
+      SanvicExplore.distanceKm(p, { lat: Number(b.lat), lng: Number(b.lng) }),
+  );
+  nearestRiddleSlug = String(near[0].slug);
+  near.forEach((r) => {
+    try {
+      const m = L.marker([Number(r.lat), Number(r.lng)], {
+        icon: L.divIcon({
+          className: "hunt-cue-marker",
+          html: "<span></span>",
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+        }),
+        zIndexOffset: 1200,
+        interactive: false,
+      }).addTo(map);
+      huntCueMarkers.push(m);
+    } catch (e) {}
+  });
+  pill.hidden = false;
+}
+function openNearestRiddle() {
+  if (!nearestRiddleSlug) return;
+  if (typeof openRiddleView === "function") openRiddleView(nearestRiddleSlug);
+}
 let exploreReturnView = null;
 let exploreResizeObserver = null;
 // True while a thumb is dragging the Explore sheet. The sheet's ResizeObserver
@@ -1955,6 +2501,11 @@ function exploreResults() {
         SanvicExplore.hasCoordinates(d) ? SanvicExplore.distanceKm(p, d) : Infinity;
       return dist(a) - dist(b);
     }
+    const stay = getStayBarangay();
+    if (stay) {
+      const sameArea = (d) => (d.barangay === stay ? 1 : 0);
+      if (sameArea(a) !== sameArea(b)) return sameArea(b) - sameArea(a);
+    }
     if (exploreAudience === "local") {
       const local = (d) =>
         localKeys.test(d.category + " " + (catStyle[d.category]?.label || "")) ? 1 : 0;
@@ -2003,7 +2554,7 @@ function renderExploreContent() {
   const keys = Object.keys(catStyle).filter((k) => destinations.some((d) => d.category === k));
   // Show real categories only; the admin remains free to add or rename them.
   const ribbon = document.getElementById("esRibbon");
-  ribbon.innerHTML =
+  const chipHtml =
     `<button class="es-chip ${exploreState.category === "all" ? "accent" : ""}" data-category="all" aria-pressed="${exploreState.category === "all"}" onclick="selectExploreCategory('all')"><span class="es-chip-label">All places</span></button>` +
     keys
       .map(
@@ -2011,7 +2562,16 @@ function renderExploreContent() {
           `<button class="es-chip ${exploreState.category === k ? "accent" : ""}" data-category="${escT(k)}" aria-pressed="${exploreState.category === k}" onclick="selectExploreCategory(this.dataset.category)">${catDot(k)}<span class="es-chip-label">${escT(catStyle[k].label)}</span></button>`,
       )
       .join("");
+  ribbon.innerHTML = chipHtml;
   const areas = Array.from(new Set(destinations.map((d) => d.barangay).filter(Boolean))).sort();
+  const staySelect = document.getElementById("staySelect");
+  if (staySelect) {
+    const stay = getStayBarangay();
+    staySelect.innerHTML =
+      '<option value="">Not set</option>' +
+      areas.map((b) => `<option value="${escT(b)}">${escT(b)}</option>`).join("");
+    staySelect.value = areas.includes(stay) ? stay : "";
+  }
   const area = document.getElementById("esArea");
   area.innerHTML =
     '<option value="">All barangays</option>' +
@@ -2028,6 +2588,8 @@ function renderExploreContent() {
     !exploreState.area &&
     !exploreState.nearby;
   document.getElementById("esNearby").setAttribute("aria-pressed", String(exploreState.nearby));
+  const nearbyButton = document.getElementById("locateMeBtn");
+  if (nearbyButton) nearbyButton.setAttribute("aria-pressed", String(exploreState.nearby));
   const status = document.getElementById("esDataStatus");
   status.hidden = destinationsSource === "supabase";
   status.innerHTML =
@@ -2092,14 +2654,43 @@ function syncExploreMap() {
 }
 function filterExploreResults(raw) {
   exploreState.query = String(raw || "");
+  const mapInput = document.getElementById("mapSearchInput");
+  const sheetInput = document.getElementById("esSearchInput");
+  if (mapInput && mapInput.value !== exploreState.query) mapInput.value = exploreState.query;
+  if (sheetInput && sheetInput.value !== exploreState.query) sheetInput.value = exploreState.query;
   renderExploreContent();
   syncExploreMap();
+  renderMapSearchResults();
+}
+function renderMapSearchResults() {
+  const box = document.getElementById("mapSearchResults");
+  if (!box) return;
+  const q = String(exploreState.query || "").trim();
+  if (!q) {
+    box.hidden = true;
+    box.innerHTML = "";
+    return;
+  }
+  const matches = exploreResults().slice(0, 5);
+  if (!matches.length) {
+    box.hidden = false;
+    box.innerHTML = `<div class="map-search-empty">No places match “${escT(q)}”</div>`;
+    return;
+  }
+  box.hidden = false;
+  box.innerHTML = matches
+    .map((d) => {
+      const cat = catStyle[d.category] || { label: d.category || "Place" };
+      return `<button class="map-search-result" onclick="selectExplorePlace(${JSON.stringify(String(d.id))})"><span class="msr-name">${escT(d.name)}</span><span class="msr-meta">${escT(cat.label)} · ${escT(d.barangay || "San Vicente")}</span></button>`;
+    })
+    .join("");
 }
 function selectExploreCategory(category) {
   exploreState.category = category;
   renderExploreContent();
   syncExploreMap();
   fitExploreResults();
+  if (typeof syncSanvicUrl === "function") syncSanvicUrl("discover");
 }
 function selectExploreArea(area) {
   exploreState.area = area;
@@ -2109,9 +2700,13 @@ function selectExploreArea(area) {
 }
 function resetExploreFilters() {
   Object.assign(exploreState, { query: "", category: "all", area: "", nearby: false });
+  persistNearby();
   document.getElementById("esSearchInput").value = "";
+  const mapInput = document.getElementById("mapSearchInput");
+  if (mapInput) mapInput.value = "";
   renderExploreContent();
   syncExploreMap();
+  renderMapSearchResults();
   fitExploreResults();
 }
 function fitExploreResults() {
@@ -2372,6 +2967,26 @@ const TODAY_DATA = {
     { text: "Muddy road to Pamuayan Falls after last night’s rain. 4×4 or scooter only." },
   ],
 };
+const PARTNER_DEMO_TODAY_DATA = JSON.parse(JSON.stringify(TODAY_DATA));
+function setTodayPartnerDemo(enabled) {
+  if (enabled) {
+    Object.assign(TODAY_DATA, JSON.parse(JSON.stringify(PARTNER_DEMO_TODAY_DATA)));
+    return;
+  }
+  TODAY_DATA.snapshot = {
+    weather: { icon: "cloud", temp: "—", label: "Unavailable" },
+    sea: "—",
+    sunset: "—",
+    moon: { glyph: "moon", label: "—" },
+    tribes: 0,
+    happenings: 0,
+  };
+  TODAY_DATA.talaPick = { intro: "", path: [] };
+  ["happening", "joinable", "weather", "locals", "notices"].forEach((key) => {
+    TODAY_DATA[key] = [];
+  });
+}
+if (!partnerDemoMode) setTodayPartnerDemo(false);
 
 function escT(s) {
   return String(s == null ? "" : s).replace(

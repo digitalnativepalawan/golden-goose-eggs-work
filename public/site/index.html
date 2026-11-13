@@ -168,23 +168,13 @@ body.panel-open .hero-overlay{transform:translateY(-6px)}
 
 /* Search — the primary CTA */
 .hero-search{width:100%;height:52px;display:flex;align-items:center;background:rgba(255,255,255,.07);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border:1px solid rgba(255,255,255,.1);border-radius:var(--radius-pill);padding:0 6px 0 18px;position:relative;overflow:hidden;pointer-events:auto;margin-top:4px;transition:all .4s var(--ease-smooth);animation:sg 5s ease-in-out infinite}
-/* ── PROFILED: the map is the landing page ──────────────────────────────
-   Before the questions the hero does its job. After them, it is a lid on the
-   map. The headline, the subtitle, the weather line, the floating search and
-   the gradient over the top all stand down, and one pill replaces them. */
-.explore-pill{position:fixed;top:calc(var(--safe-top) + 64px);left:16px;z-index:60;display:none;align-items:center;gap:7px;padding:10px 15px;border-radius:var(--radius-pill);background:var(--glass-bg-heavy);backdrop-filter:blur(30px);-webkit-backdrop-filter:blur(30px);border:1px solid var(--glass-border);color:var(--white-soft);font-family:var(--font-body);font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.3);transition:opacity .3s,transform .3s}
-.explore-pill:active{transform:scale(.97)}
-body.sanvic-profiled .explore-pill{display:inline-flex}
-/* The un-profiled app has its own "Explore places" reopen button; with the pill
-   in place for profiled visitors, showing both would be two doors to one room. */
-body.sanvic-profiled .explore-reopen{display:none!important}
-body.sanvic-profiled.panel-open .explore-pill{opacity:0;pointer-events:none}
+/* The profiled landing page steps back from the hero; map search lives with
+   the map tools so Explore and search stay aligned across visitor states. */
 body.sanvic-profiled .hero-headline,
 body.sanvic-profiled .hero-subtitle,
 body.sanvic-profiled #heroWeather,
 body.sanvic-profiled #heroSearch,
 body.sanvic-profiled #heroFade{display:none!important}
-@media(max-width:420px){ .explore-pill{top:calc(var(--safe-top) + 58px);padding:9px 13px;font-size:.68rem} }
 .hero-search:focus-within{border-color:rgba(255,255,255,.18);box-shadow:0 0 40px rgba(20,184,166,.1)}
 .hero-search input{flex:1;height:100%;background:none;border:none;outline:none;font-family:var(--font-body);font-size:.88rem;font-weight:300;color:var(--white-soft)}
 .hero-search input::placeholder{color:var(--white-dim)}
@@ -233,6 +223,12 @@ body.sanvic-profiled #heroFade{display:none!important}
    button never appeared on the map at all. */
 body[data-map-tools="on"] .map-util-btn{opacity:1!important;pointer-events:auto!important}
 body[data-map-tools="off"] .map-util-btn{opacity:0!important;pointer-events:none!important}
+body[data-map-tools="on"] .map-explore-bar{opacity:1!important;pointer-events:auto!important;transform:translateY(0)!important}
+body[data-map-tools="off"] .map-explore-bar{opacity:0!important;pointer-events:none!important;transform:translateY(-8px)!important}
+body[data-map-tools="on"] .nearest-bar{opacity:1!important;pointer-events:auto!important}
+body[data-map-tools="off"] .nearest-bar{opacity:0!important;pointer-events:none!important}
+body[data-map-tools="on"] .hunt-cue-pill{opacity:1!important;pointer-events:auto!important}
+body[data-map-tools="off"] .hunt-cue-pill{opacity:0!important;pointer-events:none!important}
 /* Barangay tooltips hidden at far zoom so canvas stays clean */
 .leaflet-container.zoom-far .leaflet-tooltip,
 .leaflet-container.zoom-far .barangay-tooltip{opacity:0!important;pointer-events:none!important;transition:opacity .3s ease}
@@ -860,6 +856,9 @@ svg.lucide{vertical-align:-.15em}
   </div>
   <div class="splash-footer" id="splashFooter">PALAWAN</div>
 </div>
+<div id="partnerDemoBanner" class="partner-demo-banner" role="status" hidden>
+  PARTNER PREVIEW · SAMPLE DATA · NOT LIVE
+</div>
 
 <!-- ═══ MAP (background canvas, z:1 — no UI siblings inside) ═══ -->
 <div id="map"></div>
@@ -885,34 +884,58 @@ svg.lucide{vertical-align:-.15em}
 </header>
 <div class="hero-fade" id="heroFade"></div>
 
-<!-- Once someone has been through the questions, the map is the landing page.
-     The headline, subtitle and floating search all step aside; the Explore
-     sheet already carries the search, so the map only needs one way in. -->
-<button class="explore-pill" id="explorePill" onclick="openExploreSheet()">
-  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="15.5 8.5 13.5 13.5 8.5 15.5 10.5 10.5 15.5 8.5"/></svg>
-  Explore places
-</button>
-
+<!-- The map carries a compact search and a single Explore action; the hero
+     remains the first-visit introduction and gives way to these map tools. -->
 <!-- ═══ STAFF ADMIN ═══
      There is no visible admin control in the product. The Backoffice opens by
      tapping the SANVIC.PH logo in the header three times (see adminBrandClick)
      or by adding ?admin=1 to the URL. No PIN, no sign-in. -->
 
-<!-- ═══ MAP TOOLS: separate basemap and boundary controls ═══ -->
+<!-- ═══ MAP TOOLS: one options menu for basemaps, boundaries and legend ═══ -->
 <div class="map-layer-toggle" id="mapLayerToggle">
-  <button id="layersButton" class="layers-trigger" aria-expanded="false" aria-controls="layersMenu" onclick="toggleLayersMenu()">
+  <button id="layersButton" class="layers-trigger" aria-label="Map layers, boundaries and marker legend" aria-expanded="false" aria-controls="layersMenu" onclick="toggleLayersMenu()">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m3 8 9-5 9 5-9 5-9-5Zm0 4 9 5 9-5M3 16l9 5 9-5"/></svg>
-    <span>Layers</span>
+    <span>Map options</span>
   </button>
   <div id="layersMenu" class="layers-menu" hidden>
     <fieldset><legend>Map style</legend>
-      <label><input type="radio" name="basemap" value="street" checked onchange="switchMapLayer(this.value)"><span>Street<small>OpenStreetMap</small></span></label>
-      <label><input type="radio" name="basemap" value="dark" onchange="switchMapLayer(this.value)"><span>Dark<small>Low-light street map</small></span></label>
+      <label><input type="radio" name="basemap" value="street" checked onchange="switchMapLayer(this.value)"><span>Street<small>Esri World Street Map</small></span></label>
+      <label><input type="radio" name="basemap" value="dark" onchange="switchMapLayer(this.value)"><span>Dark<small>Low-light style · Esri</small></span></label>
       <label><input type="radio" name="basemap" value="satellite" onchange="switchMapLayer(this.value)"><span>Satellite<small>Esri imagery · not open data</small></span></label>
       <label><input type="radio" name="basemap" value="terrain" onchange="switchMapLayer(this.value)"><span>Terrain<small>OpenTopoMap</small></span></label>
     </fieldset>
     <label class="boundary-option"><input id="barangayToggle" type="checkbox" checked onchange="toggleBarangayLayer()"> Barangay boundaries</label>
+    <label class="boundary-option"><input id="savedPlacesToggle" type="checkbox" onchange="toggleSavedPlacesLayer(this.checked)"> Saved places only</label>
+    <label class="boundary-option"><input id="pulseNowDemoToggle" type="checkbox" onchange="togglePartnerDemo(this.checked)"> Partner preview · sample content <small>Demo only · not live</small></label>
     <div class="map-legend" aria-label="Map marker legend"><div class="map-legend-title">Place markers</div><div class="map-legend-items" id="mapLegendItems"></div></div>
+  </div>
+</div>
+<div class="map-explore-bar" id="mapExploreBar">
+  <div class="map-search-row">
+    <label class="map-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-5-5"/></svg>
+      <input id="mapSearchInput" type="search" aria-label="Search places" placeholder="Beach, food, waterfall or barangay" oninput="filterExploreResults(this.value)" autocomplete="off">
+    </label>
+    <button class="explore-reopen" type="button" onclick="dockNav('discover')">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="15.5 8.5 13.5 13.5 8.5 15.5 10.5 10.5 15.5 8.5"/></svg>
+      <span>Explore places</span>
+    </button>
+  </div>
+  <div class="map-search-results" id="mapSearchResults" hidden></div>
+</div>
+<div class="nearest-bar" id="nearestBar" hidden>
+  <div class="nearest-head">Nearest to you</div>
+  <div class="nearest-list" id="nearestList"></div>
+</div>
+<button class="hunt-cue-pill" id="huntCuePill" onclick="openNearestRiddle()" hidden>Something to find here</button>
+<div class="route-preview" id="routePreview" hidden>
+  <button class="route-close" type="button" onclick="closeRoutePreview()" aria-label="Close route preview">×</button>
+  <div class="route-preview-title" id="routeTitle">Route preview</div>
+  <div class="route-preview-summary" id="routeSummary">Preparing route…</div>
+  <div class="route-preview-note" id="routeNote"></div>
+  <div class="route-preview-actions">
+    <a id="routeGoogle" target="_blank" rel="noopener noreferrer">Google Maps</a>
+    <a id="routeWaze" target="_blank" rel="noopener noreferrer">Waze</a>
   </div>
 </div>
 <div class="map-status" id="mapStatus" role="status" aria-live="polite" hidden></div>
@@ -973,9 +996,9 @@ svg.lucide{vertical-align:-.15em}
 </div>
 
 <!-- ═══ TOP-RIGHT MAP UTILITIES (Locate + Layers) ═══ -->
-<button id="locateMeBtn" class="map-util-btn" onclick="locateUser()" aria-label="Locate me">
+<button id="locateMeBtn" class="map-util-btn" onclick="toggleMapNearby()" aria-label="Use my location and show the nearest places" aria-pressed="false" title="Center on my location and sort places by distance">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none"/><line x1="12" y1="2" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="2" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="22" y2="12"/></svg>
-  <span>Locate</span>
+  <span>Find nearby</span>
 </button>
 
 <!-- ═══ TALA ORB ═══ -->
@@ -1138,11 +1161,10 @@ svg.lucide{vertical-align:-.15em}
   .es-search input{flex:1;background:none;border:0;outline:0;color:rgba(255,255,255,.94);
     font-family:var(--font-body);font-size:.92rem}
   .es-search input::placeholder{color:rgba(255,255,255,.45)}
-  /* Optional browsing controls. The search box and the "All barangays / Near me"
-     row are hidden by default; the Backoffice switch (Site -> Explore filters)
-     brings them back. Hidden, never deleted, so nothing else can break. */
-  .explore-sheet.es-no-filters .es-search,
-  .explore-sheet.es-no-filters .es-filter-row{display:none}
+  /* Keep search visible when Explore opens. Secondary area, nearby and stay
+     preferences stay collapsed until the visitor asks for more filters. */
+  .explore-sheet.es-no-filters .es-filter-row,
+  .explore-sheet.es-no-filters .es-stay-row{display:none}
   .es-ribbon{display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;
     scrollbar-width:none;padding:2px 0}
   .es-ribbon::-webkit-scrollbar{display:none}
@@ -1258,14 +1280,15 @@ svg.lucide{vertical-align:-.15em}
     </label>
   </div>
   <div class="es-browse-controls">
+    <button id="esMoreFilters" class="es-more-filters" aria-expanded="false" onclick="toggleExploreFilters()">More filters</button>
     <div class="es-filter-row"><label class="es-area-label"><span class="sr-only">Barangay</span><select id="esArea" onchange="selectExploreArea(this.value)"><option value="">All barangays</option></select></label><button id="esNearby" class="es-action" aria-pressed="false" onclick="locateUser(true)">Near me</button></div>
+    <label class="stay-row es-stay-row"><span>Staying in</span><select id="staySelect" onchange="setStayBarangay(this.value)"><option value="">Not set</option></select></label>
     <div class="es-ribbon" id="esRibbon" aria-label="Place categories"></div>
     <div class="es-results-heading"><span id="esResultCount" role="status">Loading places…</span><button id="esReset" onclick="resetExploreFilters()" hidden>Show all</button><button class="es-fit" onclick="fitExploreResults()">Fit on map</button></div>
     <p class="es-data-status" id="esDataStatus" role="status"></p>
   </div>
   <div class="es-body" id="exploreContent"></div>
 </section>
-<button class="explore-reopen" onclick="dockNav('discover')">Explore places</button>
 
 
 <!-- ═══ DESTINATION BOTTOM SHEET ═══ -->
@@ -1297,23 +1320,34 @@ svg.lucide{vertical-align:-.15em}
       <div class="exp-overlay"></div>
     </div>
     <p class="dest-photo-credit" id="deCredit" hidden></p>
-    <div style="display:flex;align-items:center;justify-content:space-between;">
-      <div class="dest-exp-cat" id="deCat"></div>
-      <button class="dest-save-btn" id="deSaveBtn" aria-label="Save this place" onclick="handleDestSaveClick()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-      </button>
-    </div>
+    <div class="dest-exp-cat" id="deCat"></div>
     <h2 class="dest-exp-title" id="deTitle"></h2>
     <p class="detail-barangay" id="deBarangay"></p>
-    <div class="dest-exp-stats" id="deStats"></div>
-    <p class="dest-exp-desc collapsed" id="deDesc"></p>
-    <button class="dest-readmore" id="deReadMore" onclick="toggleReadMore()">Read more</button>
-    <div class="dest-exp-tip" id="deTip"></div>
-    <div class="dest-exp-actions">
+    <div class="dest-exp-actions dest-primary-actions">
+      <button class="dest-exp-btn" id="deSaveBtn" aria-label="Save this place" onclick="handleDestSaveClick()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        Save
+      </button>
+      <button class="dest-exp-btn" id="deShare" onclick="shareCurrentPlace()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.7 6.8-4.4M8.6 13.3l6.8 4.4"/></svg>
+        Share
+      </button>
       <button class="dest-exp-btn primary" id="deDirections">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
         Directions
       </button>
+      <a class="dest-exp-btn" id="deCall" href="" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.8 19.8 0 0 1 11.19 18a19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.09 3.18 2 2 0 0 1 4.08 1h3a2 2 0 0 1 2 1.72c.12.96.35 1.9.69 2.8a2 2 0 0 1-.45 2.11L8.05 8.9a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.84.57 2.8.69A2 2 0 0 1 22 16.92z"/></svg>
+        Call
+      </a>
+    </div>
+    <p class="dest-exp-desc collapsed" id="deDesc"></p>
+    <button class="dest-readmore" id="deReadMore" onclick="toggleReadMore()">Read more</button>
+    <div class="dest-exp-stats" id="deStats"></div>
+    <div class="dest-exp-tip" id="deTip"></div>
+    <div class="dest-community" id="deCommunity" hidden></div>
+    <div class="dest-exp-extras" id="deExtras"></div>
+    <div class="dest-exp-actions dest-secondary-actions">
       <button class="dest-exp-btn" id="deTips" onclick="togglePlaceTips()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         Leave a tip
@@ -1327,8 +1361,6 @@ svg.lucide{vertical-align:-.15em}
         See this place on the map
       </button>
     </div>
-    <div class="dest-community" id="deCommunity" hidden></div>
-    <div class="dest-exp-extras" id="deExtras"></div>
     <div class="dest-exp-tips" id="deTipsBox" hidden></div>
     <button class="dest-exp-back" onclick="closeDestSheet()">Back to map</button>
   </div>
@@ -1423,8 +1455,13 @@ svg.lucide{vertical-align:-.15em}
   .pv2-live-t{font-weight:600}
   .pv2-live-s{color:rgba(255,255,255,.6);display:block;font-size:.68rem;margin-top:1px}
   .pv2-live-dot{background:#39ffd0;box-shadow:0 0 8px rgba(57,255,208,.55);animation:none}
-  .pv2-header-cta{display:inline-flex;align-items:center;gap:8px;margin-top:12px;padding:11px 16px;border:1px solid rgba(57,255,208,.62);border-radius:999px;background:linear-gradient(120deg,rgba(57,255,208,.2),rgba(20,184,166,.12));color:#d9fff8;font:700 .82rem var(--font-body);letter-spacing:.01em;box-shadow:0 0 18px rgba(57,255,208,.12);cursor:pointer}
+  .pv2-header-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .pv2-header-cta{display:inline-flex;align-items:center;gap:8px;margin-top:0;padding:11px 16px;border:1px solid rgba(57,255,208,.62);border-radius:999px;background:linear-gradient(120deg,rgba(57,255,208,.2),rgba(20,184,166,.12));color:#d9fff8;font:700 .82rem var(--font-body);letter-spacing:.01em;box-shadow:0 0 18px rgba(57,255,208,.12);cursor:pointer}
   .pv2-header-cta svg{width:17px;height:17px;color:#39ffd0}
+  .pv2-preview-cta{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:0 13px;border:1px solid rgba(199,222,231,.26);border-radius:999px;background:rgba(255,255,255,.055);color:rgba(245,251,255,.88);font:600 .75rem var(--font-body);cursor:pointer;transition:background .18s,border-color .18s,color .18s}
+  .pv2-preview-cta svg{width:16px;height:16px;flex:none;color:#a8c5ce}
+  .pv2-preview-cta:hover,.pv2-preview-cta[aria-pressed="true"]{border-color:rgba(57,255,208,.6);background:rgba(20,184,166,.14);color:#eafffb}
+  .pv2-preview-cta:focus-visible{outline:3px solid #65e1d1;outline-offset:3px}
   /* Five views since the feed came back: tribes, feed, events, lounge, form.
      The columns are even so the row still reads as one control, and the type
      tightens on a narrow phone rather than dropping a tab. */
@@ -1474,7 +1511,11 @@ svg.lucide{vertical-align:-.15em}
   .pv2-viewall{flex-shrink:0;font-size:.8rem;color:#5eead4;background:none;border:0;cursor:pointer;padding:0}
   .pv2-tribe{display:grid;grid-template-columns:88px minmax(0,1fr);gap:12px;padding:12px;border-radius:18px;
     background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06)}
-  .pv2-tribe-thumb{width:88px;height:100%;min-height:120px;border-radius:14px;background-size:cover;background-position:center;background-color:rgba(255,255,255,.05)}
+  .pv2-tribe-thumb{position:relative;width:88px;height:100%;min-height:120px;border-radius:14px;background-color:rgba(255,255,255,.05);overflow:hidden}
+  .pv2-tribe-thumb>img{display:block;width:100%;height:100%;min-height:120px;object-fit:cover}
+  .pv2-sample-photo-tag{position:absolute;left:5px;bottom:5px;z-index:1;padding:3px 5px;border-radius:6px;background:rgba(4,12,22,.82);color:#fff;font-size:.56rem;font-weight:700;line-height:1.1;letter-spacing:.01em}
+  .pv2-event-image{position:relative;overflow:hidden;border-radius:14px;margin-top:10px}
+  .pv2-event-image .pulse-card-image{display:block;width:100%;height:140px;object-fit:cover;border-radius:14px;margin:0}
   .pv2-tribe-body{min-width:0;display:flex;flex-direction:column;gap:6px}
   .pv2-tribe-title{font-size:1rem;font-weight:600;color:#fff;line-height:1.2}
   .pv2-tribe-meta{display:flex;flex-direction:column;gap:2px;font-size:.78rem;color:rgba(255,255,255,.7)}
@@ -1554,8 +1595,10 @@ svg.lucide{vertical-align:-.15em}
   .pv2-wiz-hint{display:flex;align-items:center;gap:6px;font-size:.74rem;line-height:1.4;color:rgba(255,255,255,.42)}
   .pv2-wiz-hint::before{content:'';width:5px;height:5px;border-radius:50%;background:rgba(94,234,212,.6);flex-shrink:0}
   /* Optional photo on a new tribe */
-  .pv2-wiz-photo{display:flex;align-items:center;gap:10px}
+  .pv2-wiz-photo{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
   .pv2-wiz-photobtn{display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:rgba(255,255,255,.82);font-size:.76rem;font-weight:600;cursor:pointer}
+  .pv2-wiz-sample{min-height:38px;padding:0 11px;border:1px solid rgba(57,255,208,.28);border-radius:999px;background:rgba(20,184,166,.08);color:#baf4e8;font:600 .7rem var(--font-body);cursor:pointer}
+  .pv2-wiz-photo-note{font-size:.7rem;line-height:1.4;color:rgba(255,232,176,.78)}
   .pv2-wiz-photoprev{width:52px;height:52px;border-radius:13px;flex-shrink:0;background:rgba(255,255,255,.05) center/cover no-repeat;border:1px solid rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.25)}
   .pv2-wiz-photoprev.has{border-color:rgba(20,184,166,.5)}
   /* Step 2 of Form a Tribe used to offer "Choose Place" and then never ask which
@@ -1613,7 +1656,13 @@ svg.lucide{vertical-align:-.15em}
     </div>
     <div class="pv2-sub" id="pv2Sub">Find your tribe today.</div>
     <div class="pv2-body-copy" id="pv2Copy">Join small groups, local happenings, and tribe chats around San Vicente.</div>
-    <button class="pv2-header-cta" type="button" onclick="selectPulseView('form')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Form a Tribe</button>
+    <div class="pv2-header-actions">
+      <button class="pv2-header-cta" type="button" onclick="selectPulseView('form')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Form a Tribe</button>
+      <button id="pulsePartnerPreviewBtn" class="pv2-preview-cta" type="button" onclick="togglePartnerDemo(!partnerDemoMode)" aria-pressed="false" aria-controls="partnerDemoBanner" title="Show sample tribes, events, map pins, and photos. Preview actions do not change live data.">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
+        <span id="pulsePartnerPreviewLabel">Partner preview · sample photos</span>
+      </button>
+    </div>
     <div class="pv2-live">
       <span class="pv2-live-dot" aria-hidden="true"></span>
       <div>
@@ -2175,7 +2224,7 @@ svg.lucide{vertical-align:-.15em}
   .info-meta{font-size:.74rem;color:rgba(255,255,255,.5);margin-top:3px;line-height:1.4}
   .info-close{width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
   .info-body{flex:1;min-height:0;overflow-y:auto;padding:14px 18px calc(18px + var(--safe-bottom,0px));display:flex;flex-direction:column;gap:12px}
-  .info-media{height:170px;border-radius:16px;background-size:cover;background-position:center;flex-shrink:0}
+  .info-media{position:relative;overflow:hidden;height:170px;border-radius:16px;background-size:cover;background-position:center;flex-shrink:0}
   .info-copy{font-size:.88rem;line-height:1.6;color:rgba(255,255,255,.82);white-space:pre-wrap}
   .info-muted{color:rgba(255,255,255,.4)}
   .info-credit{font-size:.62rem;color:rgba(255,255,255,.34)}
@@ -2393,7 +2442,7 @@ svg.lucide{vertical-align:-.15em}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-11-09-no-pin-map';
+  window.SANVIC_DEPLOY_VERSION = '2026-11-12-pulse-sample-media-r6';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by the app scripts and entry-flow.js so the two
   // timers cannot drift apart. Raise it to hold the first page longer.
@@ -2520,7 +2569,7 @@ svg.lucide{vertical-align:-.15em}
   <div class="carousel-dots" id="carouselDots"></div>
 </div>
 
-<link rel="stylesheet" href="explore-ux.css?v=2026-10-30-map-tools-r2">
+<link rel="stylesheet" href="explore-ux.css?v=2026-11-12-map-controls-r3">
 <style id="sanvicNoHScroll">
   /* ── Nothing in the product scrolls sideways. ─────────────────────────────
      Chip rows wrap; card strips wrap into uniform full-width rows. The same
@@ -2571,6 +2620,6 @@ svg.lucide{vertical-align:-.15em}
   /* The Backoffice sidebar keeps its own single vertical column. */
   @media (min-width:860px){.admin-tabs{flex-wrap:nowrap;overflow-x:hidden}}
 </style>
-<link rel="stylesheet" href="admin-ux.css?v=2026-10-30-map-tools-r2">
+<link rel="stylesheet" href="admin-ux.css?v=2026-11-12-media-manager-r3">
 </body>
 </html>

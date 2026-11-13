@@ -2381,6 +2381,16 @@
     </div>`;
   }
 
+  var studioSamplePhotos = [
+    ["assets/pulse/island-boats-beach.jpg", "Long Beach boats"],
+    ["assets/pulse/island-boats-aerial.jpg", "Island boats"],
+    ["assets/pulse/kayak-lagoon.jpg", "Kayak lagoon"],
+    ["assets/pulse/street-food-skewers.jpg", "Street food"],
+    ["assets/pulse/bulalo-boodle.jpg", "Local meal"],
+    ["assets/san-vicente-long-beach.jpg", "San Vicente beach"],
+    ["assets/san-vicente-waterfalls.jpg", "Waterfalls"],
+  ];
+
   window.mediaGalleryHtml = function (containerId, prefix) {
     __mediaPrefix = prefix || "item";
     __mediaActiveContainer = containerId;
@@ -2403,7 +2413,15 @@
           ${icon("camera", 22)}<span>Take photo</span><small>Uses the device camera where supported</small>
         </label>
       </div>
-      <div class="admin-photo-grid" id="${containerId}PhotoGrid">${cards || '<div class="admin-notice">No photos yet. Add the cover photo first.</div>'}</div>
+      <div class="admin-sample-picker" aria-label="Illustrative sample photos">
+        <div class="admin-sample-picker-heading"><strong>Or use a sample photo</strong><span>Clearly illustrative · replace before launch</span></div>
+        <div class="admin-sample-picker-list">${studioSamplePhotos
+          .map(function (sample) {
+            return `<button type="button" class="admin-sample-photo" onclick="mediaAddSample('${esc(containerId)}','${esc(sample[0])}')" aria-label="Add illustrative sample photo: ${esc(sample[1])}"><img src="${esc(sample[0])}" alt=""><span>${esc(sample[1])}</span></button>`;
+          })
+          .join("")}</div>
+      </div>
+      <div class="admin-photo-grid" id="${containerId}PhotoGrid">${cards || '<div class="admin-notice">No photos yet. Add a photo or choose an illustrative sample above.</div>'}</div>
       <p class="admin-field-error" id="${containerId}GalleryError"></p>
       <div class="admin-upload-list" id="${containerId}UploadList" aria-live="polite"></div>
       <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
@@ -2411,6 +2429,27 @@
         <button type="button" class="admin-mini-btn" onclick="mediaAddUrl('${containerId}')">Add URL</button>
       </div>
       <div class="admin-hint">Removing a photo only removes it from this listing after you save; the uploaded file stays in the Photos library. Temporary blob: and data: URLs are never saved.</div>`;
+  };
+
+  window.mediaAddSample = function (containerId, url) {
+    if (!studioSamplePhotos.some(function (sample) { return sample[0] === url; })) {
+      studioMediaError(containerId, "Choose a sample from the provided list.");
+      return;
+    }
+    if (__mediaGallery.indexOf(url) >= 0) {
+      studioMediaError(containerId, "That sample photo is already in this listing.");
+      return;
+    }
+    __mediaGallery.push(url);
+    var credit = document.getElementById(
+      containerId === "atbf" ? "atbfCredit" : containerId === "aevf" ? "aevfCredit" : "adfCredit",
+    );
+    if (credit && !credit.value.trim()) credit.value = "Illustrative sample photo · replace before launch";
+    studioMediaError(containerId, "");
+    markDirty();
+    window.mediaRefreshGrid(containerId);
+    adminUpdatePreview();
+    live("Illustrative sample photo added. Replace it with a real photo before launch.");
   };
 
   window.mediaRefreshGrid = function (containerId) {

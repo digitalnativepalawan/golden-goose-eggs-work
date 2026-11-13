@@ -220,19 +220,14 @@ const DEFAULT_SPLASH_FOOTER = `PALAWAN`;
 let talaAiEnabled = false;
 let talaAiModel = "";
 
-// ─── SAMPLE CONTENT POLICY ────────────────────────────────────────────────
-// The arrays below (PULSE_TRIBES, PULSE_EVENTS, TODAY_DATA) are packaged samples
-// so the app is not blank with no connection. They used to be the fallback
-// whenever the matching table came back empty, which meant a visitor could be
-// shown invented businesses and prices ("Lechon by the Beach — ₱650 / plate")
-// and invented travellers holding seats ("2 seats open. Let's split gas!").
-//
-// That is the same call the Lounge already made: an honest empty room beats
-// inventing company. So samples now survive only when the query itself failed
-// (offline demo). If the database answers, the answer wins — including "none".
-//
-// Set this to true to demo the full experience on a machine with no database.
-const SHOW_SAMPLES_WHEN_DB_IS_EMPTY = false;
+// ─── PARTNER PREVIEW ──────────────────────────────────────────────────────
+// Packaged sample activity is shown only when someone explicitly enables the
+// clearly labeled partner-preview switch. The normal visitor experience uses
+// Supabase rows or honest empty states, including when the connection fails.
+let partnerDemoMode = false;
+try {
+  partnerDemoMode = localStorage.getItem("sanvic_partner_demo") === "1";
+} catch (e) {}
 
 // Today keys that describe what is happening in San Vicente right now. If the
 // database has no row for one of these, the card says so instead of falling back

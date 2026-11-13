@@ -9,48 +9,57 @@
 // "an honest empty room beats inventing company."
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
 const { client, canon, has, count, after } = require("./support/client.cjs");
 
 const app = client();
+const html = fs.readFileSync("public/site/index.html", "utf8");
 
-test("samples are off by default and the switch is one constant", () => {
-  assert.ok(has(app, "const SHOW_SAMPLES_WHEN_DB_IS_EMPTY = false;"));
-  // It must actually be consulted, not just declared.
-  const uses = count(app, "SHOW_SAMPLES_WHEN_DB_IS_EMPTY");
-  assert.ok(uses >= 3, `policy constant referenced ${uses} time(s)`);
+test("partner preview is off by default and always carries a visible not-live label", () => {
+  assert.ok(has(app, "let partnerDemoMode = false;"));
+  assert.ok(has(app, 'partnerDemoMode=localStorage.getItem("sanvic_partner_demo")==="1";'));
+  assert.match(html, /onchange="togglePartnerDemo\(this\.checked\)"/);
+  assert.match(html, /id="partnerDemoBanner"/);
+  assert.match(html, /PARTNER PREVIEW · SAMPLE DATA · NOT LIVE/);
+  assert.equal(has(app, "SHOW_SAMPLES_WHEN_DB_IS_EMPTY"), false);
 });
 
-test("an answered query replaces samples even when it answers none", () => {
-  for (const [name, row] of [
-    ["tribes", "tribesRes"],
-    ["events", "eventsRes"],
-  ]) {
-    const block = after(app, `if(${row} && !${row}.error`, 300);
-    assert.ok(
-      block.includes(canon(`Array.isArray(${row}.data)`)),
-      `${name}: must require an array answer`,
-    );
-    assert.ok(
-      block.includes(canon(`|| !SHOW_SAMPLES_WHEN_DB_IS_EMPTY`)),
-      `${name}: empty answer must clear the samples`,
-    );
-  }
-  // The old unconditional length check is the bug; make sure it is gone.
-  assert.equal(has(app, "if(tribesRes && tribesRes.data && tribesRes.data.length){"), false);
-  assert.equal(has(app, "if(eventsRes && eventsRes.data && eventsRes.data.length){"), false);
+test("answered empty and failed activity queries do not expose samples unless preview is enabled", () => {
+  assert.ok(has(app, "if(partnerDemoMode)setPulsePartnerDemo(true);else{"));
+  assert.ok(has(app, "PULSE_TRIBES.length=0;"));
+  assert.ok(has(app, "PULSE_EVENTS.length=0;"));
+  assert.ok(has(app, "if(partnerDemoMode){setTodayPartnerDemo(true);setPulsePartnerDemo(true);}"));
+  assert.equal(has(app, "SHOW_SAMPLES_WHEN_DB_IS_EMPTY"), false);
 });
 
-test("Today cards describe today, so they are live or empty", () => {
-  assert.ok(has(app, "const TODAY_LIVE_KEYS = ['happening','joinable','locals','notices'];"));
-  // Missing rows for those keys must clear the packaged copy.
+test("preview shows sample feed posts but blocks writes to real engagement tables", () => {
+  assert.ok(has(app, "const PARTNER_DEMO_FEED = ["));
+  assert.ok(has(app, "if(partnerDemoMode){const posts=PARTNER_DEMO_FEED.filter"));
+  assert.ok(has(app, "Sample feed posts · likes and replies are not saved."));
+  assert.ok(
+    has(app, "if(partnerDemoMode)return toast('Sample post — likes are not saved in preview.');"),
+  );
   assert.ok(
     has(
       app,
-      "else if(!SHOW_SAMPLES_WHEN_DB_IS_EMPTY && TODAY_LIVE_KEYS.indexOf(key) >= 0) TODAY_DATA[target[key]] = [];",
+      "if(partnerDemoMode)return toast('Turn off partner preview to publish a real post.');",
     ),
   );
-  // A failed query is offline demo mode and leaves the samples alone.
-  assert.ok(has(app, "On a failed query nothing changes"));
+  assert.ok(
+    has(
+      app,
+      "if(partnerDemoMode)return toast('Turn off partner preview before creating a real tribe.');",
+    ),
+  );
+  assert.ok(has(app, "Sample tribe chat · preview only"));
+  assert.ok(has(app, "Sample event chat · preview only"));
+});
+
+test("Today cards use labeled samples only in preview and clear live lists otherwise", () => {
+  assert.ok(has(app, "const TODAY_LIVE_KEYS = ['happening','joinable','locals','notices'];"));
+  assert.ok(has(app, "if(partnerDemoMode)setTodayPartnerDemo(true);"));
+  assert.ok(has(app, "else if(TODAY_LIVE_KEYS.indexOf(key)>=0)TODAY_DATA[target[key]]=[];"));
+  assert.ok(has(app, "function setTodayPartnerDemo(enabled){"));
 });
 
 test("Today never reports counts it cannot see", () => {
@@ -79,9 +88,8 @@ test("every live Today list has a quiet empty state", () => {
   assert.ok(has(app, "tnotice-empty"));
 });
 
-test("the packaged samples are still there for the offline demo", () => {
-  // Removing them would leave the app blank with no connection; the rule is about
-  // when they may be shown, not about deleting them.
+test("the packaged samples remain available for explicit partner preview", () => {
+  // Keep the fixtures available, but only show them behind the opt-in preview.
   assert.ok(has(app, "const PULSE_TRIBES = ["));
   assert.ok(has(app, "const PULSE_EVENTS = ["));
   assert.ok(has(app, "const TODAY_DATA = {"));
