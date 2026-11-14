@@ -975,7 +975,7 @@ svg.lucide{vertical-align:-.15em}
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
     <span>Explore</span>
   </button>
-  <button class="dock-item" onclick="dockNav('map')" data-tab="map">
+  <button type="button" class="dock-item" onclick="dockNav('map')" data-tab="map" aria-label="Open Today">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
     <span>Today</span>
   </button>
@@ -2490,7 +2490,7 @@ svg.lucide{vertical-align:-.15em}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-11-14-today-details-r18';
+  window.SANVIC_DEPLOY_VERSION = '2026-11-14-today-mobile-fix-r19';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by the app scripts and entry-flow.js so the two
   // timers cannot drift apart. Raise it to hold the first page longer.
@@ -2618,7 +2618,7 @@ svg.lucide{vertical-align:-.15em}
   <div class="carousel-dots" id="carouselDots"></div>
 </div>
 
-<link rel="stylesheet" href="explore-ux.css?v=2026-11-14-today-details-r16">
+<link rel="stylesheet" href="explore-ux.css?v=2026-11-14-today-mobile-fix-r17">
 <style id="sanvicNoHScroll">
   /* ── Nothing in the product scrolls sideways. ─────────────────────────────
      Chip rows wrap; card strips wrap into uniform full-width rows. The same

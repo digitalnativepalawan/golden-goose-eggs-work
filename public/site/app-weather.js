@@ -1493,6 +1493,10 @@ function handleSanvicDeepLink(hash = window.location.hash) {
   return false;
 }
 function dockNav(tab) {
+  // The Today dock item shares the map tab. Open the mobile panel immediately,
+  // before map animation, history, or map-layer work that may be unavailable on
+  // a phone or on a slow connection.
+  if (tab === "map") openTodaySheet();
   dismissDockIntro();
   setActiveDock(tab);
   if (!handlingExploreHistory) {
@@ -1504,6 +1508,7 @@ function dockNav(tab) {
   switch (tab) {
     case "map":
       closeAllPanels();
+      openTodaySheet();
       closeDiscoverPanel();
       document.getElementById("heroOverlay").classList.remove("hidden");
       document.getElementById("heroFade").classList.remove("hidden");
@@ -1512,7 +1517,6 @@ function dockNav(tab) {
         if (!preserveMapViewOnDock) map.flyTo([10.5, 119.22], 11, { duration: 1 });
         applyPinVisibility();
       }
-      openTodaySheet();
       break;
     case "discover":
       closeAllPanels();

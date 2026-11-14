@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const vm = require("node:vm");
 
 const mapApp = fs.readFileSync("public/site/app-map-explore-today.js", "utf8");
+const weatherApp = fs.readFileSync("public/site/app-weather.js", "utf8");
 const html = fs.readFileSync("public/site/index.html", "utf8");
 const exploreCss = fs.readFileSync("public/site/explore-ux.css", "utf8");
 const pulse = fs.readFileSync("public/site/app-pulse.js", "utf8");
@@ -412,6 +413,66 @@ test("the editorial welcome page follows the untouched intro and has editable ad
   assert.match(admin, /new File\(\[bytes\], "welcome-page-import\./);
   assert.match(admin, /destination-images/);
   assert.match(admin, /key: "welcome_page"/);
+});
+
+test("Today dock tap opens the panel before mobile map work can interfere", () => {
+  const start = weatherApp.indexOf("function dockNav(tab) {");
+  const end = weatherApp.indexOf("function setActiveDock(tab)", start);
+  assert.ok(start >= 0 && end > start, "dockNav should remain an independently testable handler");
+  const source = weatherApp.slice(start, end);
+  const calls = [];
+  const context = {
+    openTodaySheet: () => calls.push("openToday"),
+    dismissDockIntro: () => calls.push("dismissIntro"),
+    setActiveDock: (tab) => calls.push("active:" + tab),
+    handlingExploreHistory: false,
+    history: { state: { sanvic: true, tab: "discover" } },
+    syncSanvicUrl: (tab) => calls.push("url:" + tab),
+    closeAllPanels: () => calls.push("closePanels"),
+    closeDiscoverPanel: () => calls.push("closeDiscover"),
+    document: { getElementById: (id) => ({ classList: { remove: () => calls.push("hide:" + id) } }) },
+    map: null,
+    preserveMapViewOnDock: false,
+  };
+  vm.runInNewContext(source, context);
+  context.dockNav("map");
+  assert.equal(calls[0], "openToday", "show Today immediately, before ancillary navigation work");
+  assert.ok(calls.indexOf("closePanels") < calls.lastIndexOf("openToday"));
+  assert.ok(calls.includes("hide:heroOverlay"));
+  assert.match(html, /<button type="button" class="dock-item" onclick="dockNav\('map'\)" data-tab="map" aria-label="Open Today"/);
+});
+
+test("Today stays visible and gives a fallback if rendering fails on a device", () => {
+  const start = mapApp.indexOf("function openTodaySheet() {");
+  const end = mapApp.indexOf("// Today is a full-screen panel", start);
+  assert.ok(start >= 0 && end > start, "openTodaySheet should remain independently testable");
+  const source = mapApp.slice(start, end);
+  let opened = false;
+  let panelOpen = false;
+  const panel = {
+    classList: { add: (name) => { if (name === "open") panelOpen = true; } },
+    setAttribute: (name, value) => { if (name === "aria-hidden" && value === "false") opened = true; },
+  };
+  const fallback = { innerHTML: "" };
+  const context = {
+    document: {
+      getElementById(id) {
+        if (id === "todayPanel") return panel;
+        if (id === "todayPage") return { scrollTop: 0 };
+        if (id === "todayScroll") return fallback;
+        return null;
+      },
+    },
+    refreshPanelOpen() {},
+    renderTodayContent() { throw new Error("simulated mobile render error"); },
+    updateTodayGreeting() {},
+    console: { error() {} },
+  };
+  vm.runInNewContext(source, context);
+  context.openTodaySheet();
+  assert.equal(panelOpen, true);
+  assert.equal(opened, true);
+  assert.match(fallback.innerHTML, /Today could not load right now/);
 });
 
 test("Today events and places open a responsive details sheet with editable CRUD fields", () => {

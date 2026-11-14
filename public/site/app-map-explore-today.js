@@ -2312,13 +2312,21 @@ function updateTodayGreeting() {
 function openTodaySheet() {
   const s = document.getElementById("todayPanel");
   if (!s) return;
-  renderTodayContent();
-  updateTodayGreeting();
+  // Reveal the panel before refreshing its content. If a device-specific data
+  // or rendering problem occurs, the Today control must still visibly respond.
   s.classList.add("open");
   s.setAttribute("aria-hidden", "false");
-  // Re-opening always starts at the greeting, not halfway down yesterday's cards.
   const page = document.getElementById("todayPage");
   if (page) page.scrollTop = 0;
+  try {
+    refreshPanelOpen();
+    renderTodayContent();
+    updateTodayGreeting();
+  } catch (error) {
+    console.error("Could not render Today content:", error);
+    const host = document.getElementById("todayScroll");
+    if (host) host.innerHTML = '<div class="today-card"><p class="today-lede">Today could not load right now. Please close and try again.</p></div>';
+  }
 }
 // Today is a full-screen panel now, not a 3-snap bottom sheet, so "toggle",
 // "snap" and "collapse" all just resolve to open or close. Kept as named
