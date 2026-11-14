@@ -10,6 +10,7 @@ const pulse = fs.readFileSync("public/site/app-pulse.js", "utf8");
 const admin = fs.readFileSync("public/site/app-place-details.js", "utf8");
 const adminStudio = fs.readFileSync("public/site/admin-studio.js", "utf8");
 const adminCss = fs.readFileSync("public/site/admin-ux.css", "utf8");
+const welcome = fs.readFileSync("public/site/welcome-page.js", "utf8");
 const migration = fs.readFileSync(
   "supabase/migrations/20261112000000_pulse_now_location_time.sql",
   "utf8",
@@ -393,7 +394,51 @@ test("map header stays brand-only while Explore retains the place search", () =>
   assert.doesNotMatch(html, /id="mapChipStrip"/);
 });
 
-test("Dark keeps its original low-light treatment and map credits avoid the bottom navigation", () => {
+test("the editorial welcome page follows the untouched intro and has editable admin settings", () => {
+  assert.match(html, /window\.SANVIC_SPLASH_HOLD = 4500/);
+  assert.match(html, /The San Vicente Travel Hub<br>Curated by the people who live here/);
+  assert.match(html, /'welcome-page\.js'/);
+  assert.match(welcome, /There is more to paradise than you imagine\./);
+  assert.match(welcome, /Travel north and discover an entirely different side of Palawan\./);
+  assert.match(welcome, /setTimeout\(function \(\) \{[\s\S]*open\(preview\)/);
+  assert.match(welcome, /assets\/sanvic-welcome-coast\.jpg/);
+  assert.match(admin, /<h3>Welcome page<\/h3>/);
+  assert.match(admin, /adminSaveWelcomePage\(\)/);
+  assert.match(admin, /adminDownloadWelcomePage\(\)/);
+  assert.match(admin, /async function adminDownloadWelcomePage\(\)/);
+  assert.match(admin, /imageData = "data:" \+ imageBlob\.type/);
+  assert.match(admin, /config\.imageData/);
+  assert.match(admin, /adminImportWelcomePage\(this\)/);
+  assert.match(admin, /new File\(\[bytes\], "welcome-page-import\./);
+  assert.match(admin, /destination-images/);
+  assert.match(admin, /key: "welcome_page"/);
+});
+
+test("Today events and places open a responsive details sheet with editable CRUD fields", () => {
+  assert.match(mapApp, /function openTodayItemDetails\(kind, index\)/);
+  assert.match(mapApp, /openTodayItemDetails\('happening',\$\{i\}\)/);
+  assert.match(mapApp, /openTodayItemDetails\('joinable',\$\{i\}\)/);
+  assert.match(mapApp, /openTodayItemDetails\('local',\$\{i\}\)/);
+  assert.match(mapApp, /document\.addEventListener\("keydown", \(event\) => \{[\s\S]*event\.key === "Escape"/);
+  assert.match(mapApp, /Sample preview/);
+  assert.match(mapApp, /todayOpenDirections\(TODAY_DATA\.happening/);
+  assert.match(html, /id="todayDetailOverlay"/);
+  assert.match(html, /role="dialog" aria-modal="true" aria-labelledby="todayDetailTitle"/);
+  assert.match(html, /\.today-detail-overlay\{[\s\S]*position:absolute[\s\S]*safe-area-inset-bottom/);
+  assert.match(html, /@media\(min-width:700px\)\{\.today-detail-overlay\{align-items:center/);
+  assert.match(admin, /joinTitle_\$\{id\}/);
+  assert.match(admin, /hapDescription_\$\{id\}/);
+  assert.match(admin, /locDescription_\$\{id\}/);
+  assert.match(admin, /todayAddHappeningCard\(\)/);
+  assert.match(admin, /todayAddJoinableCard\(\)/);
+  assert.match(admin, /todayAddLocalCard\(\)/);
+  assert.match(admin, /todayRemoveHappening\(id\)/);
+  assert.match(admin, /todayRemoveJoinable\(id\)/);
+  assert.match(admin, /todayRemoveLocal\(id\)/);
+  assert.match(admin, /collectTodayJoinableItems\(\)/);
+});
+
+test("Dark keeps its original low-light treatment and tiny map credits sit above the mobile footer", () => {
   assert.match(
     mapApp,
     /server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Street_Map\/MapServer\/tile\/\{z\}\/\{y\}\/\{x\}/,
@@ -401,14 +446,16 @@ test("Dark keeps its original low-light treatment and map credits avoid the bott
   assert.match(mapApp, /window\._mDark = window\._mS/);
   assert.match(mapApp, /dark: window\._mDark/);
   assert.match(mapApp, /map\.attributionControl\.setPrefix\(false\)/);
-  assert.match(mapApp, /map\.attributionControl\.setPosition\("topright"\)/);
+  assert.match(mapApp, /map\.attributionControl\.setPosition\("bottomright"\)/);
   assert.match(mapApp, /window\._mS\.on\("tileerror"/);
   assert.match(mapApp, /Try Satellite or Terrain in Map options/);
   assert.match(mapApp, /GIS User Community/);
   assert.match(html, /\.map-dark \.leaflet-tile-pane\{filter:brightness\(\.62\) saturate\(\.55\) contrast\(1\.18\)\}/);
   assert.doesNotMatch(exploreCss, /\.map-dark \.leaflet-tile-pane\s*\{[^}]*invert\(/);
-  assert.match(exploreCss, /leaflet-top\.leaflet-right \.leaflet-control-attribution[\s\S]*font-size: 7px !important/);
-  assert.match(exploreCss, /#mapLayerToggle \{[\s\S]*top: calc\(env\(safe-area-inset-top, 0px\) \+ 38px\)/);
+  assert.match(exploreCss, /body\[data-map-tools="on"\] \.leaflet-control-attribution \{[\s\S]*position: fixed !important/);
+  assert.match(exploreCss, /bottom: calc\(85px \+ env\(safe-area-inset-bottom, 0px\) \+ 2px\) !important/);
+  assert.match(exploreCss, /font-size: clamp\(4px, 1\.2vw, 5px\) !important/);
+  assert.match(exploreCss, /#mapLayerToggle \{[\s\S]*top: calc\(env\(safe-area-inset-top, 0px\) \+ 12px\)/);
   assert.match(html, /Esri World Street Map/);
   assert.match(html, /Low-light style · Esri/);
   assert.doesNotMatch(mapApp, /tile\.openstreetmap\.org/);

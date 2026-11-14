@@ -1728,7 +1728,7 @@ body[data-map-tools="on"] .admin-entry {
 
 /* Unified map controls: one layers/legend menu, one clearly named nearby action. */
 #mapLayerToggle {
-  top: calc(env(safe-area-inset-top, 0px) + 38px);
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
   right: 12px;
 }
 #mapLayerToggle .layers-trigger,
@@ -1747,7 +1747,7 @@ body[data-map-tools="on"] .admin-entry {
   padding: 0 12px;
 }
 #locateMeBtn {
-  top: calc(env(safe-area-inset-top, 0px) + 90px);
+  top: calc(env(safe-area-inset-top, 0px) + 64px);
   right: 12px;
   min-width: 122px;
   padding: 0 12px;
@@ -1858,11 +1858,11 @@ body.place-open #mapExploreBar .explore-reopen {
 }
 @media (min-width: 768px) {
   #mapLayerToggle {
-    top: 40px;
+    top: 16px;
     right: 24px;
   }
   #locateMeBtn {
-    top: 92px;
+    top: 68px;
     right: 24px;
   }
   #mapExploreBar {
@@ -1925,24 +1925,46 @@ body[data-map-tools="on"] #heroBrand img {
 body[data-map-tools="on"] #mapExploreBar {
   display: none !important;
 }
-/* Keep provider credit subtle in a dedicated line above Map options, away
-   from the bottom navigation. Leaflet's own prefix is disabled in map setup. */
-body[data-map-tools="on"] .leaflet-top.leaflet-right .leaflet-control-attribution {
-  max-width: min(520px, calc(100vw - 24px));
-  margin: calc(env(safe-area-inset-top, 0px) + 2px) 12px 0 0;
-  padding: 2px 5px !important;
+/* Tiny, fixed map credits sit just above the mobile footer's top-right edge.
+   Fixed positioning prevents Leaflet's control stack from floating them over
+   map content. The credit remains visible but never intercepts map gestures. */
+body[data-map-tools="on"] .leaflet-control-attribution {
+  position: fixed !important;
+  z-index: 109 !important;
+  top: auto !important;
+  right: 4px !important;
+  bottom: calc(85px + env(safe-area-inset-bottom, 0px) + 2px) !important;
+  left: auto !important;
+  width: auto !important;
+  max-width: calc(100vw - 8px) !important;
+  margin: 0 !important;
+  padding: 0 2px !important;
   border: 0 !important;
-  border-radius: 5px !important;
-  background: rgba(5, 13, 22, 0.48) !important;
-  color: rgba(226, 237, 240, 0.72) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: rgba(226, 237, 240, 0.56) !important;
   box-shadow: none !important;
-  font-size: 7px !important;
-  line-height: 1.25 !important;
+  font-size: clamp(4px, 1.2vw, 5px) !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  text-align: right !important;
+  opacity: 0.62;
+  pointer-events: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
-body[data-map-tools="on"] .leaflet-top.leaflet-right .leaflet-control-attribution a {
-  color: rgba(161, 221, 215, 0.86) !important;
+body[data-map-tools="on"] .leaflet-control-attribution a {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+@media (min-width: 1100px), (min-width: 900px) and (orientation: landscape) {
+  body[data-map-tools="on"] .leaflet-control-attribution {
+    bottom: 76px !important;
+    right: 8px !important;
+    font-size: 6px !important;
+  }
 }
 body.explore-open #mapExploreBar {
   visibility: hidden !important;
