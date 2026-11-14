@@ -256,10 +256,7 @@ function renderCarousel() {
 }
 
 function buildCarouselImages(d) {
-  const images = [];
-  if (d.image) images.push(d.image);
-  if (d.images && Array.isArray(d.images)) images.push(...d.images);
-  return [...new Set(images)];
+  return destinationImageGallery(d).images;
 }
 
 // ── WHAT THE PLACE ACTUALLY OFFERS ────────────────────────────────────────
@@ -670,6 +667,7 @@ function openDest(d, recordHistory = true) {
   const stats = d.stats || {};
   const photo = document.getElementById("dePhoto");
   const media = document.getElementById("deMedia");
+  let gallery = destinationImageGallery(d);
   const images = buildCarouselImages(d)
     .map((u) => SanvicExplore.safeUrl(u, true))
     .filter(Boolean);
@@ -692,35 +690,67 @@ function openDest(d, recordHistory = true) {
   creditEl.textContent = "";
   const video = SanvicExplore.safeUrl(d.videoUrl);
   // The photo is the fallback whenever the video slot is empty OR fails to
-  // load. Every uploaded video currently 404s in Storage, and without this the
-  // detail sheet showed a broken player and hid the place's photo entirely.
+  // load. A dead real photo advances through the remaining gallery, then falls
+  // back to the local category samples without changing the saved record.
+  const updatePhotoCredit = () => {
+    if (gallery.illustrative) {
+      creditEl.textContent = "Illustrative sample photos · replace with verified place photos";
+      creditEl.hidden = false;
+    } else if (d.imageCredit) {
+      creditEl.textContent = d.imageCredit;
+      creditEl.hidden = false;
+    }
+  };
+  const activatePhotoCarousel = () => {
+    if (images.length <= 1) {
+      photo.classList.remove("has-carousel");
+      photo.onclick = null;
+      photo.removeAttribute("tabindex");
+      photo.removeAttribute("role");
+      photo.removeAttribute("aria-label");
+      photo.onkeydown = null;
+      return;
+    }
+    photo.classList.add("has-carousel");
+    photo.setAttribute("role", "button");
+    photo.tabIndex = 0;
+    photo.setAttribute("aria-label", "View " + images.length + " photos of " + d.name);
+    photo.onclick = () => openCarousel(images, 0);
+    photo.onkeydown = (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openCarousel(images, 0);
+      }
+    };
+  };
   const showHeroImage = () => {
     if (!images[0] || media.querySelector("img")) return;
     const img = document.createElement("img");
     img.src = images[0];
     img.alt = d.name;
     img.onerror = () => {
+      if (images.length > 1) {
+        images.shift();
+        img.src = images[0];
+        activatePhotoCarousel();
+        return;
+      }
+      if (!gallery.illustrative) {
+        gallery = destinationImageGallery({ category: d.category, name: d.name });
+        images.splice(0, images.length, ...gallery.images);
+        if (images[0]) {
+          img.src = images[0];
+          updatePhotoCredit();
+          activatePhotoCarousel();
+          return;
+        }
+      }
       img.hidden = true;
       photo.classList.remove("has-carousel");
     };
     media.appendChild(img);
-    if (d.imageCredit) {
-      creditEl.textContent = d.imageCredit;
-      creditEl.hidden = false;
-    }
-    if (images.length > 1) {
-      photo.classList.add("has-carousel");
-      photo.setAttribute("role", "button");
-      photo.tabIndex = 0;
-      photo.setAttribute("aria-label", "View " + images.length + " photos of " + d.name);
-      photo.onclick = () => openCarousel(images, 0);
-      photo.onkeydown = (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          openCarousel(images, 0);
-        }
-      };
-    }
+    updatePhotoCredit();
+    activatePhotoCarousel();
   };
   if (video && d.videoType === "youtube" && getYoutubeId(video)) {
     const frame = document.createElement("iframe");
@@ -999,16 +1029,18 @@ function renderDiscoverList(cat = "all") {
     return;
   }
   list.innerHTML = items
-    .map(
-      (d) => `
+    .map((d) => {
+      const gallery = destinationImageGallery(d);
+      const cover = gallery.images[0] || "";
+      return `
     <button class="discover-card" onclick="openDestinationById(${d.id})">
-      <img src="${d.image}" alt="${d.name}" onerror="this.style.opacity=0">
+      <img src="${escT(cover)}" alt="${escT(d.name)}" onerror="destinationImageLoadFallback(this,'${escT(d.id)}')">
       <div class="discover-card-body">
-        <div class="discover-card-name">${d.name}</div>
-        <div class="discover-card-meta"><span>${catStyle[d.category]?.label || d.category}</span><span>•</span><span>${d.stats.travel || ""}</span></div>
+        <div class="discover-card-name">${escT(d.name)}</div>
+        <div class="discover-card-meta"><span>${escT(catStyle[d.category]?.label || d.category)}</span><span>•</span><span>${escT(d.stats?.travel || "")}</span>${gallery.illustrative ? '<span class="sample-demo-label">Illustrative photo</span>' : ""}</div>
       </div>
-    </button>`,
-    )
+    </button>`;
+    })
     .join("");
 }
 

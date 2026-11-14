@@ -2389,6 +2389,13 @@
     ["assets/pulse/bulalo-boodle.jpg", "Local meal"],
     ["assets/san-vicente-long-beach.jpg", "San Vicente beach"],
     ["assets/san-vicente-waterfalls.jpg", "Waterfalls"],
+    ["assets/sample-stay-room.jpg", "Guesthouse room"],
+    ["assets/sample-stay-amenities.jpg", "Lodging amenities"],
+    ["assets/sample-palawan-food.jpg", "Local dishes"],
+    ["assets/sample-palawan-cafe.jpg", "Cafe setting"],
+    ["assets/sample-palawan-adventure.jpg", "Island activity"],
+    ["assets/sample-palawan-local-stop.jpg", "Local shop"],
+    ["assets/sample-palawan-viewpoint.jpg", "Coastal viewpoint"],
   ];
 
   window.mediaGalleryHtml = function (containerId, prefix) {
@@ -2402,7 +2409,7 @@
       .join("");
     return `
       <label class="admin-photo-label">Photos — first image is the public cover</label>
-      <div class="admin-hint">Choose photos from the device library, take a new photo, drag files here, or paste a copied image while focus is outside a text field. Images are optimized and saved to Supabase Storage immediately.</div>
+      <div class="admin-hint">Choose multiple photos at once, take photos, drag a batch here, or paste an image. Accommodations: show rooms, bathrooms, views and amenities. Restaurants/cafés: add menu pages, dishes, drinks and dining areas. The first photo is the cover; reorder or remove photos before saving. Uploads are optimized and saved to Supabase Storage immediately.</div>
       <div class="admin-dropzone" id="${containerId}Dropzone" ondragover="event.preventDefault();this.classList.add('is-drag')" ondragleave="this.classList.remove('is-drag')" ondrop="mediaDrop(event,'${containerId}')">
         <label class="admin-photo-add">
           <input type="file" class="admin-photo-input" id="${containerId}LibraryInput" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/heic,image/heif" multiple onchange="mediaUploadFile(this,'${containerId}')">

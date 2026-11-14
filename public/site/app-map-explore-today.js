@@ -137,12 +137,14 @@ async function renderDashSaved() {
         .map((row) => {
           const d = row.destinations;
           if (!d) return "";
+          const gallery = destinationImageGallery(d);
+          const cover = gallery.images[0] || "";
           return `
       <div class="around-card" style="margin-bottom:10px;cursor:pointer;" onclick="closeDashboard();openDestinationById(${row.destination_id})">
-        <img src="${d.image}" alt="" style="width:50px;height:50px;border-radius:10px;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">
+        <img src="${escapeHtml(cover)}" alt="" style="width:50px;height:50px;border-radius:10px;object-fit:cover;flex-shrink:0;" onerror="destinationImageLoadFallback(this,'${escT(row.destination_id)}')">
         <div class="around-card-body">
           <div class="around-card-name">${escapeHtml(d.name)}</div>
-          <div class="around-card-meta">${escapeHtml(catStyle[d.category]?.label || d.category)}</div>
+          <div class="around-card-meta">${escapeHtml(catStyle[d.category]?.label || d.category)}${gallery.illustrative ? " · Illustrative photo" : ""}</div>
         </div>
       </div>`;
         })
@@ -683,6 +685,95 @@ const DEFAULT_CAT_STYLE = {
   sport: { label: "Sport", color: "#FFC46B", icon: "medal" },
   nightlife: { label: "Nightlife", color: "#B98CFF", icon: "music" },
 };
+
+// Bundled illustrative photo sets are presentation fallbacks only. They never
+// get written to the destination row; administrators replace them with verified
+// location photos through the multi-image gallery before publishing listings.
+const DESTINATION_SAMPLE_GALLERIES = {
+  beaches: ["assets/san-vicente-long-beach.jpg", "assets/san-vicente-port-barton.jpg"],
+  islands: [
+    "assets/san-vicente-boayan.jpg",
+    "assets/pulse/island-boats-aerial.jpg",
+    "assets/pulse/kayak-lagoon.jpg",
+  ],
+  nature: ["assets/sample-palawan-viewpoint.jpg", "assets/san-vicente-waterfalls.jpg"],
+  viewpoints: ["assets/sample-palawan-viewpoint.jpg", "assets/san-vicente-long-beach.jpg"],
+  waterfalls: ["assets/san-vicente-waterfalls.jpg"],
+  adventure: ["assets/sample-palawan-adventure.jpg", "assets/pulse/kayak-lagoon.jpg"],
+  stays: ["assets/sample-stay-room.jpg", "assets/sample-stay-amenities.jpg"],
+  food: [
+    "assets/sample-palawan-food.jpg",
+    "assets/pulse/street-food-skewers.jpg",
+    "assets/pulse/bulalo-boodle.jpg",
+  ],
+  cafes: ["assets/sample-palawan-cafe.jpg", "assets/sample-palawan-food.jpg"],
+  services: ["assets/sample-palawan-local-stop.jpg"],
+  stops: ["assets/sample-palawan-local-stop.jpg"],
+  sport: ["assets/sample-palawan-adventure.jpg", "assets/pulse/kayak-lagoon.jpg"],
+  nightlife: ["assets/sample-palawan-cafe.jpg", "assets/pulse/street-food-skewers.jpg"],
+};
+
+function destinationImageGroup(place) {
+  const text = String((place && place.category) || "") + " " + String((place && place.name) || "");
+  const normalized = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (/stay|accommod|hotel|resort|lodge|inn|guest.?house|homestay|cottage/.test(normalized))
+    return "stays";
+  if (/cafe|coffee|bakery|brunch/.test(normalized)) return "cafes";
+  if (/nightlife|night.?club|lounge|live.?music/.test(normalized)) return "nightlife";
+  if (/food|restaurant|resto|eatery|dining|grill|bar/.test(normalized)) return "food";
+  if (/waterfall|falls/.test(normalized)) return "waterfalls";
+  if (/viewpoint|lookout|bato ni ningning/.test(normalized)) return "viewpoints";
+  if (/island|islets|sandbar/.test(normalized)) return "islands";
+  if (/beach|shore|coast|seaside/.test(normalized)) return "beaches";
+  if (/adventure|snorkel|kayak|dive|surf|boat.?tour|sport/.test(normalized)) return "adventure";
+  if (/nature|viewpoint|trail|forest|hill|cave/.test(normalized)) return "nature";
+  if (/service|stop|shop|store|market|sari.?sari|fuel|repair/.test(normalized)) return "services";
+  return "beaches";
+}
+
+function destinationImageGallery(place) {
+  const realImages = [place && place.image]
+    .concat(place && Array.isArray(place.images) ? place.images : [])
+    .map((url) => SanvicExplore.safeUrl(url, true))
+    .filter((url, index, list) => url && list.indexOf(url) === index);
+  const markedSample = /illustrative|sample/i.test(String((place && place.imageCredit) || ""));
+  const localDemo = realImages.length && realImages.every((url) => /^(?:assets\/|\/site\/assets\/)/.test(url));
+  if (realImages.length) return { images: realImages, illustrative: markedSample || !!localDemo };
+  const group = destinationImageGroup(place);
+  return { images: DESTINATION_SAMPLE_GALLERIES[group] || DESTINATION_SAMPLE_GALLERIES.beaches, illustrative: true };
+}
+
+function destinationImageLoadFallback(img, placeId) {
+  if (!img) return;
+  const place = (Array.isArray(destinations) ? destinations : []).find(
+    (item) => String(item.id) === String(placeId),
+  );
+  const group = destinationImageGroup(place || {});
+  const samples = DESTINATION_SAMPLE_GALLERIES[group] || DESTINATION_SAMPLE_GALLERIES.beaches;
+  const index = Number(img.dataset.demoFallbackIndex || 0);
+  if (index >= samples.length) {
+    img.hidden = true;
+    return;
+  }
+  img.dataset.demoFallbackIndex = String(index + 1);
+  img.alt = (place && place.name ? place.name + " — " : "") + "illustrative sample photo";
+  img.src = samples[index];
+  const parent = img.parentElement;
+  if (parent && parent.classList.contains("explore-result-image") && !parent.querySelector(".sample-photo-badge")) {
+    const badge = document.createElement("span");
+    badge.className = "sample-photo-badge";
+    badge.textContent = "Sample";
+    parent.appendChild(badge);
+  }
+  const card = img.closest && img.closest(".discover-card, .around-card, .pv2-place-row");
+  const meta = card && card.querySelector(".discover-card-meta, .around-card-meta, .pv2-place-meta");
+  if (meta && !meta.querySelector(".sample-demo-label")) {
+    const label = document.createElement("span");
+    label.className = "sample-demo-label";
+    label.textContent = "Illustrative photo";
+    meta.appendChild(label);
+  }
+}
 
 // Inlined Lucide SVG inner-content for the curated icon set admins can
 // pick from. Keep this in sync with the picker list below. Rendered into
@@ -1748,6 +1839,10 @@ async function initMap() {
     maxBoundsViscosity: 1,
     worldCopyJump: false,
   });
+  // Keep the required provider credits, but remove Leaflet's own branding and
+  // move the compact credits away from the bottom navigation.
+  map.attributionControl.setPrefix(false);
+  map.attributionControl.setPosition("topright");
   const osmAttribution =
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>';
   const streetAttribution =
@@ -2526,7 +2621,8 @@ function catColour(key) {
 }
 function explorePlaceCard(d) {
   const cat = catStyle[d.category] || { label: d.category || "Place", icon: "map-pin" };
-  const photo = SanvicExplore.safeUrl(d.image, true);
+  const gallery = destinationImageGallery(d);
+  const photo = SanvicExplore.safeUrl(gallery.images[0], true);
   const selected = String(exploreState.selected) === String(d.id);
   const distance =
     exploreState.nearby && userLocationMarker && SanvicExplore.hasCoordinates(d)
@@ -2540,7 +2636,7 @@ function explorePlaceCard(d) {
   // there as a blank grey box.
   const catColor = cat.color || "#94b7b8";
   return `<button class="explore-result${selected ? " selected" : ""}" data-place-id="${escT(d.id)}" aria-pressed="${selected}" onclick="selectExplorePlace(this.dataset.placeId)">
-    <span class="explore-result-image">${photo ? `<img src="${escT(photo)}" alt="${escT(d.name)}" loading="lazy" onerror="this.hidden=true">` : ""}<span class="image-placeholder" style="color:${escT(catColor)};background:linear-gradient(145deg,${escT(catColor)}2e,${escT(catColor)}0f)" aria-hidden="true">${lucideSvg(cat.icon || "map-pin", 24)}</span></span>
+    <span class="explore-result-image">${photo ? `<img src="${escT(photo)}" alt="${escT(d.name)}" loading="lazy" onerror="destinationImageLoadFallback(this,'${escT(d.id)}')">` : ""}<span class="image-placeholder" style="color:${escT(catColor)};background:linear-gradient(145deg,${escT(catColor)}2e,${escT(catColor)}0f)" aria-hidden="true">${lucideSvg(cat.icon || "map-pin", 24)}</span>${gallery.illustrative ? '<span class="sample-photo-badge">Sample</span>' : ""}</span>
     <span class="explore-result-copy"><strong class="result-name">${escT(d.name)}</strong><span class="result-meta"><span class="result-category">${catDot(d.category)}${escT(cat.label)}</span><span class="result-area">${lucideSvg("map-pin", 12)} ${escT(d.barangay || "San Vicente")}</span>${meta ? `<span class="result-access">${escT(meta)}</span>` : ""}</span></span>
     <span class="result-arrow" aria-hidden="true">${lucideSvg("chevron-right", 17)}</span>
   </button>`;

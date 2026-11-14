@@ -372,7 +372,11 @@ function mysvTrackRecent(d) {
   if (!d || d.id == null) return;
   try {
     const list = JSON.parse(localStorage.getItem(MYSV_RECENT_KEY) || "[]");
-    const entry = { id: d.id, label: d.name || "Place", image: d.image || "" };
+    const entry = {
+      id: d.id,
+      label: d.name || "Place",
+      image: destinationImageGallery(d).images[0] || "",
+    };
     const next = [entry, ...list.filter((r) => String(r.id) !== String(d.id))].slice(0, 8);
     localStorage.setItem(MYSV_RECENT_KEY, JSON.stringify(next));
   } catch (_) {}
@@ -435,13 +439,19 @@ async function loadMySanvicSaved() {
         const d = destMap.get(s.destination_id);
         if (!d) return null;
         const catLabel = (catStyle[d.category] && catStyle[d.category].label) || d.category || "";
+        const fullDestination =
+          (Array.isArray(destinations) &&
+            destinations.find((place) => String(place.id) === String(d.id))) ||
+          d;
+        const gallery = destinationImageGallery(fullDestination);
         return {
           id: "sp_" + s.id,
           destId: d.id,
           title: d.name || "Saved place",
           cat: catLabel + (d.barangay ? " • " + d.barangay : ""),
           km: "",
-          image: d.image || "",
+          image: gallery.images[0] || "",
+          illustrative: gallery.illustrative,
           grad: "linear-gradient(135deg,#38bdf8,#0c4a6e)",
         };
       })
@@ -627,6 +637,7 @@ function renderMySanvic() {
             <div class="mysv-sv-info" onclick="mysvAction('view','${s.destId}')" role="button" tabindex="0" style="cursor:pointer">
               <div class="mysv-sv-title">${escapeHtml(s.title)}</div>
               <div class="mysv-sv-cat">${escapeHtml(s.cat)}</div>
+              ${s.illustrative ? '<div class="mysv-demo-photo-note">Illustrative sample photo</div>' : ""}
               <div class="mysv-sv-row">
                 <span class="mysv-km">${lucideSvg("map-pin", 12)} Open place</span>
               </div>
@@ -1066,7 +1077,8 @@ function huntSpotList() {
 function huntSpotCard(d, i) {
   const state = huntLoadState();
   const done = state.unlocked.includes(String(d.id));
-  const img = d.image || (Array.isArray(d.images) ? d.images[0] || "" : "");
+  const media = destinationImageGallery(d);
+  const img = media.images[0] || "";
   return `
     <div class="hunt-spot${done ? " is-done" : ""}">
       <div class="hunt-spot-media">
@@ -1075,6 +1087,7 @@ function huntSpotCard(d, i) {
             ? `<div class="hunt-spot-thumb" style="background-image:url('${escapeHtml(img)}')"></div>`
             : `<div class="hunt-spot-thumb hunt-spot-thumb-none">${lucideSvg("camera", 20)}</div>`
         }
+        ${media.illustrative ? '<span class="hunt-sample-photo-tag">Illustrative sample</span>' : ""}
         <span class="hunt-spot-chip">${done ? lucideSvg("circle-check", 12) + " Found" : "Spot " + (i + 1)}</span>
       </div>
       <div class="hunt-spot-body">
@@ -1109,7 +1122,8 @@ function huntTrailGroups() {
     const label =
       (window.catStyle && catStyle[k] && catStyle[k].label) ||
       k.charAt(0).toUpperCase() + k.slice(1);
-    const firstImg = items.find((d) => d.image)?.image || "";
+    const firstMedia = items.map((d) => destinationImageGallery(d)).find((media) => media.images[0]);
+    const firstImg = (firstMedia && firstMedia.images[0]) || "";
     // Category labels are plural ("Islands", "Stays"), so dropping them into
     // "Explore N ___ spots" read as "2 islands spots". Use a singular noun.
     const noun = { beaches: "beach", islands: "island", stays: "stay" }[k] || label.toLowerCase();
@@ -1120,6 +1134,7 @@ function huntTrailGroups() {
       done,
       total: items.length,
       image: firstImg,
+      illustrative: !!(firstMedia && firstMedia.illustrative),
       grad: huntGradientFor(items[0] && items[0].color, i),
     };
   });
@@ -1426,7 +1441,7 @@ function renderHunt() {
                   (t) => `
           <div class="hunt-trail-card">
             <div class="hunt-trail-top">
-              <div class="hunt-trail-thumb" style="background-image:url('${t.image || ""}');background-size:cover;background-position:center;background-color:${t.grad.includes("#") ? t.grad.match(/#[a-f0-9]+/i)?.[0] || "#1a2744" : "#1a2744"}"></div>
+              <div class="hunt-trail-thumb" style="background-image:url('${t.image || ""}');background-size:cover;background-position:center;background-color:${t.grad.includes("#") ? t.grad.match(/#[a-f0-9]+/i)?.[0] || "#1a2744" : "#1a2744"}">${t.illustrative ? '<span class="hunt-trail-sample-tag">Sample</span>' : ""}</div>
               <div class="hunt-trail-body">
                 <div class="hunt-trail-title">${escapeHtml(t.title)}</div>
                 <div class="hunt-trail-desc">${escapeHtml(t.desc)}</div>

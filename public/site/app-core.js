@@ -15,6 +15,7 @@ const DEFAULT_DESTINATIONS = [
     lng: 119.2607,
     category: "beaches",
     image: "assets/san-vicente-long-beach.jpg",
+    images: ["assets/pulse/island-boats-beach.jpg"],
     description:
       "San Vicente's signature coastline: a long, open sweep of golden sand with gentle water, coconut edges, and quiet sections that still feel undeveloped compared with busier Palawan towns.",
     tip: "Best for sunset, long walks, and easy swimming. Start near Poblacion, then move north or south for quieter stretches.",
@@ -28,6 +29,7 @@ const DEFAULT_DESTINATIONS = [
     lng: 119.1771,
     category: "beaches",
     image: "assets/san-vicente-port-barton.jpg",
+    images: ["assets/pulse/kayak-lagoon.jpg", "assets/pulse/island-boats-aerial.jpg"],
     description:
       "A relaxed fishing village inside San Vicente with calm bay views, island-hopping boats, simple beachfront stays, and a slower local rhythm made for unhurried travelers.",
     tip: "Use Port Barton as the base for island hopping. Bring cash, book boats early, and expect a quieter night scene.",
@@ -41,6 +43,7 @@ const DEFAULT_DESTINATIONS = [
     lng: 119.09,
     category: "islands",
     image: "assets/san-vicente-boayan.jpg",
+    images: ["assets/pulse/island-boats-aerial.jpg", "assets/pulse/kayak-lagoon.jpg"],
     description:
       "A remote island off San Vicente with clear water, forested hills, small coves, and a frontier feeling for travelers who want a quieter island escape.",
     tip: "Go with a local boat operator and check sea conditions. Pack water, snacks, dry bag, and reef-safe sunscreen.",
@@ -54,6 +57,7 @@ const DEFAULT_DESTINATIONS = [
     lng: 119.0705,
     category: "islands",
     image: "assets/san-vicente-boayan.jpg",
+    images: ["assets/pulse/island-boats-beach.jpg", "assets/pulse/kayak-lagoon.jpg"],
     description:
       "A small island stop often paired with Port Barton tours, known for clear shallows, snorkeling areas, and peaceful beach time between boat rides.",
     tip: "Ask your boatman about turtle-friendly viewing rules. Keep distance from wildlife and avoid stepping on coral.",
@@ -79,7 +83,8 @@ const DEFAULT_DESTINATIONS = [
     lat: 10.5634,
     lng: 119.3092,
     category: "nature",
-    image: "assets/san-vicente-long-beach.jpg",
+    image: "assets/sample-palawan-viewpoint.jpg",
+    images: ["assets/san-vicente-long-beach.jpg"],
     description:
       "A scenic viewpoint above San Vicente where the coast, green hills, and Long Beach reveal the scale of the municipality from above.",
     tip: "Go late afternoon for softer light. Use a motorbike or tricycle and allow extra time for the uphill route.",
@@ -92,7 +97,8 @@ const DEFAULT_DESTINATIONS = [
     lat: 10.5318,
     lng: 119.2822,
     category: "services",
-    image: "assets/san-vicente-long-beach.jpg",
+    image: "assets/sample-palawan-local-stop.jpg",
+    images: ["assets/sample-palawan-cafe.jpg"],
     description:
       "The practical center of San Vicente, with access to Long Beach, transport, small eateries, municipal services, and local life away from the island-hopping crowds.",
     tip: "Use Poblacion for arrivals, supplies, and Long Beach access. Confirm van and boat schedules one day ahead.",
@@ -106,6 +112,7 @@ const DEFAULT_DESTINATIONS = [
     lng: 119.0447,
     category: "islands",
     image: "assets/san-vicente-boayan.jpg",
+    images: ["assets/pulse/island-boats-beach.jpg", "assets/pulse/kayak-lagoon.jpg"],
     description:
       "A polished island stop from Port Barton with bright sand, clear water, hammocks, and an easy picnic atmosphere for day trips.",
     tip: "Often included in Port Barton island-hopping. Bring a small dry bag and ask if environmental fees are included.",

@@ -357,6 +357,24 @@
   border-radius: 11px;
   background: #213947;
 }
+.sample-photo-badge {
+  position: absolute;
+  z-index: 2;
+  left: 4px;
+  bottom: 4px;
+  padding: 2px 5px;
+  border: 1px solid rgba(255, 228, 171, 0.32);
+  border-radius: 999px;
+  background: rgba(13, 20, 28, 0.84);
+  color: #ffe5a8;
+  font: 700 8px/1.2 var(--font-body);
+  letter-spacing: 0.02em;
+}
+.sample-demo-label {
+  color: #e9cb87;
+  font-size: 0.62rem;
+  font-weight: 600;
+}
 .explore-result-copy {
   display: flex;
   flex-direction: column;
@@ -604,9 +622,6 @@
 }
 .leaflet-control-attribution a {
   color: #174c57 !important;
-}
-.map-dark .leaflet-tile-pane {
-  filter: invert(1) hue-rotate(180deg) saturate(0.35) brightness(0.7) contrast(0.9);
 }
 .map-status {
   position: fixed;
@@ -1713,7 +1728,7 @@ body[data-map-tools="on"] .admin-entry {
 
 /* Unified map controls: one layers/legend menu, one clearly named nearby action. */
 #mapLayerToggle {
-  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  top: calc(env(safe-area-inset-top, 0px) + 38px);
   right: 12px;
 }
 #mapLayerToggle .layers-trigger,
@@ -1732,7 +1747,7 @@ body[data-map-tools="on"] .admin-entry {
   padding: 0 12px;
 }
 #locateMeBtn {
-  top: calc(env(safe-area-inset-top, 0px) + 64px);
+  top: calc(env(safe-area-inset-top, 0px) + 90px);
   right: 12px;
   min-width: 122px;
   padding: 0 12px;
@@ -1843,11 +1858,11 @@ body.place-open #mapExploreBar .explore-reopen {
 }
 @media (min-width: 768px) {
   #mapLayerToggle {
-    top: 16px;
+    top: 40px;
     right: 24px;
   }
   #locateMeBtn {
-    top: 68px;
+    top: 92px;
     right: 24px;
   }
   #mapExploreBar {
@@ -1883,6 +1898,11 @@ body[data-map-tools="on"] #heroOverlay > :not(#heroBrand),
 body[data-map-tools="on"] #heroFade {
   display: none !important;
 }
+/* The Explore sheet's title starts at the top-left; hide the fixed brand while
+   that sheet is open so its wordmark cannot overlap the heading. */
+body[data-map-tools="on"].explore-open #heroOverlay {
+  display: none !important;
+}
 body[data-map-tools="on"] #heroBrand {
   display: flex !important;
   width: 128px !important;
@@ -1904,6 +1924,25 @@ body[data-map-tools="on"] #heroBrand img {
 }
 body[data-map-tools="on"] #mapExploreBar {
   display: none !important;
+}
+/* Keep provider credit subtle in a dedicated line above Map options, away
+   from the bottom navigation. Leaflet's own prefix is disabled in map setup. */
+body[data-map-tools="on"] .leaflet-top.leaflet-right .leaflet-control-attribution {
+  max-width: min(520px, calc(100vw - 24px));
+  margin: calc(env(safe-area-inset-top, 0px) + 2px) 12px 0 0;
+  padding: 2px 5px !important;
+  border: 0 !important;
+  border-radius: 5px !important;
+  background: rgba(5, 13, 22, 0.48) !important;
+  color: rgba(226, 237, 240, 0.72) !important;
+  box-shadow: none !important;
+  font-size: 7px !important;
+  line-height: 1.25 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+body[data-map-tools="on"] .leaflet-top.leaflet-right .leaflet-control-attribution a {
+  color: rgba(161, 221, 215, 0.86) !important;
 }
 body.explore-open #mapExploreBar {
   visibility: hidden !important;
