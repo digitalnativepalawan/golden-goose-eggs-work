@@ -859,7 +859,217 @@ function renderAdminSite() {
         <span>Explore map: show the search box and the “All barangays / Near me” row<br><span style="opacity:.62;font-size:.86em;">Off keeps Explore compact. Nothing is deleted — tick this and both come back for every visitor.</span></span>
       </label>
     </div>
-    <div class="admin-empty" style="margin-top:6px;">Saves automatically when you click away from a field. Changes appear for every visitor.</div>`;
+    <div class="admin-empty" style="margin-top:6px;">Saves automatically when you click away from a field. Changes appear for every visitor.</div>
+
+    <section class="admin-card" style="margin-top:24px;">
+      <div class="admin-card-head"><div><h3>Welcome page</h3><p style="margin:5px 0 0;opacity:.65;font-size:.84em;">Appears after the existing SANVIC logo introduction each time the site opens. The introduction itself is unchanged.</p></div></div>
+      <div class="admin-field"><label for="adsWelcomeImageUrl">Hero image URL</label><input id="adsWelcomeImageUrl" type="url" autocomplete="url" placeholder="https://…"></div>
+      <div class="admin-field"><label for="adsWelcomeImageFile">Or upload a new hero photo</label><input id="adsWelcomeImageFile" type="file" accept="image/jpeg,image/png,image/webp" onchange="adminPreviewWelcomeImage(this)"><img id="adsWelcomeImagePreview" class="admin-img-preview" alt="Welcome page image preview" style="height:150px;object-fit:cover"></div>
+      <div class="admin-field"><label for="adsWelcomeImageAlt">Image description (accessibility)</label><input id="adsWelcomeImageAlt" type="text" maxlength="240"></div>
+      <div class="admin-field"><label for="adsWelcomeTitle">Large heading</label><textarea id="adsWelcomeTitle" rows="2" maxlength="180"></textarea></div>
+      <div class="admin-field"><label for="adsWelcomeEyebrow">Small section label</label><input id="adsWelcomeEyebrow" type="text" maxlength="100"></div>
+      <div class="admin-field"><label for="adsWelcomeP1">Paragraph 1</label><textarea id="adsWelcomeP1" rows="3" maxlength="700"></textarea></div>
+      <div class="admin-field"><label for="adsWelcomeP2">Paragraph 2</label><textarea id="adsWelcomeP2" rows="4" maxlength="900"></textarea></div>
+      <div class="admin-field"><label for="adsWelcomeHighlight">Emphasized sentence</label><textarea id="adsWelcomeHighlight" rows="2" maxlength="300"></textarea></div>
+      <div class="admin-field"><label for="adsWelcomeP3">Paragraph 3</label><textarea id="adsWelcomeP3" rows="3" maxlength="700"></textarea></div>
+      <div class="admin-field"><label for="adsWelcomeP4">Paragraph 4</label><textarea id="adsWelcomeP4" rows="4" maxlength="900"></textarea></div>
+      <div class="admin-field"><label for="adsWelcomeButton">Enter button label</label><input id="adsWelcomeButton" type="text" maxlength="70"></div>
+      <div class="admin-field"><label for="adsWelcomeFooter">Bottom label</label><input id="adsWelcomeFooter" type="text" maxlength="70"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;">
+        <button type="button" class="admin-save-btn" onclick="adminSaveWelcomePage()">Save welcome page</button>
+        <button type="button" class="admin-cancel-btn" onclick="adminPreviewWelcomePage()">Preview page</button>
+        <button type="button" class="admin-cancel-btn" onclick="adminDownloadWelcomePage()">Download settings</button>
+        <label class="admin-cancel-btn" style="display:inline-flex;align-items:center;cursor:pointer;">Import settings<input type="file" accept="application/json,.json" onchange="adminImportWelcomePage(this)" hidden></label>
+      </div>
+      <div class="admin-empty" id="adsWelcomeStatus" role="status" style="margin-top:10px;">Editing the welcome page shown after the untouched SANVIC intro. Save publishes to all visitors.</div>
+    </section>`;
+    adminLoadWelcomePageForm();
+}
+
+function adminWelcomeConfigFromForm() {
+  const current = window.SanvicWelcomePage ? window.SanvicWelcomePage.getConfig() : {};
+  const value = (id, fallback) => {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : fallback;
+  };
+  return {
+    image: value("adsWelcomeImageUrl", current.image),
+    imageAlt: value("adsWelcomeImageAlt", current.imageAlt),
+    eyebrow: value("adsWelcomeEyebrow", current.eyebrow),
+    title: value("adsWelcomeTitle", current.title),
+    paragraph1: value("adsWelcomeP1", current.paragraph1),
+    paragraph2: value("adsWelcomeP2", current.paragraph2),
+    highlight: value("adsWelcomeHighlight", current.highlight),
+    paragraph3: value("adsWelcomeP3", current.paragraph3),
+    paragraph4: value("adsWelcomeP4", current.paragraph4),
+    button: value("adsWelcomeButton", current.button),
+    footer: value("adsWelcomeFooter", current.footer),
+  };
+}
+
+function adminSetWelcomePageForm(config) {
+  const page = window.SanvicWelcomePage;
+  const values = Object.assign({}, page ? page.defaults : {}, config || {});
+  const fields = {
+    adsWelcomeImageUrl: "image", adsWelcomeImageAlt: "imageAlt", adsWelcomeEyebrow: "eyebrow",
+    adsWelcomeTitle: "title", adsWelcomeP1: "paragraph1", adsWelcomeP2: "paragraph2",
+    adsWelcomeHighlight: "highlight", adsWelcomeP3: "paragraph3", adsWelcomeP4: "paragraph4",
+    adsWelcomeButton: "button", adsWelcomeFooter: "footer",
+  };
+  Object.keys(fields).forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.value = values[fields[id]] || "";
+  });
+  const preview = document.getElementById("adsWelcomeImagePreview");
+  if (preview) preview.src = values.image || "";
+}
+
+async function adminLoadWelcomePageForm() {
+  const page = window.SanvicWelcomePage;
+  if (!page) return;
+  const status = document.getElementById("adsWelcomeStatus");
+  if (status) status.textContent = "Loading the saved visitor page…";
+  const config = await page.load();
+  if (!document.getElementById("adsWelcomeTitle")) return;
+  adminSetWelcomePageForm(config);
+  if (status) status.textContent = "Edit the page shown after the untouched SANVIC intro. Save publishes changes for visitors.";
+}
+
+function adminPreviewWelcomeImage(input) {
+  const file = input && input.files && input.files[0];
+  const preview = document.getElementById("adsWelcomeImagePreview");
+  if (!file || !preview) return;
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type || "")) {
+    alert("Choose a JPEG, PNG or WebP image.");
+    input.value = "";
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    alert("The welcome page photo must be 10 MB or smaller.");
+    input.value = "";
+    return;
+  }
+  if (preview.dataset.objectUrl) URL.revokeObjectURL(preview.dataset.objectUrl);
+  const objectUrl = URL.createObjectURL(file);
+  preview.dataset.objectUrl = objectUrl;
+  preview.src = objectUrl;
+}
+
+function adminPreviewWelcomePage() {
+  const page = window.SanvicWelcomePage;
+  if (!page) return;
+  const config = adminWelcomeConfigFromForm();
+  const preview = document.getElementById("adsWelcomeImagePreview");
+  if (preview && preview.dataset.objectUrl) config.image = preview.dataset.objectUrl;
+  page.preview(config);
+}
+
+async function adminDownloadWelcomePage() {
+  const status = document.getElementById("adsWelcomeStatus");
+  const config = adminWelcomeConfigFromForm();
+  try {
+    const imageUrl = document.getElementById("adsWelcomeImagePreview")?.dataset.objectUrl || config.image;
+    if (!imageUrl) throw new Error("Add a welcome page image before downloading the backup.");
+    const response = await fetch(imageUrl);
+    if (!response.ok) throw new Error("The welcome image could not be read for export.");
+    const imageBlob = await response.blob();
+    if (!/^image\/(jpeg|png|webp)$/.test(imageBlob.type || "") || imageBlob.size > 10 * 1024 * 1024) {
+      throw new Error("The welcome image must be a JPEG, PNG or WebP up to 10 MB.");
+    }
+    const bytes = new Uint8Array(await imageBlob.arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    const imageData = "data:" + imageBlob.type + ";base64," + btoa(binary);
+    const file = new Blob([JSON.stringify({ schemaVersion: 1, welcome_page: { ...config, imageData } }, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "sanvic-welcome-page-settings.json";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (status) status.textContent = "Downloaded a self-contained backup with the welcome image and all page settings.";
+  } catch (error) {
+    if (status) status.textContent = "Download failed: " + (error.message || error);
+  }
+}
+
+function adminImportWelcomePage(input) {
+  const file = input && input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(String(reader.result || "{}"));
+      const config = parsed.welcome_page || parsed;
+      if (!config || typeof config !== "object" || Array.isArray(config)) throw new Error("The file must contain welcome page settings.");
+      if (config.imageData) {
+        if (typeof config.imageData !== "string" || !/^data:image\/(jpeg|png|webp);base64,/i.test(config.imageData)) throw new Error("The embedded image is not a supported JPEG, PNG or WebP.");
+        const encoded = config.imageData.split(",", 2)[1] || "";
+        if (encoded.length > 14 * 1024 * 1024) throw new Error("The embedded image exceeds the 10 MB limit.");
+        config.image = config.imageData;
+      }
+      adminSetWelcomePageForm(config);
+      const status = document.getElementById("adsWelcomeStatus");
+      if (status) status.textContent = "Settings imported into this form. Review them and choose Save welcome page to publish.";
+    } catch (error) {
+      alert("Could not read welcome page settings: " + (error.message || error));
+    }
+    input.value = "";
+  };
+  reader.onerror = () => alert("Could not read that settings file.");
+  reader.readAsText(file);
+}
+
+async function adminSaveWelcomePage() {
+  if (!adminRequireWrite()) return;
+  const status = document.getElementById("adsWelcomeStatus");
+  const page = window.SanvicWelcomePage;
+  if (!page) return;
+  const config = adminWelcomeConfigFromForm();
+  if (!config.title || !config.paragraph1 || !config.button) {
+    if (status) status.textContent = "Please add a heading, the first paragraph and an enter button label.";
+    return;
+  }
+  if (status) status.textContent = "Saving the welcome page…";
+  try {
+    const fileInput = document.getElementById("adsWelcomeImageFile");
+    let file = fileInput && fileInput.files && fileInput.files[0];
+    if (!file && /^data:image\/(jpeg|png|webp);base64,/i.test(config.image || "")) {
+      const match = config.image.match(/^data:(image\/(?:jpeg|png|webp));base64,([\s\S]+)$/i);
+      const binary = atob(match[2]);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      file = new File([bytes], "welcome-page-import." + (match[1].includes("png") ? "png" : match[1].includes("webp") ? "webp" : "jpg"), { type: match[1] });
+    }
+    if (file) {
+      if (!/^image\/(jpeg|png|webp)$/.test(file.type || "") || file.size > 10 * 1024 * 1024) {
+        throw new Error("Choose a JPEG, PNG or WebP image up to 10 MB.");
+      }
+      const extension = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+      const path = "welcome-page-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7) + "." + extension;
+      const { error } = await sb.storage.from("destination-images").upload(path, file, {
+        cacheControl: "3600", upsert: false, contentType: file.type,
+      });
+      if (error) throw error;
+      const { data } = sb.storage.from("destination-images").getPublicUrl(path);
+      if (!data || !data.publicUrl) throw new Error("Image uploaded, but no public image URL was returned.");
+      config.image = data.publicUrl;
+    }
+    if (!config.image || !/^https?:\/\//i.test(config.image) && !/^assets\//.test(config.image)) {
+      throw new Error("Use a public image URL or upload a photo first.");
+    }
+    const { error } = await sb.from("site_settings").upsert({ key: "welcome_page", value: JSON.stringify(config) });
+    if (error) throw error;
+    page.setConfig(config);
+    adminSetWelcomePageForm(config);
+    if (fileInput) fileInput.value = "";
+    if (status) status.textContent = "Saved. Visitors will see this page after the SANVIC intro when the site opens.";
+    if (typeof adminRecordActivity === "function") adminRecordActivity("site", "Updated first-visit welcome page", "welcome_page");
+  } catch (error) {
+    if (status) status.textContent = "Save failed: " + (error.message || error);
+  }
 }
 
 async function adminSaveExploreFilters(on) {
@@ -1298,8 +1508,10 @@ async function loadTodayContent() {
 
 // ───────────── TODAY ADMIN ─────────────
 let __todayHappeningGalleries = {};
+let __todayJoinableGalleries = {};
 let __todayLocalGalleries = {};
 let __todayNextHid = 0;
+let __todayNextJid = 0;
 let __todayNextLid = 0;
 
 function todayItemGalleryHtml(itemId, prefix, galleryMap, itemLabel, credit) {
@@ -1333,13 +1545,9 @@ function todayAddItemImageUrl(itemId, prefix) {
   const inp = document.getElementById(prefix + itemId + "UrlInput");
   const url = (inp.value || "").trim();
   if (!url) return;
-  if (prefix === "happening") {
-    if (!__todayHappeningGalleries[itemId]) __todayHappeningGalleries[itemId] = [];
-    __todayHappeningGalleries[itemId].push(url);
-  } else {
-    if (!__todayLocalGalleries[itemId]) __todayLocalGalleries[itemId] = [];
-    __todayLocalGalleries[itemId].push(url);
-  }
+  const galleryMap = prefix === "happening" ? __todayHappeningGalleries : prefix === "joinable" ? __todayJoinableGalleries : __todayLocalGalleries;
+  if (!galleryMap[itemId]) galleryMap[itemId] = [];
+  galleryMap[itemId].push(url);
   inp.value = "";
   todayRefreshItemGallery(itemId, prefix);
 }
@@ -1363,13 +1571,9 @@ async function todayUploadItemImage(input, itemId, prefix) {
     if (error) throw error;
     const { data } = sb.storage.from("destination-images").getPublicUrl(path);
     if (data && data.publicUrl) {
-      if (prefix === "happening") {
-        if (!__todayHappeningGalleries[itemId]) __todayHappeningGalleries[itemId] = [];
-        __todayHappeningGalleries[itemId].push(data.publicUrl);
-      } else {
-        if (!__todayLocalGalleries[itemId]) __todayLocalGalleries[itemId] = [];
-        __todayLocalGalleries[itemId].push(data.publicUrl);
-      }
+      const galleryMap = prefix === "happening" ? __todayHappeningGalleries : prefix === "joinable" ? __todayJoinableGalleries : __todayLocalGalleries;
+      if (!galleryMap[itemId]) galleryMap[itemId] = [];
+      galleryMap[itemId].push(data.publicUrl);
       todayRefreshItemGallery(itemId, prefix);
     }
   } catch (e) {
@@ -1379,17 +1583,15 @@ async function todayUploadItemImage(input, itemId, prefix) {
 }
 
 function todayRemoveItemImage(itemId, idx, prefix) {
-  if (prefix === "happening") {
-    if (__todayHappeningGalleries[itemId]) __todayHappeningGalleries[itemId].splice(idx, 1);
-  } else {
-    if (__todayLocalGalleries[itemId]) __todayLocalGalleries[itemId].splice(idx, 1);
-  }
+  const galleryMap = prefix === "happening" ? __todayHappeningGalleries : prefix === "joinable" ? __todayJoinableGalleries : __todayLocalGalleries;
+  if (galleryMap[itemId]) galleryMap[itemId].splice(idx, 1);
   todayRefreshItemGallery(itemId, prefix);
 }
 
 // The first image in a Today item's gallery is the one the panel shows.
 function todayMakeItemCover(itemId, idx, prefix) {
-  const list = (prefix === "happening" ? __todayHappeningGalleries : __todayLocalGalleries)[itemId];
+  const galleryMap = prefix === "happening" ? __todayHappeningGalleries : prefix === "joinable" ? __todayJoinableGalleries : __todayLocalGalleries;
+  const list = galleryMap[itemId];
   if (!list || idx <= 0 || idx >= list.length) return;
   const [url] = list.splice(idx, 1);
   list.unshift(url);
@@ -1399,7 +1601,7 @@ function todayMakeItemCover(itemId, idx, prefix) {
 function todayRefreshItemGallery(itemId, prefix) {
   const grid = document.getElementById(prefix + itemId + "Gallery");
   if (!grid) return;
-  const galleryMap = prefix === "happening" ? __todayHappeningGalleries : __todayLocalGalleries;
+  const galleryMap = prefix === "happening" ? __todayHappeningGalleries : prefix === "joinable" ? __todayJoinableGalleries : __todayLocalGalleries;
   const imgs = (galleryMap[itemId] || [])
     .map((url, i) =>
       mediaThumbHtml(
@@ -1438,6 +1640,13 @@ function todayBuildHappeningCard(id, e) {
   const time = e ? escapeHtml(e.time || "") : "";
   const dist = e ? escapeHtml(e.dist || "") : "";
   const vibe = e ? escapeHtml(e.vibe || "") : "";
+  const organizer = e ? escapeHtml(e.organizer || e.org || "") : "";
+  const endTime = e ? escapeHtml(e.endTime || "") : "";
+  const price = e ? escapeHtml(e.price || "") : "";
+  const description = e ? escapeHtml(e.description || e.details || "") : "";
+  const whatToKnow = e ? escapeHtml(e.whatToKnow || "") : "";
+  const contact = e ? escapeHtml(e.contact || e.booking || "") : "";
+  const address = e ? escapeHtml(e.address || "") : "";
   // The stable id is what a "Join" is stored against. Items saved before ids
   // existed get one derived from their own text, and it is written back on the
   // next save so it stops moving.
@@ -1449,14 +1658,25 @@ function todayBuildHappeningCard(id, e) {
           <input id="hapTitle_${id}" value="${title}" placeholder="Title" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;margin-bottom:4px;">
           <div class="admin-grid-2" style="margin-top:4px;">
             <input id="hapPlace_${id}" value="${place}" placeholder="Place" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
-            <input id="hapTime_${id}" value="${time}" placeholder="Time" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+            <input id="hapTime_${id}" value="${time}" placeholder="Start time" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
           </div>
           <div class="admin-grid-2" style="margin-top:4px;">
-            <input id="hapDist_${id}" value="${dist}" placeholder="Distance" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
-            <input id="hapVibe_${id}" value="${vibe}" placeholder="Vibe" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+            <input id="hapDist_${id}" value="${dist}" placeholder="Distance (optional)" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+            <input id="hapVibe_${id}" value="${vibe}" placeholder="Category / vibe" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
           </div>
+          <div class="admin-grid-2" style="margin-top:4px;">
+            <input id="hapOrganizer_${id}" value="${organizer}" placeholder="Organizer / host" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+            <input id="hapEndTime_${id}" value="${endTime}" placeholder="End time (optional)" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+          </div>
+          <div class="admin-grid-2" style="margin-top:4px;">
+            <input id="hapPrice_${id}" value="${price}" placeholder="Price / entry info" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+            <input id="hapAddress_${id}" value="${address}" placeholder="Full address / meeting point" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+          </div>
+          <textarea id="hapDescription_${id}" rows="3" placeholder="Event description" style="width:100%;padding:7px 9px;margin-top:5px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font:inherit;font-size:.78rem;">${description}</textarea>
+          <textarea id="hapWhatToKnow_${id}" rows="2" placeholder="Good to know / what to bring" style="width:100%;padding:7px 9px;margin-top:5px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font:inherit;font-size:.78rem;">${whatToKnow}</textarea>
+          <input id="hapContact_${id}" value="${contact}" placeholder="Contact / booking link" style="width:100%;padding:6px 8px;margin-top:5px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
         </div>
-        <button class="admin-mini-btn danger" onclick="todayRemoveHappening('${id}')">${lucideSvg("x", 14)}</button>
+        <button class="admin-mini-btn danger" onclick="todayRemoveHappening('${id}')" aria-label="Delete event">${lucideSvg("trash-2", 14)}</button>
       </div>
       <div style="padding:0 8px 8px;">${todayItemGalleryHtml(id, "happening", __todayHappeningGalleries, "event", e && e.imageCredit)}</div>
     </div>`;
@@ -1469,12 +1689,59 @@ function todayAddHappeningCard() {
   document.getElementById("todayHappeningCards").appendChild(div.firstElementChild);
 }
 
+function todayRemoveJoinable(id) {
+  delete __todayJoinableGalleries[id];
+  document.getElementById("joinableCard_" + id)?.remove();
+}
+function todayBuildJoinableCard(id, item) {
+  __todayJoinableGalleries[id] = item && Array.isArray(item.images) ? item.images.slice() : [];
+  const value = (key) => escapeHtml(item && item[key] != null ? String(item[key]) : "");
+  const itemKey = item && item.id ? String(item.id) : item ? todayJoinableKey(item) : "j_new-" + String(id).replace(/[^a-z0-9-]/gi, "-");
+  return `
+    <div class="admin-list-item" id="joinableCard_${id}" data-itemid="${escT(itemKey)}">
+      <div class="admin-list-item-head">
+        <div style="flex:1;">
+          <input id="joinTitle_${id}" value="${value("title")}" placeholder="Activity title" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;margin-bottom:4px;">
+          <input id="joinSummary_${id}" value="${value("detail")}" placeholder="Short summary shown on the Today card" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;margin-bottom:4px;">
+          <textarea id="joinDescription_${id}" rows="3" placeholder="Full plan details. What is happening and who is it for?" style="width:100%;padding:7px 9px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font:inherit;font-size:.78rem;">${value("description")}</textarea>
+          <div class="admin-grid-2" style="margin-top:4px;">
+            <input id="joinTime_${id}" value="${value("time")}" placeholder="Date and time" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+            <input id="joinPlace_${id}" value="${value("place")}" placeholder="Meetup location" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+          </div>
+          <div class="admin-grid-2" style="margin-top:4px;">
+            <input id="joinOrganizer_${id}" value="${value("organizer")}" placeholder="Organizer / tribe host" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+            <input id="joinCrowd_${id}" type="number" min="0" value="${value("crowd")}" placeholder="People interested" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+          </div>
+          <div class="admin-grid-2" style="margin-top:4px;">
+            <input id="joinPrice_${id}" value="${value("price")}" placeholder="Price / costs" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+            <input id="joinContact_${id}" value="${value("contact")}" placeholder="Contact / booking" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+          </div>
+          <input id="joinAddress_${id}" value="${value("address")}" placeholder="Full address / pickup point" style="width:100%;padding:6px 8px;margin-top:4px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+          <textarea id="joinWhatToKnow_${id}" rows="2" placeholder="What to bring / important notes" style="width:100%;padding:7px 9px;margin-top:5px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font:inherit;font-size:.78rem;">${value("whatToKnow")}</textarea>
+        </div>
+        <button class="admin-mini-btn danger" onclick="todayRemoveJoinable('${id}')" aria-label="Delete joinable activity">${lucideSvg("trash-2", 14)}</button>
+      </div>
+      <div style="padding:0 8px 8px;">${todayItemGalleryHtml(id, "joinable", __todayJoinableGalleries, "activity", item && item.imageCredit)}</div>
+    </div>`;
+}
+function todayAddJoinableCard() {
+  const id = "j_" + ++__todayNextJid;
+  const div = document.createElement("div");
+  div.innerHTML = todayBuildJoinableCard(id, null);
+  document.getElementById("todayJoinableCards").appendChild(div.firstElementChild);
+}
+
 function todayBuildLocalCard(id, l) {
   __todayLocalGalleries[id] = l && l.images && Array.isArray(l.images) ? l.images.slice() : [];
   const badge = l ? escapeHtml(l.badge || "") : "";
   const biz = l ? escapeHtml(l.biz || "") : "";
   const text = l ? escapeHtml(l.text || "") : "";
   const meta = l ? escapeHtml(l.meta || "") : "";
+  const address = l ? escapeHtml(l.address || l.place || "") : "";
+  const hours = l ? escapeHtml(l.hours || "") : "";
+  const category = l ? escapeHtml(l.category || "") : "";
+  const contact = l ? escapeHtml(l.contact || "") : "";
+  const description = l ? escapeHtml(l.description || "") : "";
   return `
     <div class="admin-list-item" id="localCard_${id}">
       <div class="admin-list-item-head">
@@ -1484,9 +1751,16 @@ function todayBuildLocalCard(id, l) {
             <input id="locBiz_${id}" value="${biz}" placeholder="Business name" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
           </div>
           <input id="locText_${id}" value="${text}" placeholder="Tip text" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;margin-top:4px;">
-          <input id="locMeta_${id}" value="${meta}" placeholder="Meta" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;margin-top:4px;">
+          <input id="locMeta_${id}" value="${meta}" placeholder="Barangay / short location note" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;margin-top:4px;">
+          <div class="admin-grid-2" style="margin-top:4px;">
+            <input id="locCategory_${id}" value="${category}" placeholder="Category" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+            <input id="locHours_${id}" value="${hours}" placeholder="Opening hours" style="padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;">
+          </div>
+          <input id="locAddress_${id}" value="${address}" placeholder="Full address / directions" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;margin-top:4px;">
+          <input id="locContact_${id}" value="${contact}" placeholder="Contact / website" style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font-size:.78rem;margin-top:4px;">
+          <textarea id="locDescription_${id}" rows="3" placeholder="Full place details, what it offers, useful visitor info" style="width:100%;padding:7px 9px;margin-top:5px;border-radius:6px;border:1px solid var(--glass-border);background:var(--charcoal-input);color:var(--white-soft);font:inherit;font-size:.78rem;">${description}</textarea>
         </div>
-        <button class="admin-mini-btn danger" onclick="todayRemoveLocal('${id}')">${lucideSvg("x", 14)}</button>
+        <button class="admin-mini-btn danger" onclick="todayRemoveLocal('${id}')" aria-label="Delete local tip / place">${lucideSvg("trash-2", 14)}</button>
       </div>
       <div style="padding:0 8px 8px;">${todayItemGalleryHtml(id, "local", __todayLocalGalleries, "tip", l && l.imageCredit)}</div>
     </div>`;
@@ -1512,14 +1786,21 @@ async function renderAdminToday() {
   const path = (d.talaPick && d.talaPick.path) || [];
 
   __todayHappeningGalleries = {};
+  __todayJoinableGalleries = {};
   __todayLocalGalleries = {};
   __todayNextHid = 0;
+  __todayNextJid = 0;
   __todayNextLid = 0;
 
   let happeningCardsHtml = "";
   happening.forEach((e, i) => {
     const id = "e" + i;
     happeningCardsHtml += todayBuildHappeningCard(id, e);
+  });
+  let joinableCardsHtml = "";
+  joinable.forEach((j, i) => {
+    const id = "j" + i;
+    joinableCardsHtml += todayBuildJoinableCard(id, j);
   });
   let localCardsHtml = "";
   locals.forEach((l, i) => {
@@ -1540,8 +1821,10 @@ async function renderAdminToday() {
       <button class="admin-add-btn" onclick="todayAddHappeningCard()" style="margin-top:8px;">+ Add event</button>
     </div>
     <div class="admin-field">
-      <label>Joinable today (one per line: Title | Detail | Crowd)</label>
-      <textarea id="atJoinable" rows="3">${joinable.map((j) => [j.title, j.detail, j.crowd].join(" | ")).join("\n")}</textarea>
+      <label>Joinable today · meetups and shared plans</label>
+      <div class="admin-hint">Add full details so visitors know the time, place, host, costs, and what to expect. Each item can be edited or removed.</div>
+      <div id="todayJoinableCards">${joinableCardsHtml}</div>
+      <button class="admin-add-btn" onclick="todayAddJoinableCard()" style="margin-top:8px;">+ Add meetup / plan</button>
     </div>
     <div class="admin-field">
       <label>Weather verdicts (one per line: Icon | Label | Verdict — icon is a Lucide name, e.g. palmtree, waves, cloud-rain, droplets)</label>
@@ -1590,6 +1873,13 @@ function collectTodayHappeningItems() {
       time: time,
       dist: ((document.getElementById("hapDist_" + id) || {}).value || "").trim(),
       vibe: ((document.getElementById("hapVibe_" + id) || {}).value || "").trim(),
+      organizer: ((document.getElementById("hapOrganizer_" + id) || {}).value || "").trim(),
+      endTime: ((document.getElementById("hapEndTime_" + id) || {}).value || "").trim(),
+      price: ((document.getElementById("hapPrice_" + id) || {}).value || "").trim(),
+      address: ((document.getElementById("hapAddress_" + id) || {}).value || "").trim(),
+      description: ((document.getElementById("hapDescription_" + id) || {}).value || "").trim(),
+      whatToKnow: ((document.getElementById("hapWhatToKnow_" + id) || {}).value || "").trim(),
+      contact: ((document.getElementById("hapContact_" + id) || {}).value || "").trim(),
       imageCredit: (
         (document.getElementById("happening" + id + "Credit") || {}).value || ""
       ).trim(),
@@ -1597,6 +1887,31 @@ function collectTodayHappeningItems() {
     });
   });
   return items;
+}
+
+function collectTodayJoinableItems() {
+  return [...document.querySelectorAll('[id^="joinableCard_"]')].map((card) => {
+    const id = card.id.replace("joinableCard_", "");
+    const item = {
+      id: card.dataset.itemid || "",
+      title: ((document.getElementById("joinTitle_" + id) || {}).value || "").trim(),
+      detail: ((document.getElementById("joinSummary_" + id) || {}).value || "").trim(),
+      description: ((document.getElementById("joinDescription_" + id) || {}).value || "").trim(),
+      time: ((document.getElementById("joinTime_" + id) || {}).value || "").trim(),
+      place: ((document.getElementById("joinPlace_" + id) || {}).value || "").trim(),
+      organizer: ((document.getElementById("joinOrganizer_" + id) || {}).value || "").trim(),
+      crowd: parseInt((document.getElementById("joinCrowd_" + id) || {}).value, 10) || 0,
+      price: ((document.getElementById("joinPrice_" + id) || {}).value || "").trim(),
+      contact: ((document.getElementById("joinContact_" + id) || {}).value || "").trim(),
+      address: ((document.getElementById("joinAddress_" + id) || {}).value || "").trim(),
+      whatToKnow: ((document.getElementById("joinWhatToKnow_" + id) || {}).value || "").trim(),
+      imageCredit: ((document.getElementById("joinable" + id + "Credit") || {}).value || "").trim(),
+      images: (__todayJoinableGalleries[id] || []).slice(),
+    };
+    if (!item.title) return null;
+    if (!item.id) item.id = todayJoinableKey(item);
+    return item;
+  }).filter(Boolean);
 }
 
 function collectTodayLocalItems() {
@@ -1611,6 +1926,11 @@ function collectTodayLocalItems() {
       biz: ((document.getElementById("locBiz_" + id) || {}).value || "").trim(),
       text: text.trim(),
       meta: ((document.getElementById("locMeta_" + id) || {}).value || "").trim(),
+      category: ((document.getElementById("locCategory_" + id) || {}).value || "").trim(),
+      hours: ((document.getElementById("locHours_" + id) || {}).value || "").trim(),
+      address: ((document.getElementById("locAddress_" + id) || {}).value || "").trim(),
+      contact: ((document.getElementById("locContact_" + id) || {}).value || "").trim(),
+      description: ((document.getElementById("locDescription_" + id) || {}).value || "").trim(),
       imageCredit: ((document.getElementById("local" + id + "Credit") || {}).value || "").trim(),
       images: (__todayLocalGalleries[id] || []).slice(),
     });
@@ -1624,11 +1944,7 @@ async function adminSaveToday() {
   status.textContent = "Saving…";
   try {
     const happening = collectTodayHappeningItems();
-    const joinable = parseLines(document.getElementById("atJoinable").value, 3).map((p) => ({
-      title: p[0],
-      detail: p[1],
-      crowd: parseInt(p[2]) || 0,
-    }));
+    const joinable = collectTodayJoinableItems();
     const weather = parseLines(document.getElementById("atWeather").value, 3).map((p) => ({
       icon: p[0],
       label: p[1],
@@ -1657,6 +1973,8 @@ async function adminSaveToday() {
     TODAY_DATA.weather = weather;
     TODAY_DATA.locals = locals;
     TODAY_DATA.notices = notices;
+    adminTodayData = Object.assign({}, adminTodayData || {}, { happening, joinable, weather, locals, notices });
+    if (document.getElementById("todayPanel")?.classList.contains("open")) renderTodayContent();
   } catch (err) {
     status.innerHTML = '<span style="color:#f87171">Failed: ' + escapeHtml(err.message) + "</span>";
   }

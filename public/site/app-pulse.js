@@ -697,6 +697,7 @@ function todayItemKey(e, i) {
   return "t_" + (base || "item-" + (i || 0));
 }
 function todayJoinableKey(j) {
+  if (j && j.id) return String(j.id);
   const base = [j && j.title, j && j.detail]
     .filter(Boolean)
     .join(" ")

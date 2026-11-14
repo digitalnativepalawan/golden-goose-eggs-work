@@ -1074,6 +1074,11 @@ svg.lucide{vertical-align:-.15em}
   .today-row-empty .trow-meta{margin:0;color:rgba(255,255,255,.5);font-size:.82rem;line-height:1.45}
   .tnotice-empty{color:rgba(255,255,255,.5);font-style:italic}
   .trow-main{min-width:0}
+  .today-detail-trigger{display:flex;width:100%;flex-direction:column;align-items:stretch;gap:8px;padding:0;border:0;border-radius:10px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;-webkit-tap-highlight-color:transparent}
+  .today-detail-trigger:focus-visible{outline:2px solid #99f6e4;outline-offset:3px}
+  .today-detail-trigger-local{grid-column:1/-1;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:flex-start;gap:10px}
+  .today-detail-hint{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:.7rem;font-weight:600;color:rgba(153,246,228,.75);padding-top:2px}
+  .today-detail-trigger-local .today-detail-hint{grid-column:1/-1;padding-left:44px}
   .trow-title{font-size:.95rem;font-weight:600;color:rgba(255,255,255,.94)}
   .trow-meta{font-size:.78rem;color:rgba(255,255,255,.6);margin-top:2px}
   .trow-chips{display:flex;gap:6px;flex-wrap:wrap}
@@ -1110,11 +1115,45 @@ svg.lucide{vertical-align:-.15em}
   .today-notices{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
   .tnotice{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:flex-start;font-size:.82rem;color:rgba(255,255,255,.72);line-height:1.45}
   .tn-glyph{color:rgba(245,158,11,.85);font-size:.9rem;line-height:1.4}
+  .today-detail-overlay{position:absolute;inset:0;z-index:20;display:none;align-items:flex-end;justify-content:center;background:rgba(0,4,12,.78);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px)}
+  .today-detail-overlay.active{display:flex}
+  .today-detail-sheet{width:100%;max-width:720px;max-height:94dvh;display:flex;flex-direction:column;overflow:hidden;background:#0d1b2a;border:1px solid rgba(255,255,255,.1);border-bottom:0;border-radius:24px 24px 0 0;box-shadow:0 -20px 65px rgba(0,0,0,.42);padding-bottom:env(safe-area-inset-bottom,0px);animation:todayDetailIn .24s ease-out}
+  @keyframes todayDetailIn{from{transform:translateY(18px);opacity:.7}to{transform:translateY(0);opacity:1}}
+  .today-detail-toolbar{position:absolute;z-index:3;top:12px;right:12px}
+  .today-detail-close{width:42px;height:42px;border:1px solid rgba(255,255,255,.25);border-radius:50%;background:rgba(5,12,22,.72);color:#fff;font-size:23px;line-height:1;cursor:pointer;backdrop-filter:blur(12px)}
+  .today-detail-content{min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  .today-detail-hero{position:relative;width:100%;aspect-ratio:16/9;max-height:285px;min-height:160px;background:linear-gradient(135deg,#14566b,#20314b);overflow:hidden}
+  .today-detail-hero img{display:block;width:100%;height:100%;object-fit:cover}
+  .today-detail-hero-placeholder{position:absolute;inset:0;display:grid;place-items:center;color:rgba(153,246,228,.85);font-size:42px}
+  .today-detail-body{padding:20px 18px 22px}
+  .today-detail-kicker{font-size:.66rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:#76d9ce;margin-bottom:8px}
+  .today-detail-title{font-family:var(--font-display);font-size:clamp(1.55rem,7vw,2.15rem);font-weight:500;line-height:1.04;letter-spacing:-.02em;color:#fff;margin:0 52px 8px 0;overflow-wrap:anywhere}
+  .today-detail-lede{font-size:.91rem;line-height:1.55;color:rgba(255,255,255,.72);margin:0 0 16px;white-space:pre-line}
+  .today-detail-tags{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 16px}
+  .today-detail-tag{padding:6px 10px;border:1px solid rgba(94,234,212,.2);border-radius:999px;background:rgba(20,184,166,.1);color:#b5f5e8;font-size:.71rem;font-weight:600}
+  .today-detail-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 0}
+  .today-detail-fact{min-width:0;padding:10px 11px;border:1px solid rgba(255,255,255,.07);border-radius:13px;background:rgba(255,255,255,.035)}
+  .today-detail-label{font-size:.62rem;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:rgba(255,255,255,.48);margin-bottom:3px}
+  .today-detail-value{font-size:.83rem;line-height:1.4;color:rgba(255,255,255,.92);overflow-wrap:anywhere;white-space:pre-line}
+  .today-detail-section{padding:14px 0;border-top:1px solid rgba(255,255,255,.08)}
+  .today-detail-section h3{font-size:.74rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#88ded2;margin:0 0 7px}
+  .today-detail-section p{font-size:.87rem;line-height:1.55;color:rgba(255,255,255,.78);margin:0;white-space:pre-line;overflow-wrap:anywhere}
+  .today-detail-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-top:14px}
+  .today-detail-gallery button{padding:0;border:0;border-radius:11px;overflow:hidden;background:rgba(255,255,255,.05);aspect-ratio:1;cursor:pointer}
+  .today-detail-gallery img{width:100%;height:100%;object-fit:cover;display:block}
+  .today-detail-actions{display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid rgba(255,255,255,.09);background:rgba(10,20,32,.97)}
+  .today-detail-actions:empty{display:none}
+  .today-detail-action{flex:1 1 140px;min-height:46px;padding:10px 14px;border:1px solid rgba(255,255,255,.11);border-radius:999px;background:rgba(255,255,255,.055);color:#f5f8fa;font:600 .82rem var(--font-body);cursor:pointer}
+  .today-detail-action.primary{background:linear-gradient(135deg,#5eead4,#0d9488);border-color:transparent;color:#04211d}
+  .today-detail-action:focus-visible,.today-detail-close:focus-visible,.today-detail-gallery button:focus-visible{outline:2px solid #99f6e4;outline-offset:2px}
+  @media(min-width:700px){.today-detail-overlay{align-items:center;padding:24px}.today-detail-sheet{width:min(100%,640px);max-height:90dvh;border:1px solid rgba(255,255,255,.1);border-radius:24px;padding-bottom:0;box-shadow:0 24px 80px rgba(0,0,0,.5)}.today-detail-body{padding:22px 26px 26px}.today-detail-actions{padding:12px 22px 18px;border-radius:0 0 24px 24px}}
+  @media(max-width:360px){.today-detail-facts{grid-template-columns:1fr}.today-detail-gallery{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(prefers-reduced-motion:reduce){.today-detail-sheet{animation:none}}
   @media(min-width:640px){
     .today-head,.today-scroll{width:100%;max-width:720px;margin-left:auto;margin-right:auto}
   }
 </style>
-<div class="today-panel" id="todayPanel" aria-hidden="true">
+<div class="today-panel" id="todayPanel" aria-hidden="true" tabindex="-1">
   <button class="today-close" onclick="closeTodaySheet()" aria-label="Close Today"><svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
   <div class="today-page" id="todayPage">
   <div class="today-head">
@@ -1131,6 +1170,13 @@ svg.lucide{vertical-align:-.15em}
     </div>
   </div>
   <div class="today-scroll" id="todayScroll"></div>
+  </div>
+  <div class="today-detail-overlay" id="todayDetailOverlay" aria-hidden="true" onclick="closeTodayDetail(event)">
+    <section class="today-detail-sheet" role="dialog" aria-modal="true" aria-labelledby="todayDetailTitle" onclick="event.stopPropagation()">
+      <div class="today-detail-toolbar"><button type="button" class="today-detail-close" onclick="closeTodayDetail()" aria-label="Close details">×</button></div>
+      <div class="today-detail-content" id="todayDetailContent"></div>
+      <div class="today-detail-actions" id="todayDetailActions"></div>
+    </section>
   </div>
 </div>
 
@@ -2444,7 +2490,7 @@ svg.lucide{vertical-align:-.15em}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-11-13-location-image-galleries-r15';
+  window.SANVIC_DEPLOY_VERSION = '2026-11-14-today-details-r18';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by the app scripts and entry-flow.js so the two
   // timers cannot drift apart. Raise it to hold the first page longer.
@@ -2471,6 +2517,7 @@ svg.lucide{vertical-align:-.15em}
       'app-weather.js',
       'app-backoffice.js',
       'app-place-details.js',
+      'welcome-page.js',
       'app-pulse-admin-my-sanvic-hunt.js',
       'admin-studio.js',
       'kmz-import.js',
@@ -2571,7 +2618,7 @@ svg.lucide{vertical-align:-.15em}
   <div class="carousel-dots" id="carouselDots"></div>
 </div>
 
-<link rel="stylesheet" href="explore-ux.css?v=2026-11-13-location-image-galleries-r13">
+<link rel="stylesheet" href="explore-ux.css?v=2026-11-14-today-details-r16">
 <style id="sanvicNoHScroll">
   /* ── Nothing in the product scrolls sideways. ─────────────────────────────
      Chip rows wrap; card strips wrap into uniform full-width rows. The same

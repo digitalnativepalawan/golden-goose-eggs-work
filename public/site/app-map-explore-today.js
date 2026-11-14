@@ -1842,7 +1842,7 @@ async function initMap() {
   // Keep the required provider credits, but remove Leaflet's own branding and
   // move the compact credits away from the bottom navigation.
   map.attributionControl.setPrefix(false);
-  map.attributionControl.setPosition("topright");
+  map.attributionControl.setPosition("bottomright");
   const osmAttribution =
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>';
   const streetAttribution =
@@ -2339,6 +2339,7 @@ function collapseTodaySheet() {
 function closeTodaySheet() {
   const s = document.getElementById("todayPanel");
   if (!s) return;
+  closeTodayDetail();
   s.classList.remove("open");
   s.setAttribute("aria-hidden", "true");
 }
@@ -2979,40 +2980,119 @@ const TODAY_DATA = {
   },
   happening: [
     {
+      id: "sample-acoustic-nauti",
       title: "Acoustic night at Nauti Beach",
       place: "Long Beach",
       time: "19:30",
+      endTime: "22:00",
       dist: "2.4 km",
-      vibe: "Chill",
+      vibe: "Live music",
+      organizer: "Nauti Beach Bar · sample host",
+      price: "Illustrative sample: no cover; food and drinks sold separately",
+      description: "A relaxed beachfront set with local acoustic performers, sunset seating, and an easygoing crowd. This is example content for the Today preview, not a confirmed event.",
+      whatToKnow: "Arrive early for a table. Bring a light layer for the sea breeze. Confirm the schedule with the venue before travelling.",
+      contact: "Example only — replace with the venue's confirmed booking contact",
+      address: "Long Beach, San Vicente, Palawan",
+      images: ["assets/pulse/street-food-skewers.jpg"],
+      imageCredit: "Illustrative sample image · partner preview only",
     },
-    { title: "Sunset paddle out", place: "Alimanguan", time: "16:30", dist: "11 km", vibe: "Surf" },
     {
+      id: "sample-sunset-paddle",
+      title: "Sunset paddle out",
+      place: "Alimanguan",
+      time: "16:30",
+      endTime: "18:15",
+      dist: "11 km",
+      vibe: "Surf & sea",
+      organizer: "SanVic Surf Collective · sample host",
+      price: "Illustrative sample: bring your own board; rental price to confirm",
+      description: "A small, easy-paced paddle and surf session timed for golden hour. Suitable for confident swimmers; the example is not a live booking or surf report.",
+      whatToKnow: "Check tide and local conditions with a lifeguard or surf guide. Bring water, sun protection, and a leash.",
+      contact: "Example only — ask a local surf guide for current conditions",
+      address: "Alimanguan beachfront, San Vicente, Palawan",
+      images: ["assets/sample-palawan-adventure.jpg"],
+      imageCredit: "Illustrative sample image · partner preview only",
+    },
+    {
+      id: "sample-poblacion-fiesta",
       title: "Fiesta procession",
       place: "Poblacion",
       time: "18:00",
+      endTime: "19:30",
       dist: "0.6 km",
-      vibe: "Local",
+      vibe: "Community",
+      organizer: "Poblacion community · sample host",
+      price: "Illustrative sample: free to watch",
+      description: "A sample community procession route through central Poblacion, with music and a gathering afterward. Dates and routes must be confirmed by the local organizers.",
+      whatToKnow: "Wear comfortable shoes, keep doorways clear, and ask before taking close-up photos of people.",
+      contact: "Example only — confirm the event date with the barangay office",
+      address: "Poblacion town center, San Vicente, Palawan",
+      images: ["assets/san-vicente-long-beach.jpg"],
+      imageCredit: "Illustrative sample image · partner preview only",
     },
     {
+      id: "sample-port-barton-bonfire",
       title: "Beach bonfire jam",
       place: "Port Barton",
       time: "20:30",
+      endTime: "22:30",
       dist: "28 km",
-      vibe: "Social",
+      vibe: "Music & social",
+      organizer: "Port Barton beach crew · sample host",
+      price: "Illustrative sample: bring a snack to share",
+      description: "A friendly, low-key beach gathering with acoustic songs and conversation. This mock listing is only to demonstrate event details in the Today page.",
+      whatToKnow: "Use an existing permitted fire area only, follow local fire rules, and leave the beach clean. Confirm if the meetup is happening.",
+      contact: "Example only — contact the local host to confirm",
+      address: "Port Barton beachfront, San Vicente, Palawan",
+      images: ["assets/sample-palawan-local-stop.jpg"],
+      imageCredit: "Illustrative sample image · partner preview only",
     },
   ],
   joinable: [
     {
+      id: "sample-port-barton-island-hop",
       title: "Island hop from Port Barton",
       detail: "3 seats left · departs 8:00 tomorrow",
+      time: "Meet at 07:45 · sample time",
+      place: "Port Barton pier",
       crowd: 3,
+      organizer: "Local boat crew · sample host",
+      price: "Illustrative sample: confirm boat rate and fees before booking",
+      description: "A sample day trip for a small group, with island stops, swimming, and a beach lunch. Boat routes and access depend on weather and the operator.",
+      whatToKnow: "Bring reef-safe sun protection, water, cash for local fees, and a dry bag. Confirm availability, operator, and departure time first.",
+      contact: "Example only — replace with an operator booking link",
+      images: ["assets/pulse/island-boats-aerial.jpg"],
+      imageCredit: "Illustrative sample image · partner preview only",
     },
     {
+      id: "sample-poblacion-dinner",
       title: "Dinner in Poblacion tonight",
       detail: "2 travelers looking for company · 19:30",
+      time: "19:30 · sample time",
+      place: "Poblacion",
       crowd: 2,
+      organizer: "Community meetup · sample host",
+      price: "Pay for your own meal · sample plan",
+      description: "A casual table for travellers and locals who would like company over dinner. Restaurant and menu are to be confirmed by the group.",
+      whatToKnow: "Message the host to confirm the place, dietary needs, and whether there is space before heading over.",
+      contact: "Example only — meetup host contact not yet supplied",
+      images: ["assets/sample-palawan-food.jpg"],
+      imageCredit: "Illustrative sample image · partner preview only",
     },
-    { title: "Van to Puerto Princesa", detail: "1 seat left · Friday 06:00 pickup", crowd: 4 },
+    {
+      id: "sample-van-puerto-princesa",
+      title: "Van to Puerto Princesa",
+      detail: "1 seat left · Friday 06:00 pickup",
+      time: "Friday · 06:00 · sample time",
+      place: "Poblacion pickup point",
+      crowd: 4,
+      organizer: "Shared ride · sample host",
+      price: "Illustrative sample: agree the fare with the driver",
+      description: "A mock shared-van listing for a traveller with one available seat. The departure, operator, and fare are examples and must be verified.",
+      whatToKnow: "Confirm luggage space, pickup location, fare, and travel date directly before committing.",
+      contact: "Example only — driver contact to be added by the organizer",
+      images: [],
+    },
   ],
   weather: [
     {
@@ -3038,22 +3118,46 @@ const TODAY_DATA = {
   ],
   locals: [
     {
+      id: "sample-long-beach-grill",
       biz: "Long Beach Grill",
       badge: "fish",
       text: "Fresh yellowfin tuna just came in. Ask for kinilaw.",
-      meta: "Poblacion · 18m ago",
+      meta: "Poblacion · sample local update",
+      address: "Poblacion waterfront, San Vicente, Palawan",
+      hours: "Sample listing — hours not verified",
+      category: "Seafood restaurant",
+      contact: "Add the restaurant's verified contact in Backoffice",
+      description: "Example local update: fresh tuna is available and the kitchen can prepare kinilaw on request. Confirm today's catch and menu with the restaurant.",
+      images: ["assets/sample-palawan-food.jpg"],
+      imageCredit: "Illustrative sample image · partner preview only",
     },
     {
+      id: "sample-nauti-beach-bar",
       biz: "Nauti Beach Bar",
       badge: "martini",
       text: "2-for-1 sunset drinks, 17:00 to 18:30 only.",
-      meta: "Long Beach · 42m ago",
+      meta: "Long Beach · sample local update",
+      address: "Long Beach, San Vicente, Palawan",
+      hours: "Sample listing — confirm today's service hours",
+      category: "Beach bar",
+      contact: "Add a verified venue contact in Backoffice",
+      description: "Mock promotion detail for the sample page. Ask staff whether the offer is active, which drinks are included, and whether conditions apply.",
+      images: ["assets/sample-palawan-cafe.jpg"],
+      imageCredit: "Illustrative sample image · partner preview only",
     },
     {
+      id: "sample-aling-rosa-bakery",
       biz: "Aling Rosa Bakery",
       badge: "croissant",
       text: "Fresh pandesal from 6 AM. Ube version back tomorrow.",
-      meta: "Poblacion · 2h ago",
+      meta: "Poblacion · sample local update",
+      address: "Poblacion, San Vicente, Palawan",
+      hours: "Sample listing — verify opening hours locally",
+      category: "Bakery",
+      contact: "Add a verified bakery contact in Backoffice",
+      description: "Example neighborhood bakery note. Ask the shop which breads are available today and when the next batch comes out.",
+      images: ["assets/sample-palawan-local-stop.jpg"],
+      imageCredit: "Illustrative sample image · partner preview only",
     },
   ],
   notices: [
@@ -3275,6 +3379,122 @@ function todayEmptyRow(text) {
   return `<li class="today-row today-row-empty"><div class="trow-main"><div class="trow-meta">${escT(text)}</div></div></li>`;
 }
 
+let todayDetailReturnFocus = null;
+let todayDetailGallery = [];
+function todayOpenItemGallery(index) {
+  if (typeof openCarousel === "function" && todayDetailGallery.length)
+    openCarousel(todayDetailGallery, index);
+}
+function todayDetailFact(label, value) {
+  const text = String(value == null ? "" : value).trim();
+  if (!text) return "";
+  return `<div class="today-detail-fact"><div class="today-detail-label">${escT(label)}</div><div class="today-detail-value">${escT(text)}</div></div>`;
+}
+function todayOpenDirections(item) {
+  const destination = [item && (item.address || item.place || item.biz), "San Vicente", "Palawan"]
+    .filter(Boolean)
+    .join(", ");
+  window.open(
+    "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(destination),
+    "_blank",
+    "noopener,noreferrer",
+  );
+}
+function todayDetailAction(label, action, primary) {
+  return `<button type="button" class="today-detail-action${primary ? " primary" : ""}" onclick="${action}">${escT(label)}</button>`;
+}
+function openTodayItemDetails(kind, index) {
+  todayDetailReturnFocus = document.activeElement;
+  const item = kind === "happening"
+    ? (TODAY_DATA.happening || [])[index]
+    : kind === "joinable"
+      ? (TODAY_DATA.joinable || [])[index]
+      : (TODAY_DATA.locals || [])[index];
+  if (!item) return;
+  const overlay = document.getElementById("todayDetailOverlay");
+  const content = document.getElementById("todayDetailContent");
+  const actions = document.getElementById("todayDetailActions");
+  if (!overlay || !content || !actions) return;
+
+  const title = kind === "local" ? (item.biz || item.title || "Local place") : (item.title || "Today in San Vicente");
+  const imageList = Array.isArray(item.images) ? item.images.filter(Boolean) : [];
+  todayDetailGallery = imageList;
+  const cover = imageList[0] || item.image || "";
+  const description = item.description || item.details || (kind === "local" ? item.text : item.detail) || "More details have not been added yet. Check back soon.";
+  const extras = [];
+  if (kind === "happening") {
+    extras.push(todayDetailFact("Organizer", item.organizer || item.org));
+    extras.push(todayDetailFact("Time", [item.time, item.endTime && "until " + item.endTime].filter(Boolean).join(" ")));
+    extras.push(todayDetailFact("Category", item.category || item.vibe));
+    extras.push(todayDetailFact("Price", item.price));
+    extras.push(todayDetailFact("Where", item.address || item.place));
+    extras.push(todayDetailFact("Contact / booking", item.contact || item.booking));
+  } else if (kind === "joinable") {
+    extras.push(todayDetailFact("Meetup", item.time || item.when));
+    extras.push(todayDetailFact("Meet at", item.place || item.address));
+    extras.push(todayDetailFact("Group size", item.crowd ? item.crowd + " people already interested" : "Open group"));
+    extras.push(todayDetailFact("Price", item.price));
+    extras.push(todayDetailFact("Organizer", item.organizer || item.org));
+    extras.push(todayDetailFact("Contact", item.contact));
+  } else {
+    extras.push(todayDetailFact("Place", item.address || item.place || item.meta));
+    extras.push(todayDetailFact("Hours", item.hours));
+    extras.push(todayDetailFact("Category", item.category || item.badge));
+    extras.push(todayDetailFact("Contact", item.contact));
+  }
+  const gallery = imageList.length > 1
+    ? `<div class="today-detail-gallery">${imageList.map((url, i) => `<button type="button" aria-label="View photo ${i + 1} of ${imageList.length}" onclick="todayOpenItemGallery(${i})"><img src="${escT(url)}" alt="${escT(title)} photo ${i + 1}" loading="lazy"></button>`).join("")}</div>`
+    : "";
+  const photo = cover
+    ? `<div class="today-detail-hero"><img src="${escT(cover)}" alt="${escT(title)}" onerror="this.parentElement.classList.add('no-photo');this.remove()"></div>`
+    : `<div class="today-detail-hero"><div class="today-detail-hero-placeholder">${lucideSvg(kind === "local" ? "map-pin" : "calendar-days", 42)}</div></div>`;
+  const tags = [item.category || item.vibe || item.badge, item.dist, item.price].filter(Boolean);
+  const goingKey = kind === "happening" ? todayItemKey(item, index) : "";
+  const crowd = kind === "happening" ? todayGoingCount(goingKey) : 0;
+  content.innerHTML = `${photo}<div class="today-detail-body">
+    <div class="today-detail-kicker">${escT(kind === "happening" ? "Happening today" : kind === "joinable" ? "Joinable today" : "Fresh from locals")}${partnerDemoMode ? " · Sample preview" : ""}</div>
+    <h2 class="today-detail-title" id="todayDetailTitle">${escT(title)}</h2>
+    <div class="today-detail-tags">${tags.map((tag) => `<span class="today-detail-tag">${escT(tag)}</span>`).join("")}</div>
+    <p class="today-detail-lede">${escT(description)}</p>
+    ${extras.filter(Boolean).length ? `<div class="today-detail-facts">${extras.filter(Boolean).join("")}</div>` : ""}
+    ${item.whatToKnow ? `<section class="today-detail-section"><h3>Good to know</h3><p>${escT(item.whatToKnow)}</p></section>` : ""}
+    ${item.imageCredit ? `<div class="today-credits">${escT(item.imageCredit)}</div>` : ""}${gallery}
+    ${kind === "happening" && crowd ? `<div class="today-detail-section"><h3>Going</h3><p>${crowd} ${crowd === 1 ? "person is" : "people are"} going${todayGoingNames(goingKey).length ? " · " + escT(todayGoingNames(goingKey).slice(0, 4).join(", ")) : ""}</p></div>` : ""}
+  </div>`;
+  if (kind === "happening") {
+    const going = myToday.has(goingKey);
+    actions.innerHTML = todayDetailAction(going ? "Going" : "I'm interested", `todayJoinHappening(${index})`, true) +
+      todayDetailAction("Directions", `todayOpenDirections(TODAY_DATA.happening[${index}])`, false);
+  } else if (kind === "joinable") {
+    const on = myToday.has(todayJoinableKey(item));
+    actions.innerHTML = todayDetailAction(on ? "On the list" : "Ask to join", `todayJoinJoinable(${index})`, true) +
+      todayDetailAction("Directions", `todayOpenDirections(TODAY_DATA.joinable[${index}])`, false);
+  } else {
+    actions.innerHTML = todayDetailAction("Directions", `todayOpenDirections(TODAY_DATA.locals[${index}])`, true);
+  }
+  overlay.classList.add("active");
+  overlay.setAttribute("aria-hidden", "false");
+  document.body.classList.add("today-detail-open");
+  document.getElementById("todayDetailContent").scrollTop = 0;
+  document.querySelector(".today-detail-close")?.focus({ preventScroll: true });
+}
+function closeTodayDetail(event) {
+  const overlay = document.getElementById("todayDetailOverlay");
+  if (!overlay || !overlay.classList.contains("active") || (event && event.target !== overlay)) return;
+  overlay.classList.remove("active");
+  overlay.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("today-detail-open");
+  if (todayDetailReturnFocus && todayDetailReturnFocus.isConnected) {
+    todayDetailReturnFocus.focus({ preventScroll: true });
+  } else if (document.getElementById("todayPanel")?.classList.contains("open")) {
+    document.getElementById("todayPanel").focus({ preventScroll: true });
+  }
+  todayDetailReturnFocus = null;
+}
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeTodayDetail();
+});
+
 // Builds one "Picked for you" place card from the visitor's chosen vibes.
 // `total` is used only to decide whether a divider arrow is shown after it.
 function pickCard(x, i, total) {
@@ -3375,17 +3595,20 @@ function renderTodayContent() {
                   const photo = todayFirstImage(e);
                   return `
           <li class="today-row">
-            ${photo ? `<div class="trow-photo"><img src="${escT(photo)}" alt="" loading="lazy" onerror="this.closest('.trow-photo').remove()"></div>` : ""}
-            <div class="trow-main">
-              <div class="trow-title">${escT(e.title)}</div>
-              <div class="trow-meta">${escT(e.place)} · ${escT(e.time)}</div>
-            </div>
-            <div class="trow-chips">
-              <span class="tchip">${escT(e.dist)}</span>
-              <span class="tchip tchip-accent">${escT(e.vibe)}</span>
-              ${count ? `<span class="tchip tchip-going">${count} going</span>` : ""}
-            </div>
-            ${names.length ? `<div class="trow-names">With ${escT(names.slice(0, 3).join(", "))}${names.length > 3 ? " +" + (names.length - 3) : ""}</div>` : ""}
+            <button type="button" class="today-detail-trigger" onclick="openTodayItemDetails('happening',${i})" aria-label="View details for ${escT(e.title)}">
+              ${photo ? `<div class="trow-photo"><img src="${escT(photo)}" alt="" loading="lazy" onerror="this.closest('.trow-photo').remove()"></div>` : ""}
+              <div class="trow-main">
+                <div class="trow-title">${escT(e.title)}</div>
+                <div class="trow-meta">${escT(e.place)} · ${escT(e.time)}</div>
+              </div>
+              <div class="trow-chips">
+                ${e.dist ? `<span class="tchip">${escT(e.dist)}</span>` : ""}
+                ${e.vibe ? `<span class="tchip tchip-accent">${escT(e.vibe)}</span>` : ""}
+                ${count ? `<span class="tchip tchip-going">${count} going</span>` : ""}
+              </div>
+              ${names.length ? `<div class="trow-names">With ${escT(names.slice(0, 3).join(", "))}${names.length > 3 ? " +" + (names.length - 3) : ""}</div>` : ""}
+              <span class="today-detail-hint">View event details <span aria-hidden="true">→</span></span>
+            </button>
             <div class="trow-actions">
               <button class="tbtn tbtn-primary${going ? " is-on" : ""}" onclick="todayJoinHappening(${i})" aria-pressed="${going ? "true" : "false"}">${going ? "Going" : "Join"}</button>
               <button class="tbtn" onclick="todayDirectionsHappening(${i})">Directions</button>
@@ -3408,15 +3631,20 @@ function renderTodayContent() {
             ? d.joinable
                 .map((j, i) => {
                   const on = myToday.has(todayJoinableKey(j));
+                  const photo = todayFirstImage(j);
                   return `
           <li class="today-row">
-            <div class="trow-main">
-              <div class="trow-title">${escT(j.title)}</div>
-              <div class="trow-meta">${escT(j.detail)}</div>
-            </div>
-            <div class="tavatars">${Array.from({ length: j.crowd })
-              .map((_, k) => `<span class="tav" style="--i:${k}"></span>`)
-              .join("")}</div>
+            <button type="button" class="today-detail-trigger" onclick="openTodayItemDetails('joinable',${i})" aria-label="View details for ${escT(j.title)}">
+              ${photo ? `<div class="trow-photo"><img src="${escT(photo)}" alt="" loading="lazy" onerror="this.closest('.trow-photo').remove()"></div>` : ""}
+              <div class="trow-main">
+                <div class="trow-title">${escT(j.title)}</div>
+                <div class="trow-meta">${escT(j.detail)}</div>
+              </div>
+              <div class="tavatars">${Array.from({ length: j.crowd })
+                .map((_, k) => `<span class="tav" style="--i:${k}"></span>`)
+                .join("")}</div>
+              <span class="today-detail-hint">View plan details <span aria-hidden="true">→</span></span>
+            </button>
             <div class="trow-actions">
               <button class="tbtn tbtn-primary${on ? " is-on" : ""}" onclick="todayJoinJoinable(${i})" aria-pressed="${on ? "true" : "false"}">${on ? "On the list" : "Ask to join"}</button>
             </div>
@@ -3426,6 +3654,7 @@ function renderTodayContent() {
             : todayEmptyRow("No open seats posted yet — form a tribe and start one.")
         }
       </ul>
+      ${todayCreditsHtml(d.joinable)}
     </article>`;
   const weather = `
     <article class="today-card">
@@ -3451,13 +3680,16 @@ function renderTodayContent() {
         ${
           d.locals.length
             ? d.locals
-                .map((l) => {
+                .map((l, i) => {
                   const photo = todayFirstImage(l);
                   return `
           <li class="tlocal">
-            <span class="tl-badge">${iconOrText(l.badge, 18)}</span>
-            <div><div class="tl-text">${escT(l.text)}</div><div class="tl-meta">${escT(l.biz)} · ${escT(l.meta)}</div></div>
-            ${photo ? `<div class="tl-photo"><img src="${escT(photo)}" alt="" loading="lazy" onerror="this.closest('.tl-photo').remove()"></div>` : ""}
+            <button type="button" class="today-detail-trigger today-detail-trigger-local" onclick="openTodayItemDetails('local',${i})" aria-label="View details for ${escT(l.biz || "local place")}">
+              <span class="tl-badge">${iconOrText(l.badge, 18)}</span>
+              <span><span class="tl-text">${escT(l.text)}</span><span class="tl-meta">${escT(l.biz)} · ${escT(l.meta)}</span></span>
+              ${photo ? `<span class="tl-photo"><img src="${escT(photo)}" alt="" loading="lazy" onerror="this.closest('.tl-photo').remove()"></span>` : ""}
+              <span class="today-detail-hint">View place details <span aria-hidden="true">→</span></span>
+            </button>
           </li>`;
                 })
                 .join("")
