@@ -954,6 +954,13 @@ const PULSE_ADMIN_SAMPLE_MEDIA = [
   ["assets/pulse/bulalo-boodle.jpg", "Local meal"],
   ["assets/san-vicente-long-beach.jpg", "San Vicente beach"],
   ["assets/san-vicente-waterfalls.jpg", "Waterfalls"],
+  ["assets/sample-stay-room.jpg", "Guesthouse room"],
+  ["assets/sample-stay-amenities.jpg", "Lodging amenities"],
+  ["assets/sample-palawan-food.jpg", "Local dishes"],
+  ["assets/sample-palawan-cafe.jpg", "Cafe setting"],
+  ["assets/sample-palawan-adventure.jpg", "Island activity"],
+  ["assets/sample-palawan-local-stop.jpg", "Local shop"],
+  ["assets/sample-palawan-viewpoint.jpg", "Coastal viewpoint"],
 ];
 
 // One thumbnail, shared by every gallery in the Backoffice so the add / edit /
@@ -990,6 +997,7 @@ function mediaGalleryHtml(containerId, prefix) {
     .join("");
   return `
     <label>Photos — choose as many as you like, drag a batch in, or paste a screenshot</label>
+    <p class="admin-hint">For accommodations, include rooms, bathrooms, views and amenities. For restaurants and cafés, include menu pages, dishes, drinks and dining areas. The first image is the cover; the rest appear in the photo gallery.</p>
     <div class="admin-media-grid" id="${containerId}Gallery"
          ondragover="event.preventDefault();this.classList.add('is-drag')"
          ondragleave="this.classList.remove('is-drag')"
@@ -2834,6 +2842,7 @@ async function adminResetDefaults() {
       lng: d.lng,
       category: d.category,
       image: d.image,
+      images: d.images || [],
       description: d.description,
       tip: d.tip,
       color: d.color,

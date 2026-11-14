@@ -1826,12 +1826,14 @@ function placeRowsHtml() {
       const meta = [d.barangay, (catStyle[d.category] && catStyle[d.category].label) || d.category]
         .filter(Boolean)
         .join(" · ");
+      const gallery = destinationImageGallery(d);
+      const cover = gallery.images[0] || "";
       const on = String(formDraft.whereText || "") === placeLabel(d) ? " on" : "";
       return `<button type="button" class="pv2-place-row${on}" onclick="wizChoosePlace('${escT(String(d.id))}')">
-      ${lucideSvg("map-pin", 15)}
+      ${cover ? `<img class="pv2-place-photo" src="${escT(cover)}" alt="" loading="lazy" onerror="this.hidden=true">` : lucideSvg("map-pin", 15)}
       <span class="pv2-place-main">
         <span class="pv2-place-name">${escT(d.name)}</span>
-        <span class="pv2-place-meta">${escT(meta)}</span>
+        <span class="pv2-place-meta">${escT(meta)}${gallery.illustrative ? " · Illustrative photo" : ""}</span>
       </span>
     </button>`;
     })

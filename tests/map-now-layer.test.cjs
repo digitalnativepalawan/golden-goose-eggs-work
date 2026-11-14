@@ -313,11 +313,64 @@ test("map header shows only a uniform logo; search and Explore CTA stay out of t
   );
   assert.match(exploreCss, /body\[data-map-tools="on"\] #heroBrand img \{[\s\S]*width: 124px/);
   assert.match(exploreCss, /body\[data-map-tools="on"\] #heroOverlay > :not\(#heroBrand\)/);
+  assert.match(exploreCss, /body\[data-map-tools="on"\]\.explore-open #heroOverlay \{\s*display: none !important/);
   assert.match(
     exploreCss,
     /body\[data-map-tools="on"\] #mapExploreBar \{[\s\S]*display: none !important/,
   );
   assert.match(html, /aria-label="SANVIC.PH — tap three times to open Backoffice"/);
+});
+
+test("destination photo samples are category-appropriate and admin galleries retain multi-photo CRUD", () => {
+  const galleryStart = mapApp.indexOf("const DESTINATION_SAMPLE_GALLERIES =");
+  const galleryEnd = mapApp.indexOf("// Inlined Lucide SVG", galleryStart);
+  const context = {
+    SanvicExplore: {
+      safeUrl(value) {
+        const url = String(value || "").trim();
+        if (url.startsWith("assets/")) return url;
+        try {
+          const parsed = new URL(url);
+          return ["https:", "http:"].includes(parsed.protocol) ? parsed.href : "";
+        } catch {
+          return "";
+        }
+      },
+    },
+  };
+  vm.runInNewContext(
+    `${mapApp.slice(galleryStart, galleryEnd)}\nglobalThis.galleryForTest = destinationImageGallery;`,
+    context,
+  );
+  const stays = context.galleryForTest({ category: "stays" });
+  assert.deepEqual(Array.from(stays.images), [
+    "assets/sample-stay-room.jpg",
+    "assets/sample-stay-amenities.jpg",
+  ]);
+  assert.equal(stays.illustrative, true);
+  const restaurant = context.galleryForTest({ category: "food" });
+  assert.ok(restaurant.images.includes("assets/sample-palawan-food.jpg"));
+  assert.equal(restaurant.illustrative, true);
+  const cafe = context.galleryForTest({ category: "cafes" });
+  assert.ok(cafe.images.includes("assets/sample-palawan-cafe.jpg"));
+  const savedPhotos = context.galleryForTest({
+    category: "stays",
+    image: "https://cdn.example.test/room.jpg",
+    images: ["https://cdn.example.test/bathroom.jpg"],
+  });
+  assert.deepEqual(Array.from(savedPhotos.images), [
+    "https://cdn.example.test/room.jpg",
+    "https://cdn.example.test/bathroom.jpg",
+  ]);
+  assert.equal(savedPhotos.illustrative, false);
+  const samplePaths = mapApp.slice(galleryStart, galleryEnd).match(/assets\/[\w/-]+\.jpg/g) || [];
+  for (const samplePath of samplePaths) {
+    assert.ok(fs.existsSync(`public/site/${samplePath}`), `missing bundled image ${samplePath}`);
+  }
+  assert.match(adminStudio, /type="file"[^>]*multiple/);
+  assert.match(adminStudio, /menu pages, dishes, drinks and dining areas/);
+  assert.match(adminStudio, /mediaRemoveImage/);
+  assert.match(adminStudio, /mediaMakeCover/);
 });
 
 test("map header stays brand-only while Explore retains the place search", () => {
@@ -340,16 +393,22 @@ test("map header stays brand-only while Explore retains the place search", () =>
   assert.doesNotMatch(html, /id="mapChipStrip"/);
 });
 
-test("street and dark use the replacement public basemap and surface failures accessibly", () => {
+test("Dark keeps its original low-light treatment and map credits avoid the bottom navigation", () => {
   assert.match(
     mapApp,
     /server\.arcgisonline\.com\/ArcGIS\/rest\/services\/World_Street_Map\/MapServer\/tile\/\{z\}\/\{y\}\/\{x\}/,
   );
   assert.match(mapApp, /window\._mDark = window\._mS/);
   assert.match(mapApp, /dark: window\._mDark/);
+  assert.match(mapApp, /map\.attributionControl\.setPrefix\(false\)/);
+  assert.match(mapApp, /map\.attributionControl\.setPosition\("topright"\)/);
   assert.match(mapApp, /window\._mS\.on\("tileerror"/);
   assert.match(mapApp, /Try Satellite or Terrain in Map options/);
   assert.match(mapApp, /GIS User Community/);
+  assert.match(html, /\.map-dark \.leaflet-tile-pane\{filter:brightness\(\.62\) saturate\(\.55\) contrast\(1\.18\)\}/);
+  assert.doesNotMatch(exploreCss, /\.map-dark \.leaflet-tile-pane\s*\{[^}]*invert\(/);
+  assert.match(exploreCss, /leaflet-top\.leaflet-right \.leaflet-control-attribution[\s\S]*font-size: 7px !important/);
+  assert.match(exploreCss, /#mapLayerToggle \{[\s\S]*top: calc\(env\(safe-area-inset-top, 0px\) \+ 38px\)/);
   assert.match(html, /Esri World Street Map/);
   assert.match(html, /Low-light style · Esri/);
   assert.doesNotMatch(mapApp, /tile\.openstreetmap\.org/);
