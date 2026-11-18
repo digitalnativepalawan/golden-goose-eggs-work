@@ -867,6 +867,10 @@ function centerMapOnPlace(d) {
   try {
     map.setView([d.lat, d.lng], Math.max(15, map.getZoom()), { animate: false });
     highlightExplorePlace(d.id);
+    // setView only emits zoomend when the zoom changes. Re-apply immediately so
+    // the selected pin remains on the map at every zoom and the landing-state
+    // barangay dots yield to this explicit place choice.
+    applyPinVisibility();
     if (!exploreIsSide())
       map.panBy([0, Math.min(window.innerHeight * 0.3, 260)], { animate: false });
   } catch (e) {}
@@ -983,6 +987,9 @@ function closeDestSheet(restore = true) {
     document.getElementById("exploreSheet").removeAttribute("inert");
   closeAroundMePanel();
   currentDest = null;
+  // Returning to the unfiltered landing map restores the barangay orientation
+  // dots straight away instead of waiting for the next zoom gesture.
+  if (typeof applyPinVisibility === "function") applyPinVisibility();
   if (!talaOpen) document.getElementById("talaOrbWrap").classList.remove("hidden");
   if (restore && wasOpen && exploreReturnView) {
     const previous = exploreReturnView;

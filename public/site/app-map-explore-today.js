@@ -1189,17 +1189,8 @@ function togglePulseNowDemo(enabled) {
   renderPulseNowLayer();
 }
 function syncPartnerDemoUI() {
-  const toggle = document.getElementById("pulseNowDemoToggle");
-  if (toggle) toggle.checked = !!partnerDemoMode;
-  const previewButton = document.getElementById("pulsePartnerPreviewBtn");
-  if (previewButton) previewButton.setAttribute("aria-pressed", String(!!partnerDemoMode));
-  const previewLabel = document.getElementById("pulsePartnerPreviewLabel");
-  if (previewLabel)
-    previewLabel.textContent = partnerDemoMode
-      ? "Exit partner preview"
-      : "Partner preview · sample photos";
-  const banner = document.getElementById("partnerDemoBanner");
-  if (banner) banner.hidden = !partnerDemoMode;
+  // Preview controls do not ship in the visitor UI. Keep this harmless hook for
+  // local editorial tooling that imports the shared sample helpers.
 }
 async function togglePartnerDemo(enabled) {
   partnerDemoMode = !!enabled;
@@ -1555,7 +1546,19 @@ function mapMarkerGroup(marker) {
   if (/food|restaurant|resto|dining|cafe|bar/.test(text)) return "food";
   return "other";
 }
+function isSelectedPlaceMarker(marker) {
+  return !!(
+    marker &&
+    marker._d &&
+    exploreState.selected != null &&
+    String(marker._d.id) === String(exploreState.selected)
+  );
+}
 function markerVisibleAtZoom(marker, zoom) {
+  // A focused place is a promise to the visitor: it must never disappear just
+  // because they zoom out to understand where it sits in Palawan. Keep its own
+  // marker above every staging rule and above the temporary cluster layer.
+  if (isSelectedPlaceMarker(marker)) return true;
   // While a meeting point is being picked every pin is a target, so nothing is
   // hidden: tapping any business or landmark on the map is a valid answer.
   if (mapPickActive) return true;
@@ -1579,6 +1582,7 @@ function updatePlaceClusterLayer() {
   if (zoom < 14 || zoom >= 15) return;
   const eligible = activeMarkerSet.filter(
     (m) =>
+      !isSelectedPlaceMarker(m) &&
       (!savedPlacesOnly || savedPlaceIds.has(String(m._d.id))) &&
       ["food", "stays"].includes(mapMarkerGroup(m)) &&
       markerVisibleAtZoom(m, zoom),
@@ -1626,9 +1630,24 @@ function updatePlaceClusterLayer() {
   });
 }
 window.updatePlaceClusterLayer = updatePlaceClusterLayer;
-function updateBarangayMarkerVisibility(zoom) {
+function hasSpecificMapSelection() {
+  return !!(
+    currentDest ||
+    exploreState.selected != null ||
+    String(exploreState.query || "").trim() ||
+    exploreState.category !== "all" ||
+    String(exploreState.area || "").trim() ||
+    exploreState.nearby
+  );
+}
+function updateBarangayMarkerVisibility() {
   if (!map || !barangayMarkerLayer) return;
-  const show = barangayVisible && zoom >= 9 && zoom < 13;
+  // The cyan dots are the landing-state orientation layer: every barangay is
+  // discoverable before someone narrows the map. Once they choose a category,
+  // search, area, nearby mode, or a particular place, the map belongs to that
+  // choice and the barangay dots step away. They are not removed merely because
+  // the visitor zooms in.
+  const show = barangayVisible && !hasSpecificMapSelection();
   if (show && !map.hasLayer(barangayMarkerLayer)) barangayMarkerLayer.addTo(map);
   if (!show && map.hasLayer(barangayMarkerLayer)) map.removeLayer(barangayMarkerLayer);
 }
@@ -2056,9 +2075,15 @@ function buildBarangayMarkers() {
       className: "barangay-point-tooltip",
     });
     marker.on("click", () => {
+      // A tap has to identify the dot as well as navigate to it. On touch
+      // devices the normal hover tooltip never fires, so explicitly reveal the
+      // barangay name before and after the map settles.
+      marker.openTooltip();
       const bounds = L.geoJSON(feature).getBounds();
-      if (bounds.isValid())
+      if (bounds.isValid()) {
+        map.once("moveend", () => marker.openTooltip());
         map.flyToBounds(bounds, { padding: [80, 80], maxZoom: 13, duration: 0.7 });
+      }
     });
     marker.addTo(barangayMarkerLayer);
   });
@@ -2804,7 +2829,13 @@ function selectExploreArea(area) {
   fitExploreResults();
 }
 function resetExploreFilters() {
-  Object.assign(exploreState, { query: "", category: "all", area: "", nearby: false });
+  Object.assign(exploreState, {
+    query: "",
+    category: "all",
+    area: "",
+    nearby: false,
+    selected: null,
+  });
   persistNearby();
   document.getElementById("esSearchInput").value = "";
   const mapInput = document.getElementById("mapSearchInput");

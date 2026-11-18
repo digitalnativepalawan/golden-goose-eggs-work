@@ -227,14 +227,11 @@ const DEFAULT_SPLASH_FOOTER = `PALAWAN`;
 let talaAiEnabled = false;
 let talaAiModel = "";
 
-// ─── PARTNER PREVIEW ──────────────────────────────────────────────────────
-// Packaged sample activity is shown only when someone explicitly enables the
-// clearly labeled partner-preview switch. The normal visitor experience uses
-// Supabase rows or honest empty states, including when the connection fails.
+// ─── PACKAGED SAMPLE MODE ─────────────────────────────────────────────────
+// Sample fixtures remain in source for local development and future editorial
+// review, but are never switched on in the visitor experience. Real Supabase
+// rows (or honest empty states) are the only content a visitor can see.
 let partnerDemoMode = false;
-try {
-  partnerDemoMode = localStorage.getItem("sanvic_partner_demo") === "1";
-} catch (e) {}
 
 // Today keys that describe what is happening in San Vicente right now. If the
 // database has no row for one of these, the card says so instead of falling back
