@@ -1668,9 +1668,10 @@ function clearPlaceClusterLayer() {
 }
 function updateBarangayMarkerVisibility(mode = mapMarkerMode()) {
   if (!map || !barangayMarkerLayer) return;
-  // Landing means orientation first: the blue dots are the whole map language.
-  // Any Explore choice replaces that layer rather than drawing on top of it.
-  const show = barangayVisible && mode === "landing";
+  // The blue San Vicente card takes over at the furthest landing zoom. As soon
+  // as a visitor zooms in, the named blue barangay dots return; any Explore
+  // choice still replaces both orientation layers with its result pins.
+  const show = barangayVisible && mode === "landing" && map.getZoom() > map.getMinZoom();
   if (show && !map.hasLayer(barangayMarkerLayer)) barangayMarkerLayer.addTo(map);
   if (!show && map.hasLayer(barangayMarkerLayer)) map.removeLayer(barangayMarkerLayer);
 }

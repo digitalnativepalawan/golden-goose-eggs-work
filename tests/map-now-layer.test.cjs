@@ -132,9 +132,10 @@ test("landing and Explore filters never mix barangay and place dots", () => {
   const state = { selected: null, query: "", category: "all", area: "", nearby: false };
   const staleCluster = {};
   const areaLabelStates = [];
+  let zoom = 8;
   present.add(staleCluster);
   const map = {
-    getZoom: () => 8,
+    getZoom: () => zoom,
     getMinZoom: () => 8,
     getContainer: () => ({ classList: { toggle() {} } }),
     hasLayer: (layer) => present.has(layer),
@@ -159,10 +160,15 @@ test("landing and Explore filters never mix barangay and place dots", () => {
   vm.runInContext(mapApp.slice(start, end), c);
   c.applyPinVisibility();
   assert.equal(c.mapMarkerMode(), "landing");
-  assert.equal(present.has(markerLayer), true, "landing map keeps barangay dots");
+  assert.equal(present.has(markerLayer), false, "furthest landing zoom hides barangay dots");
   assert.equal(present.has(placeMarker), false, "landing map hides every place pin");
   assert.equal(present.has(staleCluster), false, "landing map clears place clusters");
   assert.equal(areaLabelStates.at(-1), true, "furthest landing zoom restores San Vicente card");
+
+  zoom = 9;
+  c.applyPinVisibility();
+  assert.equal(present.has(markerLayer), true, "zooming in restores barangay dots");
+  assert.equal(areaLabelStates.at(-1), false, "zooming in hides the San Vicente card");
 
   state.category = "beaches";
   c.applyPinVisibility();
@@ -182,6 +188,7 @@ test("landing and Explore filters never mix barangay and place dots", () => {
   // The blue San Vicente orientation card returns only at the furthest neutral
   // landing zoom. Pulse event chips remain outside the directory layers.
   assert.match(mapApp, /mode === "landing" && zoom <= map\.getMinZoom\(\)/);
+  assert.match(mapApp, /mode === "landing" && map\.getZoom\(\) > map\.getMinZoom\(\)/);
   assert.match(mapApp, /mapMarkerMode\(\) !== "pick"/);
   assert.match(mapApp, /marker\.openTooltip\(\)/);
   assert.match(mapApp, /map\.once\("moveend", \(\) => marker\.openTooltip\(\)\)/);
