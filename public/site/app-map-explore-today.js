@@ -1244,6 +1244,13 @@ function setPulseNowMapOpen(open) {
   livePulseNowTimer = window.setInterval(refreshLivePulseNow, 120000);
 }
 async function refreshLivePulseNow() {
+  // Pulse chips are a distinct map layer, not directory results. The landing
+  // map now reserves its surface for barangay orientation and Explore reserves
+  // it for its own results, so never add an event/tribe chip over either.
+  if (typeof mapMarkerMode === "function" && mapMarkerMode() !== "pick") {
+    clearLivePulseNowMarkers();
+    return;
+  }
   if (
     !map ||
     !pulseNowColumnsAvailable ||
@@ -1345,6 +1352,7 @@ function isMissingPulseNowColumnError(error) {
 }
 function renderPulseNowLayer() {
   clearPulseNowDemoMarkers();
+  if (typeof mapMarkerMode === "function" && mapMarkerMode() !== "pick") return;
   if (
     !pulseNowDemoEnabled ||
     !map ||
@@ -1440,6 +1448,9 @@ function maybeShowMapTour(force = false) {
   const splash = document.getElementById("splash");
   if (splash && !splash.classList.contains("hidden")) return;
   if (!map || !allMarkers.length || document.getElementById("mapTourBubble")) return;
+  // The landing map deliberately contains only blue barangay dots; do not draw
+  // a tour bubble toward a destination pin that is intentionally absent.
+  if (mapMarkerMode() === "landing") return;
   const params = new URLSearchParams(window.location.search);
   if (!force && params.get("tour") !== "1") {
     try {
@@ -1630,24 +1641,36 @@ function updatePlaceClusterLayer() {
   });
 }
 window.updatePlaceClusterLayer = updatePlaceClusterLayer;
-function hasSpecificMapSelection() {
+function hasExploreMapFilter() {
   return !!(
-    currentDest ||
-    exploreState.selected != null ||
     String(exploreState.query || "").trim() ||
     exploreState.category !== "all" ||
     String(exploreState.area || "").trim() ||
-    exploreState.nearby
+    exploreState.nearby ||
+    savedPlacesOnly
   );
 }
-function updateBarangayMarkerVisibility() {
+
+// The map has three intentional visual states. This is deliberately separate
+// from zoom staging: zooming must never turn the clean barangay landing map into
+// a mixed cloud of barangay and destination dots.
+function mapMarkerMode() {
+  if (mapPickActive) return "pick";
+  if (currentDest) return "focus";
+  if (hasExploreMapFilter()) return "filtered";
+  return "landing";
+}
+function clearPlaceClusterLayer() {
+  placeClusterMarkers.forEach((marker) => {
+    if (map && map.hasLayer(marker)) map.removeLayer(marker);
+  });
+  placeClusterMarkers = [];
+}
+function updateBarangayMarkerVisibility(mode = mapMarkerMode()) {
   if (!map || !barangayMarkerLayer) return;
-  // The cyan dots are the landing-state orientation layer: every barangay is
-  // discoverable before someone narrows the map. Once they choose a category,
-  // search, area, nearby mode, or a particular place, the map belongs to that
-  // choice and the barangay dots step away. They are not removed merely because
-  // the visitor zooms in.
-  const show = barangayVisible && !hasSpecificMapSelection();
+  // Landing means orientation first: the blue dots are the whole map language.
+  // Any Explore choice replaces that layer rather than drawing on top of it.
+  const show = barangayVisible && mode === "landing";
   if (show && !map.hasLayer(barangayMarkerLayer)) barangayMarkerLayer.addTo(map);
   if (!show && map.hasLayer(barangayMarkerLayer)) map.removeLayer(barangayMarkerLayer);
 }
@@ -1655,24 +1678,56 @@ function updateBarangayMarkerVisibility() {
 function applyPinVisibility() {
   if (!map) return;
   const zoom = map.getZoom();
+  const mode = mapMarkerMode();
   const container = map.getContainer();
   if (container) container.classList.toggle("zoom-far", zoom <= 11);
-  setAreaLabel(zoom < 9);
-  updateBarangayMarkerVisibility(zoom);
+  // The old regional "place count" card was a stand-in for a pin cloud. The
+  // map now has explicit layers, so it would violate both the blue-dot landing
+  // view and the filtered-results-only view.
+  setAreaLabel(false);
+  updateBarangayMarkerVisibility(mode);
   allMarkers.forEach((marker) => {
     if (map.hasLayer(marker)) map.removeLayer(marker);
   });
-  const visible = activeMarkerSet.filter(
-    (marker) =>
-      (!savedPlacesOnly || savedPlaceIds.has(String(marker._d.id))) &&
-      markerVisibleAtZoom(marker, zoom),
-  );
+
+  // No coloured place pins belong on the initial map. It is intentionally a
+  // clean, tappable barangay overview until a visitor asks to see a directory
+  // result.
+  if (mode === "landing") {
+    clearPlaceClusterLayer();
+    return;
+  }
+
+  let visible = [];
+  if (mode === "focus") {
+    // A selected place is never zoom-staged, filtered out by Saved places, or
+    // collapsed into a cluster. It is the visitor's fixed point on the map.
+    visible = allMarkers.filter((marker) => String(marker._d.id) === String(currentDest.id));
+  } else if (mode === "filtered") {
+    // A category/search/area result owns the canvas. Draw every matching place
+    // as its coloured dot; do not mix in the default featured markers.
+    visible = activeMarkerSet.filter(
+      (marker) => !savedPlacesOnly || savedPlaceIds.has(String(marker._d.id)),
+    );
+  } else if (mode === "pick") {
+    visible = activeMarkerSet.filter(
+      (marker) =>
+        (!savedPlacesOnly || savedPlaceIds.has(String(marker._d.id))) &&
+        markerVisibleAtZoom(marker, zoom),
+    );
+  }
+
   visible.forEach((marker) => {
     marker.addTo(map);
     if (marker._icon)
       marker._icon.classList.toggle("is-saved", savedPlaceIds.has(String(marker._d.id)));
   });
-  updatePlaceClusterLayer();
+
+  // Clusters replace individual dots. They are useful only while explicitly
+  // picking a meeting point; Explore filters must show their actual category
+  // dots, and a focused place must remain solitary and obvious.
+  if (mode === "pick") updatePlaceClusterLayer();
+  else clearPlaceClusterLayer();
 }
 
 // ─── FAR-ZOOM AREA LABEL ───
@@ -1944,7 +1999,9 @@ async function initMap() {
   rebuildMarkers();
   map.on("zoomend", applyPinVisibility);
   map.on("moveend", () => {
-    if (map.getZoom() < 9) setAreaLabel(true);
+    // Marker layers are explicit now; the historical far-zoom summary card
+    // must not reappear over the barangay-only landing map.
+    setAreaLabel(false);
     if (
       document.body.dataset.activeTab === "map" &&
       !document.body.classList.contains("place-open") &&
@@ -2101,7 +2158,7 @@ function initBarangayLayer() {
   barangayMarkerLayer = L.layerGroup();
   buildBarangayMarkers();
   if (barangayVisible) barangayLayer.addTo(map);
-  updateBarangayMarkerVisibility(map.getZoom());
+  updateBarangayMarkerVisibility();
   document.getElementById("barangayToggle").checked = barangayVisible;
 }
 function toggleBarangayLayer() {
@@ -2110,7 +2167,7 @@ function toggleBarangayLayer() {
     if (barangayVisible) barangayLayer.addTo(map);
     else map.removeLayer(barangayLayer);
   }
-  updateBarangayMarkerVisibility(map?.getZoom() || 0);
+  updateBarangayMarkerVisibility();
   try {
     sessionStorage.setItem("sanvic_boundaries", barangayVisible ? "on" : "off");
   } catch (e) {}
@@ -2568,6 +2625,10 @@ function closeExploreSheet() {
   s.classList.remove("open");
   s.setAttribute("inert", "");
   document.body.classList.remove("explore-open");
+  // Closing an untouched Explore sheet is an explicit return to the landing map,
+  // where the named barangay dots are the only pins. A chosen category/search
+  // stays a chosen map state even when its sheet is temporarily out of view.
+  applyPinVisibility();
   syncMapViewport();
 }
 function setExploreSnap(level) {
@@ -2817,6 +2878,10 @@ function renderMapSearchResults() {
 }
 function selectExploreCategory(category) {
   exploreState.category = category;
+  // “All places” is the return to the map's clean landing state, not another
+  // category layer. A stale highlighted row must not keep a place-focused map
+  // alive after that reset.
+  if (category === "all") exploreState.selected = null;
   renderExploreContent();
   syncExploreMap();
   fitExploreResults();

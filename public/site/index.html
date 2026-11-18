@@ -1334,10 +1334,13 @@ svg.lucide{vertical-align:-.15em}
 <div class="dest-overlay" id="destOverlay"></div>
 <div class="dest-sheet" id="destSheet">
   <button class="detail-back" id="detailBack" onclick="closeDestSheet()"><svg xmlns="http://www.w3.org/2000/svg" class="lucide" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg> Back to places</button>
-  <div class="dest-handle" onclick="toggleDestSheet()"></div>
+  <button class="dest-handle" id="destMapHandle" type="button" aria-label="Drag down to see the map, or tap to minimise place details">
+    <span class="dest-handle-grip" aria-hidden="true"></span>
+    <span>Drag down for map</span>
+  </button>
 
   <!-- Compact view -->
-  <div class="dest-compact" onclick="toggleDestSheet()">
+  <button class="dest-compact" type="button" aria-label="Show full place details" onclick="toggleDestSheet()">
     <div class="dest-compact-img"><img id="dcImg" src="" alt=""></div>
     <div class="dest-compact-info">
       <div class="dest-compact-name" id="dcName"></div>
@@ -1350,7 +1353,7 @@ svg.lucide{vertical-align:-.15em}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
     </div>
-  </div>
+  </button>
 
   <!-- Expanded view -->
   <div class="dest-expanded">
@@ -2477,7 +2480,7 @@ svg.lucide{vertical-align:-.15em}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-11-18-map-selection-r20';
+  window.SANVIC_DEPLOY_VERSION = '2026-11-18-map-state-sheet-r21';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by the app scripts and entry-flow.js so the two
   // timers cannot drift apart. Raise it to hold the first page longer.
@@ -2605,7 +2608,7 @@ svg.lucide{vertical-align:-.15em}
   <div class="carousel-dots" id="carouselDots"></div>
 </div>
 
-<link rel="stylesheet" href="explore-ux.css?v=2026-11-14-today-mobile-fix-r17">
+<link rel="stylesheet" href="explore-ux.css?v=2026-11-18-map-state-sheet-r21">
 <style id="sanvicNoHScroll">
   /* ── Nothing in the product scrolls sideways. ─────────────────────────────
      Chip rows wrap; card strips wrap into uniform full-width rows. The same

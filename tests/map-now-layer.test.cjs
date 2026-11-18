@@ -93,8 +93,9 @@ function liveLayerContext({ activeTab = "map", rows = {}, errors = {} } = {}) {
   return { context, queries, markers, map };
 }
 
-test("first-visit map tour is brief, dismissible, and points at a visible pin", () => {
+test("first-visit map tour is brief, dismissible, and never breaks the barangay landing map", () => {
   assert.match(mapApp, /function maybeShowMapTour\(force = false\)/);
+  assert.match(mapApp, /mapMarkerMode\(\) === "landing"\) return/);
   assert.match(mapApp, /sanvic_map_tour_seen/);
   assert.match(mapApp, /markerVisibleAtZoom\(marker, map\.getZoom\(\)\)/);
   assert.match(mapApp, /Tap a pin to explore/);
@@ -119,34 +120,95 @@ test("a selected place pin stays visible while zooming out", () => {
   assert.equal(c.markerVisibleAtZoom(other, 8), false);
 });
 
-test("barangay dots are landing orientation only and a tap names the barangay", () => {
-  const start = mapApp.indexOf("function hasSpecificMapSelection()");
-  const end = mapApp.indexOf("function applyPinVisibility()", start);
+test("landing and Explore filters never mix barangay and place dots", () => {
+  const start = mapApp.indexOf("function hasExploreMapFilter()");
+  const end = mapApp.indexOf("// ─── FAR-ZOOM AREA LABEL", start);
   const present = new Set();
   const markerLayer = { addTo: () => present.add(markerLayer) };
+  const placeMarker = {
+    _d: { id: "beach-1", category: "beaches" },
+    addTo: () => present.add(placeMarker),
+  };
   const state = { selected: null, query: "", category: "all", area: "", nearby: false };
+  const staleCluster = {};
+  present.add(staleCluster);
+  const map = {
+    getZoom: () => 8,
+    getContainer: () => ({ classList: { toggle() {} } }),
+    hasLayer: (layer) => present.has(layer),
+    removeLayer: (layer) => present.delete(layer),
+  };
   const c = vm.createContext({
     currentDest: null,
+    mapPickActive: false,
+    savedPlacesOnly: false,
+    savedPlaceIds: new Set(),
     exploreState: state,
     barangayVisible: true,
     barangayMarkerLayer: markerLayer,
-    map: {
-      hasLayer: (layer) => present.has(layer),
-      removeLayer: (layer) => present.delete(layer),
-    },
+    allMarkers: [placeMarker],
+    activeMarkerSet: [placeMarker],
+    placeClusterMarkers: [staleCluster],
+    setAreaLabel() {},
+    map,
   });
   vm.runInContext(mapApp.slice(start, end), c);
-  c.updateBarangayMarkerVisibility(8);
-  assert.equal(
-    present.has(markerLayer),
-    true,
-    "unfiltered landing map keeps barangay dots visible even when zoomed out",
-  );
+  c.applyPinVisibility();
+  assert.equal(c.mapMarkerMode(), "landing");
+  assert.equal(present.has(markerLayer), true, "landing map keeps barangay dots");
+  assert.equal(present.has(placeMarker), false, "landing map hides every place pin");
+  assert.equal(present.has(staleCluster), false, "landing map clears place clusters");
+
   state.category = "beaches";
-  c.updateBarangayMarkerVisibility(8);
+  c.applyPinVisibility();
+  assert.equal(c.mapMarkerMode(), "filtered");
   assert.equal(present.has(markerLayer), false, "category choice clears barangay dots");
+  assert.equal(present.has(placeMarker), true, "category choice shows matching place pins");
+
+  state.category = "all";
+  c.currentDest = { id: "beach-1" };
+  c.applyPinVisibility();
+  assert.equal(c.mapMarkerMode(), "focus");
+  assert.equal(present.has(markerLayer), false, "focused place keeps barangay dots hidden");
+  assert.equal(present.has(placeMarker), true, "focused place remains on the map");
+
+  // The former far-zoom summary card and Pulse event chips are not place
+  // results. Neither may sneak into the strict landing/filter layers.
+  assert.match(mapApp, /setAreaLabel\(false\);/);
+  assert.match(mapApp, /mapMarkerMode\(\) !== "pick"/);
   assert.match(mapApp, /marker\.openTooltip\(\)/);
   assert.match(mapApp, /map\.once\("moveend", \(\) => marker\.openTooltip\(\)\)/);
+});
+
+test("legacy Discover categories write the canonical Explore state", () => {
+  const discoverStart = weatherApp.indexOf("function selectDiscoverCategory(cat)");
+  const discoverEnd = weatherApp.indexOf("function openDestinationById", discoverStart);
+  const discoverSource = weatherApp.slice(discoverStart, discoverEnd);
+  const filterStart = weatherApp.indexOf("function filterCategory(cat)");
+  const filterEnd = weatherApp.indexOf("\n\nfunction", filterStart + 1);
+  const filterSource = weatherApp.slice(filterStart, filterEnd);
+  assert.match(discoverSource, /selectExploreCategory\(cat\)/);
+  assert.match(discoverSource, /closeExploreSheet\(\)/);
+  assert.match(filterSource, /selectExploreCategory\(cat\);\s*return;/);
+});
+
+test("place details have a visible, finger-first map minimiser", () => {
+  assert.match(
+    html,
+    /id="destMapHandle"[^>]*aria-label="Drag down to see the map, or tap to minimise place details"/,
+  );
+  assert.match(html, /<span>Drag down for map<\/span>/);
+  assert.match(exploreCss, /\.dest-sheet\.closed\s*\{[\s\S]*visibility:\s*visible/);
+  assert.match(
+    exploreCss,
+    /\.dest-sheet\.closed \.dest-compact\s*\{[\s\S]*display:\s*flex !important/,
+  );
+  assert.match(weatherApp, /handler = document\.getElementById\("destMapHandle"\)/);
+  assert.match(
+    weatherApp,
+    /handler\.addEventListener\("touchmove", onMove, \{ passive: false \}\)/,
+  );
+  assert.match(weatherApp, /if \(y > 70\) collapse\(\)/);
 });
 
 test("live Pulse Now reads structured rows only on the map tab", () => {
