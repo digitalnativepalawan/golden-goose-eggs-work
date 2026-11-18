@@ -131,9 +131,11 @@ test("landing and Explore filters never mix barangay and place dots", () => {
   };
   const state = { selected: null, query: "", category: "all", area: "", nearby: false };
   const staleCluster = {};
+  const areaLabelStates = [];
   present.add(staleCluster);
   const map = {
     getZoom: () => 8,
+    getMinZoom: () => 8,
     getContainer: () => ({ classList: { toggle() {} } }),
     hasLayer: (layer) => present.has(layer),
     removeLayer: (layer) => present.delete(layer),
@@ -149,7 +151,9 @@ test("landing and Explore filters never mix barangay and place dots", () => {
     allMarkers: [placeMarker],
     activeMarkerSet: [placeMarker],
     placeClusterMarkers: [staleCluster],
-    setAreaLabel() {},
+    setAreaLabel(show) {
+      areaLabelStates.push(show);
+    },
     map,
   });
   vm.runInContext(mapApp.slice(start, end), c);
@@ -158,12 +162,14 @@ test("landing and Explore filters never mix barangay and place dots", () => {
   assert.equal(present.has(markerLayer), true, "landing map keeps barangay dots");
   assert.equal(present.has(placeMarker), false, "landing map hides every place pin");
   assert.equal(present.has(staleCluster), false, "landing map clears place clusters");
+  assert.equal(areaLabelStates.at(-1), true, "furthest landing zoom restores San Vicente card");
 
   state.category = "beaches";
   c.applyPinVisibility();
   assert.equal(c.mapMarkerMode(), "filtered");
   assert.equal(present.has(markerLayer), false, "category choice clears barangay dots");
   assert.equal(present.has(placeMarker), true, "category choice shows matching place pins");
+  assert.equal(areaLabelStates.at(-1), false, "filters clear the far-zoom orientation card");
 
   state.category = "all";
   c.currentDest = { id: "beach-1" };
@@ -171,10 +177,11 @@ test("landing and Explore filters never mix barangay and place dots", () => {
   assert.equal(c.mapMarkerMode(), "focus");
   assert.equal(present.has(markerLayer), false, "focused place keeps barangay dots hidden");
   assert.equal(present.has(placeMarker), true, "focused place remains on the map");
+  assert.equal(areaLabelStates.at(-1), false, "focus clears the far-zoom orientation card");
 
-  // The former far-zoom summary card and Pulse event chips are not place
-  // results. Neither may sneak into the strict landing/filter layers.
-  assert.match(mapApp, /setAreaLabel\(false\);/);
+  // The blue San Vicente orientation card returns only at the furthest neutral
+  // landing zoom. Pulse event chips remain outside the directory layers.
+  assert.match(mapApp, /mode === "landing" && zoom <= map\.getMinZoom\(\)/);
   assert.match(mapApp, /mapMarkerMode\(\) !== "pick"/);
   assert.match(mapApp, /marker\.openTooltip\(\)/);
   assert.match(mapApp, /map\.once\("moveend", \(\) => marker\.openTooltip\(\)\)/);
