@@ -14,17 +14,18 @@ const { client, canon, has, count, after } = require("./support/client.cjs");
 
 const app = client();
 const html = fs.readFileSync("public/site/index.html", "utf8");
+const core = fs.readFileSync("public/site/app-core.js", "utf8");
 
-test("partner preview is off by default and always carries a visible not-live label", () => {
+test("sample mode cannot be enabled from the visitor interface", () => {
   assert.ok(has(app, "let partnerDemoMode = false;"));
-  assert.ok(has(app, 'partnerDemoMode=localStorage.getItem("sanvic_partner_demo")==="1";'));
-  assert.match(html, /onchange="togglePartnerDemo\(this\.checked\)"/);
-  assert.match(html, /id="partnerDemoBanner"/);
-  assert.match(html, /PARTNER PREVIEW · SAMPLE DATA · NOT LIVE/);
+  assert.doesNotMatch(core, /sanvic_partner_demo/);
+  assert.doesNotMatch(html, /togglePartnerDemo/);
+  assert.doesNotMatch(html, /pulseNowDemoToggle|pulsePartnerPreviewBtn|partnerDemoBanner/);
+  assert.doesNotMatch(html, /Partner preview · sample (content|photos)/);
   assert.equal(has(app, "SHOW_SAMPLES_WHEN_DB_IS_EMPTY"), false);
 });
 
-test("answered empty and failed activity queries do not expose samples unless preview is enabled", () => {
+test("answered empty and failed activity queries clear live activity instead of showing samples", () => {
   assert.ok(has(app, "if(partnerDemoMode)setPulsePartnerDemo(true);else{"));
   assert.ok(has(app, "PULSE_TRIBES.length=0;"));
   assert.ok(has(app, "PULSE_EVENTS.length=0;"));
@@ -32,7 +33,7 @@ test("answered empty and failed activity queries do not expose samples unless pr
   assert.equal(has(app, "SHOW_SAMPLES_WHEN_DB_IS_EMPTY"), false);
 });
 
-test("preview shows sample feed posts but blocks writes to real engagement tables", () => {
+test("packaged sample feed fixtures protect real engagement tables if used in local development", () => {
   assert.ok(has(app, "const PARTNER_DEMO_FEED = ["));
   assert.ok(has(app, "if(partnerDemoMode){const posts=PARTNER_DEMO_FEED.filter"));
   assert.ok(has(app, "Sample feed posts · likes and replies are not saved."));
@@ -88,8 +89,8 @@ test("every live Today list has a quiet empty state", () => {
   assert.ok(has(app, "tnotice-empty"));
 });
 
-test("the packaged samples remain available for explicit partner preview", () => {
-  // Keep the fixtures available, but only show them behind the opt-in preview.
+test("the packaged samples remain available for local editorial development", () => {
+  // Keep fixtures on disk for editorial work, but do not expose a visitor control.
   assert.ok(has(app, "const PULSE_TRIBES = ["));
   assert.ok(has(app, "const PULSE_EVENTS = ["));
   assert.ok(has(app, "const TODAY_DATA = {"));

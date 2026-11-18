@@ -856,10 +856,6 @@ svg.lucide{vertical-align:-.15em}
   </div>
   <div class="splash-footer" id="splashFooter">PALAWAN</div>
 </div>
-<div id="partnerDemoBanner" class="partner-demo-banner" role="status" hidden>
-  PARTNER PREVIEW · SAMPLE DATA · NOT LIVE
-</div>
-
 <!-- ═══ MAP (background canvas, z:1 — no UI siblings inside) ═══ -->
 <div id="map"></div>
 
@@ -904,7 +900,6 @@ svg.lucide{vertical-align:-.15em}
     </fieldset>
     <label class="boundary-option"><input id="barangayToggle" type="checkbox" checked onchange="toggleBarangayLayer()"> Barangay boundaries</label>
     <label class="boundary-option"><input id="savedPlacesToggle" type="checkbox" onchange="toggleSavedPlacesLayer(this.checked)"> Saved places only</label>
-    <label class="boundary-option"><input id="pulseNowDemoToggle" type="checkbox" onchange="togglePartnerDemo(this.checked)"> Partner preview · sample content <small>Demo only · not live</small></label>
     <div class="map-legend" aria-label="Map marker legend"><div class="map-legend-title">Place markers</div><div class="map-legend-items" id="mapLegendItems"></div></div>
   </div>
 </div>
@@ -1339,10 +1334,13 @@ svg.lucide{vertical-align:-.15em}
 <div class="dest-overlay" id="destOverlay"></div>
 <div class="dest-sheet" id="destSheet">
   <button class="detail-back" id="detailBack" onclick="closeDestSheet()"><svg xmlns="http://www.w3.org/2000/svg" class="lucide" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg> Back to places</button>
-  <div class="dest-handle" onclick="toggleDestSheet()"></div>
+  <button class="dest-handle" id="destMapHandle" type="button" aria-label="Drag down to see the map, or tap to minimise place details">
+    <span class="dest-handle-grip" aria-hidden="true"></span>
+    <span>Drag down for map</span>
+  </button>
 
   <!-- Compact view -->
-  <div class="dest-compact" onclick="toggleDestSheet()">
+  <button class="dest-compact" type="button" aria-label="Show full place details" onclick="toggleDestSheet()">
     <div class="dest-compact-img"><img id="dcImg" src="" alt=""></div>
     <div class="dest-compact-info">
       <div class="dest-compact-name" id="dcName"></div>
@@ -1355,7 +1353,7 @@ svg.lucide{vertical-align:-.15em}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
     </div>
-  </div>
+  </button>
 
   <!-- Expanded view -->
   <div class="dest-expanded">
@@ -1502,10 +1500,6 @@ svg.lucide{vertical-align:-.15em}
   .pv2-header-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:12px}
   .pv2-header-cta{display:inline-flex;align-items:center;gap:8px;margin-top:0;padding:11px 16px;border:1px solid rgba(57,255,208,.62);border-radius:999px;background:linear-gradient(120deg,rgba(57,255,208,.2),rgba(20,184,166,.12));color:#d9fff8;font:700 .82rem var(--font-body);letter-spacing:.01em;box-shadow:0 0 18px rgba(57,255,208,.12);cursor:pointer}
   .pv2-header-cta svg{width:17px;height:17px;color:#39ffd0}
-  .pv2-preview-cta{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:0 13px;border:1px solid rgba(199,222,231,.26);border-radius:999px;background:rgba(255,255,255,.055);color:rgba(245,251,255,.88);font:600 .75rem var(--font-body);cursor:pointer;transition:background .18s,border-color .18s,color .18s}
-  .pv2-preview-cta svg{width:16px;height:16px;flex:none;color:#a8c5ce}
-  .pv2-preview-cta:hover,.pv2-preview-cta[aria-pressed="true"]{border-color:rgba(57,255,208,.6);background:rgba(20,184,166,.14);color:#eafffb}
-  .pv2-preview-cta:focus-visible{outline:3px solid #65e1d1;outline-offset:3px}
   /* Five views since the feed came back: tribes, feed, events, lounge, form.
      The columns are even so the row still reads as one control, and the type
      tightens on a narrow phone rather than dropping a tab. */
@@ -1703,10 +1697,6 @@ svg.lucide{vertical-align:-.15em}
     <div class="pv2-body-copy" id="pv2Copy">Join small groups, local happenings, and tribe chats around San Vicente.</div>
     <div class="pv2-header-actions">
       <button class="pv2-header-cta" type="button" onclick="selectPulseView('form')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Form a Tribe</button>
-      <button id="pulsePartnerPreviewBtn" class="pv2-preview-cta" type="button" onclick="togglePartnerDemo(!partnerDemoMode)" aria-pressed="false" aria-controls="partnerDemoBanner" title="Show sample tribes, events, map pins, and photos. Preview actions do not change live data.">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>
-        <span id="pulsePartnerPreviewLabel">Partner preview · sample photos</span>
-      </button>
     </div>
     <div class="pv2-live">
       <span class="pv2-live-dot" aria-hidden="true"></span>
@@ -2490,7 +2480,7 @@ svg.lucide{vertical-align:-.15em}
   // any JS file. Never trust a ?v= from the page URL — visitors arrive with
   // stale ?v= tokens (bookmarks, share links, published-site wrappers) that
   // pin browsers to old cached bundles, which is how mobile nav broke.
-  window.SANVIC_DEPLOY_VERSION = '2026-11-14-today-mobile-fix-r19';
+  window.SANVIC_DEPLOY_VERSION = '2026-11-18-map-state-sheet-r21';
   // How long the SANVIC splash holds before the app (and the first-visit
   // questions) appear. Shared by the app scripts and entry-flow.js so the two
   // timers cannot drift apart. Raise it to hold the first page longer.
@@ -2618,7 +2608,7 @@ svg.lucide{vertical-align:-.15em}
   <div class="carousel-dots" id="carouselDots"></div>
 </div>
 
-<link rel="stylesheet" href="explore-ux.css?v=2026-11-14-today-mobile-fix-r17">
+<link rel="stylesheet" href="explore-ux.css?v=2026-11-18-map-state-sheet-r21">
 <style id="sanvicNoHScroll">
   /* ── Nothing in the product scrolls sideways. ─────────────────────────────
      Chip rows wrap; card strips wrap into uniform full-width rows. The same

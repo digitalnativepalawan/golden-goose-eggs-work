@@ -1189,17 +1189,8 @@ function togglePulseNowDemo(enabled) {
   renderPulseNowLayer();
 }
 function syncPartnerDemoUI() {
-  const toggle = document.getElementById("pulseNowDemoToggle");
-  if (toggle) toggle.checked = !!partnerDemoMode;
-  const previewButton = document.getElementById("pulsePartnerPreviewBtn");
-  if (previewButton) previewButton.setAttribute("aria-pressed", String(!!partnerDemoMode));
-  const previewLabel = document.getElementById("pulsePartnerPreviewLabel");
-  if (previewLabel)
-    previewLabel.textContent = partnerDemoMode
-      ? "Exit partner preview"
-      : "Partner preview · sample photos";
-  const banner = document.getElementById("partnerDemoBanner");
-  if (banner) banner.hidden = !partnerDemoMode;
+  // Preview controls do not ship in the visitor UI. Keep this harmless hook for
+  // local editorial tooling that imports the shared sample helpers.
 }
 async function togglePartnerDemo(enabled) {
   partnerDemoMode = !!enabled;
@@ -1253,6 +1244,13 @@ function setPulseNowMapOpen(open) {
   livePulseNowTimer = window.setInterval(refreshLivePulseNow, 120000);
 }
 async function refreshLivePulseNow() {
+  // Pulse chips are a distinct map layer, not directory results. The landing
+  // map now reserves its surface for barangay orientation and Explore reserves
+  // it for its own results, so never add an event/tribe chip over either.
+  if (typeof mapMarkerMode === "function" && mapMarkerMode() !== "pick") {
+    clearLivePulseNowMarkers();
+    return;
+  }
   if (
     !map ||
     !pulseNowColumnsAvailable ||
@@ -1354,6 +1352,7 @@ function isMissingPulseNowColumnError(error) {
 }
 function renderPulseNowLayer() {
   clearPulseNowDemoMarkers();
+  if (typeof mapMarkerMode === "function" && mapMarkerMode() !== "pick") return;
   if (
     !pulseNowDemoEnabled ||
     !map ||
@@ -1449,6 +1448,9 @@ function maybeShowMapTour(force = false) {
   const splash = document.getElementById("splash");
   if (splash && !splash.classList.contains("hidden")) return;
   if (!map || !allMarkers.length || document.getElementById("mapTourBubble")) return;
+  // The landing map deliberately contains only blue barangay dots; do not draw
+  // a tour bubble toward a destination pin that is intentionally absent.
+  if (mapMarkerMode() === "landing") return;
   const params = new URLSearchParams(window.location.search);
   if (!force && params.get("tour") !== "1") {
     try {
@@ -1555,7 +1557,19 @@ function mapMarkerGroup(marker) {
   if (/food|restaurant|resto|dining|cafe|bar/.test(text)) return "food";
   return "other";
 }
+function isSelectedPlaceMarker(marker) {
+  return !!(
+    marker &&
+    marker._d &&
+    exploreState.selected != null &&
+    String(marker._d.id) === String(exploreState.selected)
+  );
+}
 function markerVisibleAtZoom(marker, zoom) {
+  // A focused place is a promise to the visitor: it must never disappear just
+  // because they zoom out to understand where it sits in Palawan. Keep its own
+  // marker above every staging rule and above the temporary cluster layer.
+  if (isSelectedPlaceMarker(marker)) return true;
   // While a meeting point is being picked every pin is a target, so nothing is
   // hidden: tapping any business or landmark on the map is a valid answer.
   if (mapPickActive) return true;
@@ -1579,6 +1593,7 @@ function updatePlaceClusterLayer() {
   if (zoom < 14 || zoom >= 15) return;
   const eligible = activeMarkerSet.filter(
     (m) =>
+      !isSelectedPlaceMarker(m) &&
       (!savedPlacesOnly || savedPlaceIds.has(String(m._d.id))) &&
       ["food", "stays"].includes(mapMarkerGroup(m)) &&
       markerVisibleAtZoom(m, zoom),
@@ -1626,9 +1641,36 @@ function updatePlaceClusterLayer() {
   });
 }
 window.updatePlaceClusterLayer = updatePlaceClusterLayer;
-function updateBarangayMarkerVisibility(zoom) {
+function hasExploreMapFilter() {
+  return !!(
+    String(exploreState.query || "").trim() ||
+    exploreState.category !== "all" ||
+    String(exploreState.area || "").trim() ||
+    exploreState.nearby ||
+    savedPlacesOnly
+  );
+}
+
+// The map has three intentional visual states. This is deliberately separate
+// from zoom staging: zooming must never turn the clean barangay landing map into
+// a mixed cloud of barangay and destination dots.
+function mapMarkerMode() {
+  if (mapPickActive) return "pick";
+  if (currentDest) return "focus";
+  if (hasExploreMapFilter()) return "filtered";
+  return "landing";
+}
+function clearPlaceClusterLayer() {
+  placeClusterMarkers.forEach((marker) => {
+    if (map && map.hasLayer(marker)) map.removeLayer(marker);
+  });
+  placeClusterMarkers = [];
+}
+function updateBarangayMarkerVisibility(mode = mapMarkerMode()) {
   if (!map || !barangayMarkerLayer) return;
-  const show = barangayVisible && zoom >= 9 && zoom < 13;
+  // Landing means orientation first: the blue dots are the whole map language.
+  // Any Explore choice replaces that layer rather than drawing on top of it.
+  const show = barangayVisible && mode === "landing";
   if (show && !map.hasLayer(barangayMarkerLayer)) barangayMarkerLayer.addTo(map);
   if (!show && map.hasLayer(barangayMarkerLayer)) map.removeLayer(barangayMarkerLayer);
 }
@@ -1636,24 +1678,56 @@ function updateBarangayMarkerVisibility(zoom) {
 function applyPinVisibility() {
   if (!map) return;
   const zoom = map.getZoom();
+  const mode = mapMarkerMode();
   const container = map.getContainer();
   if (container) container.classList.toggle("zoom-far", zoom <= 11);
-  setAreaLabel(zoom < 9);
-  updateBarangayMarkerVisibility(zoom);
+  // The old regional "place count" card was a stand-in for a pin cloud. The
+  // map now has explicit layers, so it would violate both the blue-dot landing
+  // view and the filtered-results-only view.
+  setAreaLabel(false);
+  updateBarangayMarkerVisibility(mode);
   allMarkers.forEach((marker) => {
     if (map.hasLayer(marker)) map.removeLayer(marker);
   });
-  const visible = activeMarkerSet.filter(
-    (marker) =>
-      (!savedPlacesOnly || savedPlaceIds.has(String(marker._d.id))) &&
-      markerVisibleAtZoom(marker, zoom),
-  );
+
+  // No coloured place pins belong on the initial map. It is intentionally a
+  // clean, tappable barangay overview until a visitor asks to see a directory
+  // result.
+  if (mode === "landing") {
+    clearPlaceClusterLayer();
+    return;
+  }
+
+  let visible = [];
+  if (mode === "focus") {
+    // A selected place is never zoom-staged, filtered out by Saved places, or
+    // collapsed into a cluster. It is the visitor's fixed point on the map.
+    visible = allMarkers.filter((marker) => String(marker._d.id) === String(currentDest.id));
+  } else if (mode === "filtered") {
+    // A category/search/area result owns the canvas. Draw every matching place
+    // as its coloured dot; do not mix in the default featured markers.
+    visible = activeMarkerSet.filter(
+      (marker) => !savedPlacesOnly || savedPlaceIds.has(String(marker._d.id)),
+    );
+  } else if (mode === "pick") {
+    visible = activeMarkerSet.filter(
+      (marker) =>
+        (!savedPlacesOnly || savedPlaceIds.has(String(marker._d.id))) &&
+        markerVisibleAtZoom(marker, zoom),
+    );
+  }
+
   visible.forEach((marker) => {
     marker.addTo(map);
     if (marker._icon)
       marker._icon.classList.toggle("is-saved", savedPlaceIds.has(String(marker._d.id)));
   });
-  updatePlaceClusterLayer();
+
+  // Clusters replace individual dots. They are useful only while explicitly
+  // picking a meeting point; Explore filters must show their actual category
+  // dots, and a focused place must remain solitary and obvious.
+  if (mode === "pick") updatePlaceClusterLayer();
+  else clearPlaceClusterLayer();
 }
 
 // ─── FAR-ZOOM AREA LABEL ───
@@ -1925,7 +1999,9 @@ async function initMap() {
   rebuildMarkers();
   map.on("zoomend", applyPinVisibility);
   map.on("moveend", () => {
-    if (map.getZoom() < 9) setAreaLabel(true);
+    // Marker layers are explicit now; the historical far-zoom summary card
+    // must not reappear over the barangay-only landing map.
+    setAreaLabel(false);
     if (
       document.body.dataset.activeTab === "map" &&
       !document.body.classList.contains("place-open") &&
@@ -2056,9 +2132,15 @@ function buildBarangayMarkers() {
       className: "barangay-point-tooltip",
     });
     marker.on("click", () => {
+      // A tap has to identify the dot as well as navigate to it. On touch
+      // devices the normal hover tooltip never fires, so explicitly reveal the
+      // barangay name before and after the map settles.
+      marker.openTooltip();
       const bounds = L.geoJSON(feature).getBounds();
-      if (bounds.isValid())
+      if (bounds.isValid()) {
+        map.once("moveend", () => marker.openTooltip());
         map.flyToBounds(bounds, { padding: [80, 80], maxZoom: 13, duration: 0.7 });
+      }
     });
     marker.addTo(barangayMarkerLayer);
   });
@@ -2076,7 +2158,7 @@ function initBarangayLayer() {
   barangayMarkerLayer = L.layerGroup();
   buildBarangayMarkers();
   if (barangayVisible) barangayLayer.addTo(map);
-  updateBarangayMarkerVisibility(map.getZoom());
+  updateBarangayMarkerVisibility();
   document.getElementById("barangayToggle").checked = barangayVisible;
 }
 function toggleBarangayLayer() {
@@ -2085,7 +2167,7 @@ function toggleBarangayLayer() {
     if (barangayVisible) barangayLayer.addTo(map);
     else map.removeLayer(barangayLayer);
   }
-  updateBarangayMarkerVisibility(map?.getZoom() || 0);
+  updateBarangayMarkerVisibility();
   try {
     sessionStorage.setItem("sanvic_boundaries", barangayVisible ? "on" : "off");
   } catch (e) {}
@@ -2543,6 +2625,10 @@ function closeExploreSheet() {
   s.classList.remove("open");
   s.setAttribute("inert", "");
   document.body.classList.remove("explore-open");
+  // Closing an untouched Explore sheet is an explicit return to the landing map,
+  // where the named barangay dots are the only pins. A chosen category/search
+  // stays a chosen map state even when its sheet is temporarily out of view.
+  applyPinVisibility();
   syncMapViewport();
 }
 function setExploreSnap(level) {
@@ -2792,6 +2878,10 @@ function renderMapSearchResults() {
 }
 function selectExploreCategory(category) {
   exploreState.category = category;
+  // “All places” is the return to the map's clean landing state, not another
+  // category layer. A stale highlighted row must not keep a place-focused map
+  // alive after that reset.
+  if (category === "all") exploreState.selected = null;
   renderExploreContent();
   syncExploreMap();
   fitExploreResults();
@@ -2804,7 +2894,13 @@ function selectExploreArea(area) {
   fitExploreResults();
 }
 function resetExploreFilters() {
-  Object.assign(exploreState, { query: "", category: "all", area: "", nearby: false });
+  Object.assign(exploreState, {
+    query: "",
+    category: "all",
+    area: "",
+    nearby: false,
+    selected: null,
+  });
   persistNearby();
   document.getElementById("esSearchInput").value = "";
   const mapInput = document.getElementById("mapSearchInput");

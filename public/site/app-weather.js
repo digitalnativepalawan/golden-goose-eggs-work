@@ -634,14 +634,26 @@ function openDest(d, recordHistory = true) {
   if (!d) return;
   closeRoutePreview();
   const fromExplore = document.body.classList.contains("explore-open");
+  // The older Discover cards and the current Explore sheet must arrive at the
+  // same map state. Preserve a category/search/area choice when a card opened
+  // from the former path becomes a destination sheet; otherwise the app would
+  // silently reset to landing mode and mix the wrong marker layers.
+  const preserveExploreFilter = typeof hasExploreMapFilter === "function" && hasExploreMapFilter();
   if (!fromExplore) {
     closeAllPanels();
-    Object.assign(exploreState, { query: "", category: "all", area: "", nearby: false });
-    const search = document.getElementById("esSearchInput");
-    if (search) search.value = "";
+    if (!preserveExploreFilter) {
+      Object.assign(exploreState, { query: "", category: "all", area: "", nearby: false });
+      const search = document.getElementById("esSearchInput");
+      if (search) search.value = "";
+    }
+    closeDiscoverPanel();
     openExploreSheet();
     setActiveDock("discover");
-    activeMarkerSet = allMarkers;
+    if (preserveExploreFilter) syncExploreMap();
+    else {
+      activeMarkerSet = allMarkers;
+      if (typeof applyPinVisibility === "function") applyPinVisibility();
+    }
     renderExploreContent();
   }
   if (!exploreReturnView) {
@@ -780,6 +792,13 @@ function openDest(d, recordHistory = true) {
   document.getElementById("deTitle").textContent = d.name;
   renderPlaceCommunity(d);
   document.getElementById("dcName").textContent = d.name;
+  const compactImage = document.getElementById("dcImg");
+  if (compactImage) {
+    compactImage.src = images[0] || "";
+    compactImage.alt = d.name ? d.name + " preview" : "";
+  }
+  document.getElementById("dcRating").textContent = stats.rating ? String(stats.rating) : "";
+  document.getElementById("dcTravel").textContent = stats.travel || d.barangay || "";
   document.getElementById("deBarangay").textContent = d.barangay
     ? "Barangay " + d.barangay
     : "San Vicente, Palawan";
@@ -867,6 +886,10 @@ function centerMapOnPlace(d) {
   try {
     map.setView([d.lat, d.lng], Math.max(15, map.getZoom()), { animate: false });
     highlightExplorePlace(d.id);
+    // setView only emits zoomend when the zoom changes. Re-apply immediately so
+    // the selected pin remains on the map at every zoom and the landing-state
+    // barangay dots yield to this explicit place choice.
+    applyPinVisibility();
     if (!exploreIsSide())
       map.panBy([0, Math.min(window.innerHeight * 0.3, 260)], { animate: false });
   } catch (e) {}
@@ -917,23 +940,41 @@ function toggleDestSheet() {
   syncMapViewport();
 }
 
-// Drag the handle down to lower it, the way a sheet is expected to behave.
+// The full detail sheet has a large, explicit finger target. Dragging it down
+// exposes the map; tapping it is the keyboard- and mouse-friendly equivalent.
 (function bindDestHandleDrag() {
   let startY = 0,
     dragging = false,
+    moved = false,
+    ignoreNextClick = false,
     sheet = null,
     handler = null;
+  const pointY = (e) =>
+    e.changedTouches ? e.changedTouches[0].clientY : e.touches ? e.touches[0].clientY : e.clientY;
+  const collapse = () => {
+    if (!sheet || !currentDest || sheet.classList.contains("closed")) return;
+    sheet.style.transform = "";
+    sheet.className = "dest-sheet closed";
+    sheet.style.maxHeight = "";
+    centerMapOnPlace(currentDest);
+    syncMapViewport();
+  };
   const onStart = (e) => {
     sheet = document.getElementById("destSheet");
     if (!sheet || !currentDest || exploreIsSide()) return;
-    startY = e.touches ? e.touches[0].clientY : e.clientY;
+    startY = pointY(e);
     dragging = true;
+    moved = false;
     sheet.style.transition = "none";
   };
   const onMove = (e) => {
     if (!dragging || !sheet) return;
-    const y = (e.touches ? e.touches[0].clientY : e.clientY) - startY;
-    if (y > 0) sheet.style.transform = "translateY(" + Math.min(y, 220) + "px)";
+    const y = pointY(e) - startY;
+    if (y > 5) moved = true;
+    if (y > 0) {
+      if (e.cancelable) e.preventDefault();
+      sheet.style.transform = "translateY(" + Math.min(y, 220) + "px)";
+    }
   };
   const onEnd = (e) => {
     if (!dragging || !sheet) {
@@ -941,25 +982,34 @@ function toggleDestSheet() {
       return;
     }
     dragging = false;
-    const y = (e.changedTouches ? e.changedTouches[0].clientY : e.clientY) - startY;
+    const y = pointY(e) - startY;
     sheet.style.transition = "";
-    if (y > 70 && !sheet.classList.contains("closed")) {
-      sheet.style.transform = "";
-      sheet.className = "dest-sheet closed";
-      sheet.style.maxHeight = "";
-      centerMapOnPlace(currentDest);
-      syncMapViewport();
-    } else {
-      sheet.style.transform = "";
+    if (moved) {
+      // Touch browsers may dispatch a synthetic click after a drag. Ignore only
+      // that immediate click, never the visitor's next deliberate tap.
+      ignoreNextClick = true;
+      window.setTimeout(() => {
+        ignoreNextClick = false;
+      }, 350);
     }
+    if (y > 70) collapse();
+    else sheet.style.transform = "";
   };
   const attach = () => {
-    handler = document.querySelector(".dest-handle");
+    handler = document.getElementById("destMapHandle");
     if (!handler || handler.dataset.dragBound) return;
     handler.dataset.dragBound = "1";
+    handler.addEventListener("click", () => {
+      if (ignoreNextClick) {
+        ignoreNextClick = false;
+        return;
+      }
+      toggleDestSheet();
+    });
     handler.addEventListener("touchstart", onStart, { passive: true });
-    handler.addEventListener("touchmove", onMove, { passive: true });
+    handler.addEventListener("touchmove", onMove, { passive: false });
     handler.addEventListener("touchend", onEnd);
+    handler.addEventListener("touchcancel", onEnd);
     handler.addEventListener("mousedown", onStart);
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onEnd);
@@ -983,6 +1033,13 @@ function closeDestSheet(restore = true) {
     document.getElementById("exploreSheet").removeAttribute("inert");
   closeAroundMePanel();
   currentDest = null;
+  // “Back to places” ends the place focus. The active category/search remains
+  // if there is one; otherwise this returns to the blue-dot landing map.
+  if (restore && typeof exploreState !== "undefined") {
+    exploreState.selected = null;
+    if (typeof highlightExplorePlace === "function") highlightExplorePlace(null);
+  }
+  if (typeof applyPinVisibility === "function") applyPinVisibility();
   if (!talaOpen) document.getElementById("talaOrbWrap").classList.remove("hidden");
   if (restore && wasOpen && exploreReturnView) {
     const previous = exploreReturnView;
@@ -1082,7 +1139,14 @@ function selectDiscoverCategory(cat) {
   document
     .querySelectorAll(".discover-cat")
     .forEach((b) => b.classList.toggle("active", b.dataset.cat === cat));
-  filterCategory(cat);
+  // Discover is a legacy entry point. It writes the same state as the Explore
+  // chips so a beach/nightlife choice cannot leave barangay dots behind.
+  if (typeof selectExploreCategory === "function") {
+    selectExploreCategory(cat);
+    // The sheet's canonical renderer owns marker state; Discover only owns its
+    // legacy card row. Do not let the category action force-open a second panel.
+    closeExploreSheet();
+  } else filterCategory(cat);
   renderDiscoverList(cat);
 }
 
@@ -1579,19 +1643,15 @@ window.addEventListener("popstate", (e) => {
 });
 
 function filterCategory(cat) {
-  if (!mapReady) return;
-  allMarkers.forEach((m) => {
-    if (map.hasLayer(m)) map.removeLayer(m);
-  });
-  if (cat === "all") {
-    activeMarkerSet = allMarkers;
-    map.flyTo([10.5, 119.22], 11, { duration: 1 });
-  } else {
-    const ms = markersByCat[cat] || [];
-    activeMarkerSet = ms;
-    if (ms.length)
-      map.flyToBounds(L.featureGroup(ms).getBounds().pad(0.25), { duration: 1, maxZoom: 15 });
+  // Kept for callers outside the new sheet, but never allowed to maintain a
+  // separate marker state. Every category choice now has one Explore source of
+  // truth.
+  if (typeof selectExploreCategory === "function") {
+    selectExploreCategory(cat);
+    return;
   }
+  if (!mapReady) return;
+  activeMarkerSet = cat === "all" ? allMarkers : markersByCat[cat] || [];
   applyPinVisibility();
 }
 

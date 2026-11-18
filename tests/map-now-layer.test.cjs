@@ -93,13 +93,122 @@ function liveLayerContext({ activeTab = "map", rows = {}, errors = {} } = {}) {
   return { context, queries, markers, map };
 }
 
-test("first-visit map tour is brief, dismissible, and points at a visible pin", () => {
+test("first-visit map tour is brief, dismissible, and never breaks the barangay landing map", () => {
   assert.match(mapApp, /function maybeShowMapTour\(force = false\)/);
+  assert.match(mapApp, /mapMarkerMode\(\) === "landing"\) return/);
   assert.match(mapApp, /sanvic_map_tour_seen/);
   assert.match(mapApp, /markerVisibleAtZoom\(marker, map\.getZoom\(\)\)/);
   assert.match(mapApp, /Tap a pin to explore/);
   assert.match(mapApp, /window\.setTimeout\(dismissMapTour, 4000\)/);
   assert.match(mapApp, /document\.addEventListener\("pointerdown", mapTourDismiss, true\)/);
+});
+
+test("a selected place pin stays visible while zooming out", () => {
+  const start = mapApp.indexOf("function mapMarkerGroup(marker)");
+  const end = mapApp.indexOf("function updatePlaceClusterLayer()", start);
+  const state = { selected: "starfish" };
+  const c = vm.createContext({
+    exploreState: state,
+    mapPickActive: false,
+    catStyle: {},
+    DEFAULT_CAT_STYLE: {},
+  });
+  vm.runInContext(mapApp.slice(start, end), c);
+  const selected = { _d: { id: "starfish", category: "islands" }, _key: false };
+  const other = { _d: { id: "other", category: "islands" }, _key: false };
+  assert.equal(c.markerVisibleAtZoom(selected, 8), true);
+  assert.equal(c.markerVisibleAtZoom(other, 8), false);
+});
+
+test("landing and Explore filters never mix barangay and place dots", () => {
+  const start = mapApp.indexOf("function hasExploreMapFilter()");
+  const end = mapApp.indexOf("// ─── FAR-ZOOM AREA LABEL", start);
+  const present = new Set();
+  const markerLayer = { addTo: () => present.add(markerLayer) };
+  const placeMarker = {
+    _d: { id: "beach-1", category: "beaches" },
+    addTo: () => present.add(placeMarker),
+  };
+  const state = { selected: null, query: "", category: "all", area: "", nearby: false };
+  const staleCluster = {};
+  present.add(staleCluster);
+  const map = {
+    getZoom: () => 8,
+    getContainer: () => ({ classList: { toggle() {} } }),
+    hasLayer: (layer) => present.has(layer),
+    removeLayer: (layer) => present.delete(layer),
+  };
+  const c = vm.createContext({
+    currentDest: null,
+    mapPickActive: false,
+    savedPlacesOnly: false,
+    savedPlaceIds: new Set(),
+    exploreState: state,
+    barangayVisible: true,
+    barangayMarkerLayer: markerLayer,
+    allMarkers: [placeMarker],
+    activeMarkerSet: [placeMarker],
+    placeClusterMarkers: [staleCluster],
+    setAreaLabel() {},
+    map,
+  });
+  vm.runInContext(mapApp.slice(start, end), c);
+  c.applyPinVisibility();
+  assert.equal(c.mapMarkerMode(), "landing");
+  assert.equal(present.has(markerLayer), true, "landing map keeps barangay dots");
+  assert.equal(present.has(placeMarker), false, "landing map hides every place pin");
+  assert.equal(present.has(staleCluster), false, "landing map clears place clusters");
+
+  state.category = "beaches";
+  c.applyPinVisibility();
+  assert.equal(c.mapMarkerMode(), "filtered");
+  assert.equal(present.has(markerLayer), false, "category choice clears barangay dots");
+  assert.equal(present.has(placeMarker), true, "category choice shows matching place pins");
+
+  state.category = "all";
+  c.currentDest = { id: "beach-1" };
+  c.applyPinVisibility();
+  assert.equal(c.mapMarkerMode(), "focus");
+  assert.equal(present.has(markerLayer), false, "focused place keeps barangay dots hidden");
+  assert.equal(present.has(placeMarker), true, "focused place remains on the map");
+
+  // The former far-zoom summary card and Pulse event chips are not place
+  // results. Neither may sneak into the strict landing/filter layers.
+  assert.match(mapApp, /setAreaLabel\(false\);/);
+  assert.match(mapApp, /mapMarkerMode\(\) !== "pick"/);
+  assert.match(mapApp, /marker\.openTooltip\(\)/);
+  assert.match(mapApp, /map\.once\("moveend", \(\) => marker\.openTooltip\(\)\)/);
+});
+
+test("legacy Discover categories write the canonical Explore state", () => {
+  const discoverStart = weatherApp.indexOf("function selectDiscoverCategory(cat)");
+  const discoverEnd = weatherApp.indexOf("function openDestinationById", discoverStart);
+  const discoverSource = weatherApp.slice(discoverStart, discoverEnd);
+  const filterStart = weatherApp.indexOf("function filterCategory(cat)");
+  const filterEnd = weatherApp.indexOf("\n\nfunction", filterStart + 1);
+  const filterSource = weatherApp.slice(filterStart, filterEnd);
+  assert.match(discoverSource, /selectExploreCategory\(cat\)/);
+  assert.match(discoverSource, /closeExploreSheet\(\)/);
+  assert.match(filterSource, /selectExploreCategory\(cat\);\s*return;/);
+});
+
+test("place details have a visible, finger-first map minimiser", () => {
+  assert.match(
+    html,
+    /id="destMapHandle"[^>]*aria-label="Drag down to see the map, or tap to minimise place details"/,
+  );
+  assert.match(html, /<span>Drag down for map<\/span>/);
+  assert.match(exploreCss, /\.dest-sheet\.closed\s*\{[\s\S]*visibility:\s*visible/);
+  assert.match(
+    exploreCss,
+    /\.dest-sheet\.closed \.dest-compact\s*\{[\s\S]*display:\s*flex !important/,
+  );
+  assert.match(weatherApp, /handler = document\.getElementById\("destMapHandle"\)/);
+  assert.match(
+    weatherApp,
+    /handler\.addEventListener\("touchmove", onMove, \{ passive: false \}\)/,
+  );
+  assert.match(weatherApp, /if \(y > 70\) collapse\(\)/);
 });
 
 test("live Pulse Now reads structured rows only on the map tab", () => {
@@ -209,22 +318,15 @@ test("optional Pulse Now fields preserve existing tables and let tribes and even
   assert.match(admin, /saveAdminPulseRow\("events", id, payload\)/);
 });
 
-test("partner preview is opt-in, labeled across screens, and includes upcoming sample pins", () => {
-  assert.match(html, /pulseNowDemoToggle[^>]*onchange="togglePartnerDemo\(this\.checked\)"/);
-  assert.match(html, /Partner preview · sample content/);
-  assert.match(html, /Demo only · not live/);
-  assert.match(html, /PARTNER PREVIEW · SAMPLE DATA · NOT LIVE/);
+test("visitor map and Pulse controls do not expose packaged preview mode", () => {
+  assert.doesNotMatch(html, /pulseNowDemoToggle|pulsePartnerPreviewBtn|partnerDemoBanner/);
+  assert.doesNotMatch(html, /Partner preview · sample (content|photos)/);
+  assert.doesNotMatch(html, /togglePartnerDemo/);
   assert.match(mapApp, /let pulseNowDemoEnabled = !!partnerDemoMode/);
   assert.match(mapApp, /document\.body\.dataset\.activeTab !== "map"/);
-  assert.match(mapApp, /title: "Tribe · Sunset Chasers"/);
-  assert.match(mapApp, /title: "Event · Acoustic Night in Poblacion"/);
-  assert.match(mapApp, /className: "pulse-now-chip-marker"/);
-  assert.match(mapApp, /startsInMinutes/);
-  assert.match(pulse, /function setPulsePartnerDemo\(enabled\)/);
-  assert.match(pulse, /starts_at: startsAt/);
 });
 
-test("partner preview gives tribes, events, feed and map pins local sample photos", () => {
+test("local editorial fixtures retain category-appropriate sample photos", () => {
   for (const image of [
     "assets/pulse/island-boats-beach.jpg",
     "assets/pulse/island-boats-aerial.jpg",
@@ -248,11 +350,6 @@ test("partner preview gives tribes, events, feed and map pins local sample photo
   assert.match(mapApp, /marker\.on\("click", \(\) =>/);
   assert.match(mapApp, /openTribeDetail\(item\.recordId\)/);
   assert.match(mapApp, /openEventDetail\(item\.recordId\)/);
-  assert.match(
-    html,
-    /id="pulsePartnerPreviewBtn"[^>]*onclick="togglePartnerDemo\(!partnerDemoMode\)"/,
-  );
-  assert.match(mapApp, /pulsePartnerPreviewLabel/);
   assert.match(pulse, /function wizUseSamplePhoto\(\)/);
   assert.match(pulse, /sample photo is only for preview/);
   assert.match(pulse, /nothing uploads or publishes while partner preview is on/);
@@ -315,7 +412,10 @@ test("map header shows only a uniform logo; search and Explore CTA stay out of t
   );
   assert.match(exploreCss, /body\[data-map-tools="on"\] #heroBrand img \{[\s\S]*width: 124px/);
   assert.match(exploreCss, /body\[data-map-tools="on"\] #heroOverlay > :not\(#heroBrand\)/);
-  assert.match(exploreCss, /body\[data-map-tools="on"\]\.explore-open #heroOverlay \{\s*display: none !important/);
+  assert.match(
+    exploreCss,
+    /body\[data-map-tools="on"\]\.explore-open #heroOverlay \{\s*display: none !important/,
+  );
   assert.match(
     exploreCss,
     /body\[data-map-tools="on"\] #mapExploreBar \{[\s\S]*display: none !important/,
@@ -430,7 +530,9 @@ test("Today dock tap opens the panel before mobile map work can interfere", () =
     syncSanvicUrl: (tab) => calls.push("url:" + tab),
     closeAllPanels: () => calls.push("closePanels"),
     closeDiscoverPanel: () => calls.push("closeDiscover"),
-    document: { getElementById: (id) => ({ classList: { remove: () => calls.push("hide:" + id) } }) },
+    document: {
+      getElementById: (id) => ({ classList: { remove: () => calls.push("hide:" + id) } }),
+    },
     map: null,
     preserveMapViewOnDock: false,
   };
@@ -439,7 +541,10 @@ test("Today dock tap opens the panel before mobile map work can interfere", () =
   assert.equal(calls[0], "openToday", "show Today immediately, before ancillary navigation work");
   assert.ok(calls.indexOf("closePanels") < calls.lastIndexOf("openToday"));
   assert.ok(calls.includes("hide:heroOverlay"));
-  assert.match(html, /<button type="button" class="dock-item" onclick="dockNav\('map'\)" data-tab="map" aria-label="Open Today"/);
+  assert.match(
+    html,
+    /<button type="button" class="dock-item" onclick="dockNav\('map'\)" data-tab="map" aria-label="Open Today"/,
+  );
 });
 
 test("Today stays visible and gives a fallback if rendering fails on a device", () => {
@@ -450,8 +555,14 @@ test("Today stays visible and gives a fallback if rendering fails on a device", 
   let opened = false;
   let panelOpen = false;
   const panel = {
-    classList: { add: (name) => { if (name === "open") panelOpen = true; } },
-    setAttribute: (name, value) => { if (name === "aria-hidden" && value === "false") opened = true; },
+    classList: {
+      add: (name) => {
+        if (name === "open") panelOpen = true;
+      },
+    },
+    setAttribute: (name, value) => {
+      if (name === "aria-hidden" && value === "false") opened = true;
+    },
   };
   const fallback = { innerHTML: "" };
   const context = {
@@ -464,7 +575,9 @@ test("Today stays visible and gives a fallback if rendering fails on a device", 
       },
     },
     refreshPanelOpen() {},
-    renderTodayContent() { throw new Error("simulated mobile render error"); },
+    renderTodayContent() {
+      throw new Error("simulated mobile render error");
+    },
     updateTodayGreeting() {},
     console: { error() {} },
   };
@@ -480,12 +593,18 @@ test("Today events and places open a responsive details sheet with editable CRUD
   assert.match(mapApp, /openTodayItemDetails\('happening',\$\{i\}\)/);
   assert.match(mapApp, /openTodayItemDetails\('joinable',\$\{i\}\)/);
   assert.match(mapApp, /openTodayItemDetails\('local',\$\{i\}\)/);
-  assert.match(mapApp, /document\.addEventListener\("keydown", \(event\) => \{[\s\S]*event\.key === "Escape"/);
+  assert.match(
+    mapApp,
+    /document\.addEventListener\("keydown", \(event\) => \{[\s\S]*event\.key === "Escape"/,
+  );
   assert.match(mapApp, /Sample preview/);
   assert.match(mapApp, /todayOpenDirections\(TODAY_DATA\.happening/);
   assert.match(html, /id="todayDetailOverlay"/);
   assert.match(html, /role="dialog" aria-modal="true" aria-labelledby="todayDetailTitle"/);
-  assert.match(html, /\.today-detail-overlay\{[\s\S]*position:absolute[\s\S]*safe-area-inset-bottom/);
+  assert.match(
+    html,
+    /\.today-detail-overlay\{[\s\S]*position:absolute[\s\S]*safe-area-inset-bottom/,
+  );
   assert.match(html, /@media\(min-width:700px\)\{\.today-detail-overlay\{align-items:center/);
   assert.match(admin, /joinTitle_\$\{id\}/);
   assert.match(admin, /hapDescription_\$\{id\}/);
@@ -511,12 +630,24 @@ test("Dark keeps its original low-light treatment and tiny map credits sit above
   assert.match(mapApp, /window\._mS\.on\("tileerror"/);
   assert.match(mapApp, /Try Satellite or Terrain in Map options/);
   assert.match(mapApp, /GIS User Community/);
-  assert.match(html, /\.map-dark \.leaflet-tile-pane\{filter:brightness\(\.62\) saturate\(\.55\) contrast\(1\.18\)\}/);
+  assert.match(
+    html,
+    /\.map-dark \.leaflet-tile-pane\{filter:brightness\(\.62\) saturate\(\.55\) contrast\(1\.18\)\}/,
+  );
   assert.doesNotMatch(exploreCss, /\.map-dark \.leaflet-tile-pane\s*\{[^}]*invert\(/);
-  assert.match(exploreCss, /body\[data-map-tools="on"\] \.leaflet-control-attribution \{[\s\S]*position: fixed !important/);
-  assert.match(exploreCss, /bottom: calc\(85px \+ env\(safe-area-inset-bottom, 0px\) \+ 2px\) !important/);
+  assert.match(
+    exploreCss,
+    /body\[data-map-tools="on"\] \.leaflet-control-attribution \{[\s\S]*position: fixed !important/,
+  );
+  assert.match(
+    exploreCss,
+    /bottom: calc\(85px \+ env\(safe-area-inset-bottom, 0px\) \+ 2px\) !important/,
+  );
   assert.match(exploreCss, /font-size: clamp\(4px, 1\.2vw, 5px\) !important/);
-  assert.match(exploreCss, /#mapLayerToggle \{[\s\S]*top: calc\(env\(safe-area-inset-top, 0px\) \+ 12px\)/);
+  assert.match(
+    exploreCss,
+    /#mapLayerToggle \{[\s\S]*top: calc\(env\(safe-area-inset-top, 0px\) \+ 12px\)/,
+  );
   assert.match(html, /Esri World Street Map/);
   assert.match(html, /Low-light style · Esri/);
   assert.doesNotMatch(mapApp, /tile\.openstreetmap\.org/);
