@@ -1681,10 +1681,10 @@ function applyPinVisibility() {
   const mode = mapMarkerMode();
   const container = map.getContainer();
   if (container) container.classList.toggle("zoom-far", zoom <= 11);
-  // The old regional "place count" card was a stand-in for a pin cloud. The
-  // map now has explicit layers, so it would violate both the blue-dot landing
-  // view and the filtered-results-only view.
-  setAreaLabel(false);
+  // At the furthest possible landing zoom, restore the blue San Vicente card
+  // as a municipal orientation marker. It never appears after an Explore
+  // choice, so filtered maps still contain only their relevant place pins.
+  setAreaLabel(mode === "landing" && zoom <= map.getMinZoom());
   updateBarangayMarkerVisibility(mode);
   allMarkers.forEach((marker) => {
     if (map.hasLayer(marker)) map.removeLayer(marker);
@@ -1999,9 +1999,9 @@ async function initMap() {
   rebuildMarkers();
   map.on("zoomend", applyPinVisibility);
   map.on("moveend", () => {
-    // Marker layers are explicit now; the historical far-zoom summary card
-    // must not reappear over the barangay-only landing map.
-    setAreaLabel(false);
+    // Keep the San Vicente orientation card in sync while panning at the map's
+    // furthest landing zoom, without letting it leak into Explore results.
+    setAreaLabel(mapMarkerMode() === "landing" && map.getZoom() <= map.getMinZoom());
     if (
       document.body.dataset.activeTab === "map" &&
       !document.body.classList.contains("place-open") &&
